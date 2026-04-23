@@ -38,18 +38,29 @@ Skip worktrees for repos whose phases are all skipped. If a worktree already exi
 
 Verify each worktree was created before dispatching agents against it. Record worktree paths in the scratchpad Implementation Tasks table so Phase 5.5 reviewers and Phase 6 assessor can locate them.
 
-#### Phase 5a: Backend (skip if --frontend-only)
+#### Phase 5a: Backend + Workers (skip if --frontend-only)
 
-**Use the lean task-ID dispatch template from Phase 4.5.** The backend task file created in Phase 4.5 already contains the full feature summary, sub-task checklist, FR/EC list, data model, API design, endpoint list, and worktree path. The implementer reads the task file once and operates from it — nothing needs to be forwarded from the orchestrator's context.
+**Use the lean task-ID dispatch template from Phase 4.5.** The backend task file created in Phase 4.5 already contains the full feature summary, sub-task checklist, FR/EC list, data model, API design (or inline endpoint contract for code-first services), event schemas (for no-api worker services), endpoint list, and worktree path. The implementer reads the task file once and operates from it — nothing needs to be forwarded from the orchestrator's context.
 
-For each service in the architect's `AFFECTED_SERVICES` list:
+For each service in the architect's `AFFECTED_SERVICES` list, pick the implementer dynamically from the repo's `type` via the `TYPE_TO_AGENT` mapping in `phases/dispatch-rules.md`. Do **NOT** hardcode `spring-boot-api-implementer` — services may be any of spring-boot / fastapi / nestjs / flask / django / python-worker (or future additions).
+
+Lookup rule, per service:
+1. Resolve `config.repos[config.services[svc].repo].type`
+2. Map to `subagent_type` via the dispatch-rules table:
+   - `spring-boot` → `spring-boot-api-implementer`
+   - `fastapi` → `fastapi-implementer`
+   - `nestjs` → `nestjs-implementer`
+   - `flask` → `flask-implementer`
+   - `django` → `django-implementer`
+   - `python-worker` → `python-worker-implementer` (spec_policy is always `no-api`; the task file references event schemas edited in Phase 3a)
+   - `other` → skip with a scratchpad note — no implementer available
 
 **Tool**: `Agent`
-**subagent_type**: `spring-boot-api-implementer`
-**description**: Short role-based name, e.g., `"Publisher backend — book content upload"`
-**prompt**: the canonical task-ID dispatch template (see Phase 4.5) with the appropriate task file path and worktree path substituted. Do **NOT** inline data model, API design, requirements, or spec content — the task file holds all of it.
+**subagent_type**: {looked up per service from the table above}
+**description**: Short role-based name, e.g., `"Publisher backend — book content upload"` or `"Order events worker — new contractId field"`
+**prompt**: the canonical task-ID dispatch template (see Phase 4.5) with the appropriate task file path and worktree path substituted. Do **NOT** inline data model, API design, requirements, spec content, or event schemas — the task file holds all of it.
 
-Dispatch one `Agent` call per affected service. All of them go in the same assistant message as Phase 5c and Phase 5d and the UX half of 5b so they run in parallel.
+Dispatch one `Agent` call per affected service. All of them go in the same assistant message as Phase 5c and Phase 5d and the UX half of 5b so they run in parallel (subject to the monorepo-sequential rule above).
 
 **On completion** (agent returns): update the scratchpad — task status COMPLETED, worktree path, files changed. The agent is responsible for flipping its own task file from `status: todo` to `status: done`.
 
@@ -135,13 +146,21 @@ Dispatch in the same message as Phases 5a, 5d, and the UX half of 5b.
 
 Extract `<!-- BEGIN INFRASTRUCTURE_IMPACT -->` section. Dispatch in the same message as 5a, 5c, and the UX half of 5b.
 
-**Tool**: `Agent`
-**subagent_type**: `cdk-stack-implementer`
-**description**: `"Infra — {feature-slug}"`
+For each repo with `role: infrastructure` that the architect flagged as affected, pick the implementer from the repo's `type`:
+- `cdk` → `cdk-stack-implementer`
+- `terraform` → `terraform-implementer`
 
-**Use the lean task-ID dispatch template from Phase 4.5.** The infra task file carries the `INFRASTRUCTURE_IMPACT` block, cross-stack reference list, naming conventions, worktree path, and build verification commands. The orchestrator does not forward any of this in the prompt.
+If the feature touches multiple infra repos of different types (e.g., one CDK stack repo + one Terraform repo), dispatch one Agent call per repo, each with its matching implementer. These are independent so they can run in parallel.
+
+**Tool**: `Agent`
+**subagent_type**: {looked up per infra repo — `cdk-stack-implementer` or `terraform-implementer`}
+**description**: `"Infra ({cdk|terraform}) — {feature-slug}"`
+
+**Use the lean task-ID dispatch template from Phase 4.5.** The infra task file carries the `INFRASTRUCTURE_IMPACT` block, cross-stack reference list, naming conventions, worktree path, and build verification commands (which differ per tool: `cdk synth` + `cdk diff` for CDK; `terraform fmt` + `terraform validate` + `terraform plan` for Terraform). The orchestrator does not forward any of this in the prompt.
 
 **prompt**: the canonical task-ID dispatch template (see Phase 4.5) with the infra task file path and worktree path substituted.
+
+**Terraform-specific**: the terraform-implementer is instructed to NEVER run `terraform apply`. Its deliverable is the plan output, which the user reviews at Phase 5.5 or at the Phase 7 PR stage before a human applies it.
 
 **On completion**: update the scratchpad. The implementer flips its task file from `status: todo` to `status: done`.
 

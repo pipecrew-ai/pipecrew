@@ -57,7 +57,8 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 
     | Phase | Auto-runs if | Override flag |
     |-------|-------------|---------------|
-    | 3 (Spec Edit) | any service has a `spec_file` AND architect found spec changes | `--skip-spec-edit` skips |
+    | 3a (Contract Edit) | architect's `AFFECTED_CONTRACTS` is non-empty | `--skip-spec-edit` skips |
+    | 3b (Spec Edit) | architect found spec changes AND at least one affected service has `spec_policy: api-first` | `--skip-spec-edit` skips |
     | 4 (Spec Sync) | any repo has `spec_copies` in config | skipped if no `spec_copies` |
     | 5a (Backend) | config has repos with `role: "api-service"` | `--frontend-only` skips |
     | 5b (Frontend) | config has repos with `role: "frontend"` | `--backend-only` skips |
@@ -130,7 +131,8 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 Pre-flight: Validate repos + create scratchpad ── automatic
 Phase 1: Requirements (dal-product-owner) ──────── WHAT                    <- user gate
 Phase 2: Architecture (solution-architect) ─────── HOW + WHICH SERVICES    <- user gate
-Phase 3: Spec Edit (openapi-spec-editor) ────────── API CONTRACT            <- user gate
+Phase 3a: Contract Edit (schema-implementer) ────── SHARED SCHEMAS          ┐
+Phase 3b: Spec Edit (openapi-spec-editor) ────────── API CONTRACT             ┴─<- single user gate (both diffs)
 Phase 4: Sync Specs ────────────────────────────── automatic
 Phase 4.5: Implementation Plan + Context Budget ─── full task list          <- user gate
 Phase 5: Parallel ──────┬── 5a: Backend (spring-boot-api-implementer — one per service)
@@ -165,7 +167,7 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | Pre-flight + Resume + Scratchpad template | `phases/pre-flight.md` | 181 |
 | 1. Requirements | `phases/phase-1.md` | 38 |
 | 2. Architecture | `phases/phase-2.md` | 53 |
-| 3. Spec Edit | `phases/phase-3.md` | 71 |
+| 3. Contract + Spec Edit (3a + 3b) | `phases/phase-3.md` | 209 |
 | 4. Sync + 4.5 Plan | `phases/phase-4.md` | 231 |
 | Dispatch rules + task contract | `phases/dispatch-rules.md` | 83 |
 | 5. Implementation | `phases/phase-5.md` | 141 |

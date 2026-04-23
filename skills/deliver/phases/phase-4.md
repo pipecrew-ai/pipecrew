@@ -171,25 +171,85 @@ The body (free-form markdown after the closing `---`) should contain everything 
 - The sub-task checklist from the implementation plan (the numbered rows under "Backend: {service}" / "Frontend" / "Mock" / "Infra")
 - The functional requirements (FR-X) and edge cases (EC-X) the implementer must enforce — extract from `outputs/phase-1-requirements.md`, only the ones relevant to this sub-task's repo
 - The relevant section of the technical design — extract from `outputs/phase-2-architecture.md`: `DATA_MODEL` + `API_DESIGN` for backend, `FRONTEND_ARCHITECTURE` for frontend, `INFRASTRUCTURE_IMPACT` for infra, the whole `API_DESIGN` for mock
-- Endpoint list with exact spec field names (for the implementer to match byte-for-byte)
+- **A `## Contract Reference` section** — see the `spec_policy` switch below. This is what replaces the old "endpoint list with exact spec field names" bullet and is where the service task files really diverge by policy.
 - Worktree path the implementer will work in
 - **A `## Known Pitfalls` section (D1 / D3)** — see below
 - The expected report format (files created/modified, FR/EC coverage map, test results, commands run)
+
+#### Building the `## Contract Reference` section (spec_policy switch)
+
+For backend + worker service tasks, look up `config.services[{service}].spec_policy` (default `api-first` when omitted) and pick ONE of the three shapes below. Mock and infra tasks skip this section entirely — their contract is `API_DESIGN` / `INFRASTRUCTURE_IMPACT` themselves.
+
+**`api-first`** (spec exists and was edited in Phase 3b):
+
+```markdown
+## Contract Reference
+
+**Spec policy**: `api-first`
+**Spec file**: `{config.services[svc].spec_file}` (absolute path inside the worktree)
+
+**Endpoints (match spec field names byte-for-byte)**:
+- `POST /orders/{order_id}/ship` → request `ShipRequest`, response `ShipResponse`, 200/400/403/404/409
+- `GET /orders/{order_id}/history` → query `limit` (int, 1-100), response `HistoryResponse`
+- ...
+
+The spec is the source of truth — never rename a field, never change a type. If the spec is wrong, stop and flag it to the orchestrator (do not "improve" it during implementation).
+```
+
+**`code-first`** (no spec file — the architect's inline contract is authoritative):
+
+```markdown
+## Contract Reference
+
+**Spec policy**: `code-first`
+**Spec file**: — (no spec file for this service; the inline contract below IS the contract)
+
+**Inline contract(s)** — copied byte-for-byte from Phase 2 `API_DESIGN` for this service. Field names, types, enum values, status codes, and error shapes are all load-bearing.
+
+{paste the architect's full inline-contract block(s) for this service from API_DESIGN — every endpoint owned by this service, verbatim, including request body fields, response body fields, auth, and error responses}
+
+Deviation from this contract requires re-architecture (Phase 2 redo), not implementer judgment. If you find the contract inconsistent or incomplete, stop and report.
+```
+
+**`no-api`** (worker — no HTTP, event-driven):
+
+```markdown
+## Contract Reference
+
+**Spec policy**: `no-api`
+**Spec file**: — (worker has no HTTP endpoints)
+
+**Event triggers** — copied byte-for-byte from Phase 2 `API_DESIGN` for this worker.
+
+{paste the architect's full Event Triggers block(s) for this worker from API_DESIGN — every handler, verbatim, including trigger source, event schema reference, delivery semantics, batch config, downstream targets, failure modes}
+
+**Event schema files** (from Phase 3a contract edits — reuse the typed models they produce if the repo generates them; otherwise implement the deserializer per the repo's pattern):
+
+- `{absolute path to event schema file 1 in the contract repo worktree}` — {one-line summary of the shape}
+- `{absolute path to event schema file 2}` — ...
+
+Idempotency key, DLQ config, and partial-failure reporting are load-bearing — see the `python-worker.md` pitfalls section below.
+```
+
+Build this section by reading the architect's `API_DESIGN` from `outputs/phase-2-architecture.md`, selecting the block(s) for the service in question, and substituting the template above. For `no-api` workers, also look at `AFFECTED_CONTRACTS` from `outputs/phase-2-architecture.md` (the Phase 3a contract edits) to resolve the schema file paths — use the worktree path if a `contract_worktrees` entry exists in the scratchpad.
 
 #### Building the `## Known Pitfalls` section
 
 Every task body MUST include a `## Known Pitfalls` section right above `## Report format`. Build it by:
 
 1. Looking up the repo's `type` from `config.repos[{repo}].type`.
-2. Reading the corresponding pitfalls file from `{plugin_dir}/docs/pitfalls/{type}.md` (e.g., `spring-boot.md`, `react.md`, `node-mock.md`, `cdk.md`, `nestjs.md`, `fastapi.md`, `nextjs.md`). Select the sections relevant to what the task actually does:
+2. Reading the corresponding pitfalls file from `{plugin_dir}/docs/pitfalls/{type}.md` (e.g., `spring-boot.md`, `fastapi.md`, `flask.md`, `django.md`, `python-worker.md`, `nestjs.md`, `react.md`, `nextjs.md`, `node-mock.md`, `cdk.md`, `terraform.md`). Select the sections relevant to what the task actually does:
    - Backend task touching endpoints + DB → include "Exception → HTTP status convention", "DB schema / migrations", "Role / authz matrix" sections
    - Backend task doing a list endpoint → also include "Sort / filter param validation", "N+1 queries"
    - Backend task adding/consuming SQS → include "SQS payload compatibility"
+   - Flask / Django task → include "App factory / App wiring", "Migrations", "Role / authz"
+   - Python-worker task → include "Idempotency", "Partial failure", "DLQ + retry config", "Schema evolution"; omit any HTTP-specific sections
    - Frontend task with filters + URL state → include "useCallback / dependency stability", "URL-persisted filter state", "React Query cache keys"
    - Frontend task with download → include "Download / binary responses"
    - Every frontend task → include "i18n / RTL"
    - Mock task → include "Spec drift", "Seed data coverage"
    - CDK task → include "Resource cross-references", "IAM least-privilege"
+   - Terraform task → include "Apply is never the agent's call", "Destroys are irreversible", "IAM least privilege", "State drift"
 3. Reading `{workspace_root}/{slug}/context/audit-findings.md` (if present) and filtering to bullets whose `file:line` refers to files the task will touch (look at `## {repo}` H2 sections; match on repo name). Include these under a `### Workspace-specific findings from onboarding` sub-heading, verbatim.
 4. If fewer than 3 bullets would survive the filtering + selection, drop the whole section — too-short pitfall lists dilute signal.
 
@@ -241,6 +301,8 @@ Repeat the Write step for every sub-task in the plan.
 | 4 | {id-4} | abvi-backends-mock | mock-endpoint-implementer | PENDING | | |
 | 5 | {id-5} | abvi-ops-platform | cdk-stack-implementer | PENDING | | |
 ```
+
+Fill the `Agent` column by looking up each repo's `type` in the `TYPE_TO_AGENT` table in `phases/dispatch-rules.md`. The table covers every supported type (spring-boot, fastapi, flask, django, nestjs, python-worker, react, nextjs, node-mock, cdk, terraform, schemas). For `type: other`, write `— (skip — no implementer)` in the Agent column and mark status `SKIPPED`.
 
 **Drop the full implementation plan from live context.** Do NOT keep the plan body, the sub-task checklists, or the FR/EC-mapping notes in the assistant message that follows. If Phase 5 needs any detail, the implementer fetches it via the Read tool on `~/.claude/dal-pipeline/tasks/{task-id}.md`. If the orchestrator itself needs any detail (e.g., to refine dispatch), it also Reads the task file in the moment and drops the result after use.
 

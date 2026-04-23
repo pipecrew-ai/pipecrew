@@ -10,13 +10,20 @@ All implementer work is launched via the `Agent` tool in the current session. **
 
 | Config `type` | Implementer agent | Reviewer agent |
 |--------------|-------------------|----------------|
-| `spring-boot` | `spring-boot-implementer` | `spring-boot-reviewer` |
-| `react` | `react-implementer` | `react-reviewer` |
-| `nextjs` | `nextjs-implementer` | `nextjs-reviewer` |
-| `nestjs` | `nestjs-implementer` | `nestjs-reviewer` |
+| `spring-boot` | `spring-boot-api-implementer` | `spring-boot-code-reviewer` |
 | `fastapi` | `fastapi-implementer` | — |
-| `node-mock` | `node-mock-implementer` | *(skip — mock not reviewed)* |
-| `cdk` | `cdk-implementer` | *(skip — CDK verified by synth)* |
+| `flask` | `flask-implementer` | — |
+| `django` | `django-implementer` | — |
+| `nestjs` | `nestjs-implementer` | `nestjs-reviewer` |
+| `python-worker` | `python-worker-implementer` | — |
+| `react` | `react-feature-implementer` | `react-code-reviewer` |
+| `nextjs` | `nextjs-implementer` | `nextjs-reviewer` |
+| `node-mock` | `mock-endpoint-implementer` | *(skip — mock not reviewed)* |
+| `cdk` | `cdk-stack-implementer` | *(skip — CDK verified by synth)* |
+| `terraform` | `terraform-implementer` | *(skip — plan is the review artifact)* |
+| `schemas` | `schema-implementer` (dispatched in Phase 3a, not Phase 5) | — |
+| `api-collections` | *(not dispatched — detect-only)* | — |
+| `other` | *(not dispatched — manual)* | — |
 
 The orchestrator:
 1. **Creates the worktree itself** with `Bash` before dispatching: `cd {repo_path} && git worktree add ../{repo-name}-{feature-slug} -b feature/{feature-slug}`.

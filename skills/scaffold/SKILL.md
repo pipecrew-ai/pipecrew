@@ -30,7 +30,7 @@ Creates repo directories, initializes git, and writes a baseline CLAUDE.md per r
 ### Examples
 
 ```
-/scaffold --from-scratch --brief=~/.claude/workspaces/habit-tracker/brief.md --parent=~/projects/habit-tracker
+/scaffold --from-scratch --brief={workspace_root}/habit-tracker/brief.md --parent=~/projects/habit-tracker
 /scaffold --from-example --source=~/projects/some-nextjs-app --target=~/projects/new-app --name=dashboard
 ```
 

@@ -8,9 +8,9 @@ description: "Discover a new project for the PipeCrew. Inspects repos, interroga
 One-time workspace initialization. Scans parent directories for repos, detects tech stacks, asks domain questions, generates all workspace-layer files that the `/deliver` pipeline needs.
 
 After `/discover` completes, you have:
-- `~/.claude/workspaces/{slug}/config.json` — workspace config
-- `~/.claude/workspaces/{slug}/context/platform.md` — domain architecture context
-- `~/.claude/workspaces/{slug}/agents/` — domain-specific agents (product-owner, assessor, ux-consultant)
+- `{workspace_root}/{slug}/config.json` — workspace config
+- `{workspace_root}/{slug}/context/platform.md` — domain architecture context
+- `{workspace_root}/{slug}/agents/` — domain-specific agents (product-owner, assessor, ux-consultant)
 - `CLAUDE.md` in each repo (generated or pre-existing)
 - Optional `agent-context/` in repos where complexity warrants it
 
@@ -44,12 +44,12 @@ After `/discover` completes, you have:
 ### CRITICAL RULES
 
 1. **Never overwrite existing CLAUDE.md files** without asking. If a repo already has one, read it and skip generation. The user may have hand-curated it.
-2. **Never overwrite an existing workspace config** without asking. If `~/.claude/workspaces/{slug}/config.json` exists, warn and offer to update or abort.
+2. **Never overwrite an existing workspace config** without asking. If `{workspace_root}/{slug}/config.json` exists, warn and offer to update or abort.
 3. **CLAUDE.md is required for every repo** that will participate in the pipeline. Agents read it first. No exceptions.
 4. **Agent-context is optional.** Recommend it for complex repos. Skip for simple ones.
 5. **Domain agents are templates.** The plugin ships template files; `/discover` fills in placeholders and writes finished agents to the workspace's `agents/` directory.
 6. **The solution-architect does the heavy lifting in Phase B2.** It reads actual code, not just filenames. This produces a high-quality platform.md that all coordinating agents rely on.
-7. **Track progress in a scratchpad.** Onboarding has 6 phases — any of them can fail (context limit, network error, user interruption). The scratchpad at `~/.claude/workspaces/{slug}/runs/onboard/{run_id}/scratchpad.md` tracks which phases completed and stores intermediate results so `/discover --resume` can pick up where it left off.
+7. **Track progress in a scratchpad.** Onboarding has 6 phases — any of them can fail (context limit, network error, user interruption). The scratchpad at `{workspace_root}/{slug}/runs/onboard/{run_id}/scratchpad.md` tracks which phases completed and stores intermediate results so `/discover --resume` can pick up where it left off.
 8. **Update the scratchpad after every phase completes** — before starting the next phase. Write the phase status AND any outputs produced (discovered repos, domain answers, etc.).
 9. **Emit a one-line phase-done status in chat** — immediately after updating the scratchpad at the end of each phase, print exactly one line to the user in the format:
 
@@ -78,7 +78,7 @@ After `/discover` completes, you have:
 **Run directory** — every onboarding run gets its own dir under the workspace:
 
 ```
-~/.claude/workspaces/{slug}/runs/onboard/{run_id}/
+{workspace_root}/{slug}/runs/onboard/{run_id}/
 ├── scratchpad.md          human-readable phase state (used by --resume)
 ├── checkpoints.jsonl      machine event log (this section)
 ├── outputs/               phase artifacts (platform-draft.md, divergences.md, etc.)
@@ -143,11 +143,11 @@ Both are kept; neither replaces the other.
 
 ### SCRATCHPAD
 
-**Created at the very start of onboarding** (before Phase A, after asking the workspace name AND after computing `run_id`). Lives at `~/.claude/workspaces/{slug}/runs/onboard/{run_id}/scratchpad.md`.
+**Created at the very start of onboarding** (before Phase A, after asking the workspace name AND after computing `run_id`). Lives at `{workspace_root}/{slug}/runs/onboard/{run_id}/scratchpad.md`.
 
 **Before writing the scratchpad**, the orchestrator MUST:
 1. Compute `run_id` = `{YYYY-MM-DD-HHMMSS}-{slug}` from current UTC time. If `runs/onboard/{run_id}/` already exists, append `-2`, `-3`, etc.
-2. Create the directory: `mkdir -p ~/.claude/workspaces/{slug}/runs/onboard/{run_id}/outputs`
+2. Create the directory: `mkdir -p {workspace_root}/{slug}/runs/onboard/{run_id}/outputs`
 3. Emit the first `run_start` event to `checkpoints.jsonl` in that dir.
 4. Then write the scratchpad below.
 
@@ -204,6 +204,22 @@ Apply the shared resume rules at `{plugin_dir}/docs/interruption-and-resume.md` 
 
 ### PRE-PHASE 0: Workspace name + usage gate
 
+**Step 0.0: Resolve the workspace root directory.**
+
+Before creating any workspace dir, make sure the user's preferred root is known. Run `node {plugin_dir}/scripts/workspace-root.js --check`:
+- Exit 0 — already configured (or `$PIPECREW_WORKSPACE_ROOT` is set). Skip to 0.1.
+- Exit 2 — never configured. Ask the user once:
+
+  ```
+  Where should PipeCrew store workspaces?
+  Default: ~/.claude/pipecrew/workspaces
+  (Press Enter to accept the default, or paste an absolute/~-prefixed path.)
+  ```
+
+  Then persist the answer (or the default) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes `~/.claude/pipecrew/config.json` so `/deliver` and future `/discover` runs reuse the same root without re-prompting.
+
+After this step, capture `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get)` and use it everywhere the remaining steps show the literal `~/.claude/pipecrew/workspaces/` path.
+
 **Step 0.1: Ask workspace name.**
 
 Before Phase A, the orchestrator must know the workspace name to create the scratchpad directory. Ask:
@@ -235,7 +251,7 @@ Behavior: **warn and continue.** Do not hard-block. The user decides. If `stats-
 **Step 0.3: Create the run directory.**
 
 ```bash
-mkdir -p ~/.claude/workspaces/{slug}/runs/onboard/{run_id}/outputs
+mkdir -p {workspace_root}/{slug}/runs/onboard/{run_id}/outputs
 ```
 
 If `runs/onboard/{run_id}/` already exists (same-second collision), append `-2`, `-3`, … to `{run_id}` until unique.

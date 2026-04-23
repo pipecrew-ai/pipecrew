@@ -1,12 +1,12 @@
 ### Scratchpad Template
 
-The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `~/.claude/workspaces/{slug}/runs/feature/{run_id}/`. Per-run isolation — each feature gets its own directory so two features can run in parallel on the same workspace without token accounting bleeding.
+The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `{workspace_root}/{slug}/runs/feature/{run_id}/`. Per-run isolation — each feature gets its own directory so two features can run in parallel on the same workspace without token accounting bleeding.
 
 `{run_id}` format: `{YYYY-MM-DD-HHMMSS}-{feature-slug}` (see `{plugin_dir}/docs/observability.md`). The timestamp provides uniqueness; the feature slug provides readability. On same-second collision, append `-2`, `-3`, …
 
 #### Directory Structure
 ```
-~/.claude/workspaces/{slug}/runs/feature/
+{workspace_root}/{slug}/runs/feature/
 └── {run_id}/                          <- THIS run's {run_dir}
     ├── scratchpad.md                  <- lean phase index
     ├── checkpoints.jsonl              <- unified event log (see observability.md)
@@ -96,7 +96,7 @@ To resume: `/deliver --resume --workspace={slug}`
 
 When `--resume` is passed:
 
-1. Read the workspace config at `~/.claude/workspaces/{workspace}/config.json`
+1. Read the workspace config at `{workspace_root}/{workspace}/config.json`
 2. List `{workspace_pipeline_dir}/active/` — get all in-flight pipeline slugs
 3. If none → "No active pipeline found. Start a new one with `/deliver <description>`"
 4. If exactly one → use it
@@ -137,18 +137,34 @@ When `--resume` is passed:
 
 ### Pre-flight: Validate Repos + Create Scratchpad
 
+**Step 0: Resolve the workspace root directory.**
+
+Workspaces live under `{workspace_root}/<slug>/`. The root is resolved by `node {plugin_dir}/scripts/workspace-root.js` with this precedence: `$PIPECREW_WORKSPACE_ROOT` env var → `~/.claude/pipecrew/config.json` → default `~/.claude/pipecrew/workspaces/`.
+
+1. Run `node {plugin_dir}/scripts/workspace-root.js --check`. Exit 0 = already configured (or env var set), skip to step 3. Exit 2 = never configured — prompt the user once:
+
+   ```
+   Where should PipeCrew store workspaces?
+   Default: ~/.claude/pipecrew/workspaces
+   (Press Enter to accept the default, or paste an absolute/~-prefixed path.)
+   ```
+
+2. Save the answer (or the default if the user pressed Enter) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes `~/.claude/pipecrew/config.json` so future runs don't re-prompt.
+
+3. Capture the resolved path: `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get)`. Use this alias everywhere in the remaining steps — wherever a phase file shows the literal `~/.claude/pipecrew/workspaces/`, substitute `{workspace_root}/`.
+
 **Step 1: Load and validate workspace config.**
 
-Read `~/.claude/workspaces/{workspace}/config.json`. Run the validator:
+Read `{workspace_root}/{workspace}/config.json`. Run the validator:
 
 ```bash
-node {plugin_dir}/scripts/validate-config.js ~/.claude/workspaces/{workspace}/config.json
+node {plugin_dir}/scripts/validate-config.js {workspace_root}/{workspace}/config.json
 ```
 
 If validation fails (exit code 1), print the errors and stop. If warnings exist, print them and continue.
 
 Extract key references from the config into short aliases used throughout the rest of the pipeline:
-- `{runs_dir}` = `~/.claude/workspaces/{slug}/runs/feature/` — base for all feature runs (replaces the old `config.workspace.pipeline_dir`)
+- `{runs_dir}` = `{workspace_root}/{slug}/runs/feature/` — base for all feature runs (replaces the old `config.workspace.pipeline_dir`)
 - `{run_dir}` = `{runs_dir}/{run_id}/` — this specific run (computed once in Step 2)
 - `{repos.*}` = `config.repos` — iterate for path validation
 - `{services.*}` = `config.services` — iterate for service→repo→spec lookups

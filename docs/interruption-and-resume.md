@@ -29,7 +29,7 @@ Applies identically to `/discover --resume` and `/deliver --resume` (and any fut
 
 ### Step 1: Find interrupted runs
 
-Scan `~/.claude/workspaces/*/runs/{skill}/*/scratchpad.md` for files with `Status: IN_PROGRESS` or `Status: INTERRUPTED`.
+Scan `{workspace_root}/*/runs/{skill}/*/scratchpad.md` for files with `Status: IN_PROGRESS` or `Status: INTERRUPTED`.
 
 If `--workspace=<slug>` is set, restrict to that workspace. If the skill has its own run-id flag (e.g., `/deliver --feature=<slug>`), use it to disambiguate further.
 

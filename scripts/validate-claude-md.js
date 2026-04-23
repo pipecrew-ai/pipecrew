@@ -19,7 +19,7 @@ const MANDATORY_BULLETS = [
 ];
 
 const COUPLING_PATTERNS = [
-  { pattern: /~\/\.claude\/workspaces\//, label: 'workspace path reference' },
+  { pattern: /~\/\.claude\/(?:pipecrew\/)?workspaces\//, label: 'workspace path reference' },
   { pattern: /\bplatform\.md\b/, label: '"platform.md" reference' },
   { pattern: /\baudit-findings\b/, label: '"audit-findings" reference' },
   { pattern: /\bworkspace baseline\b/i, label: '"workspace baseline" phrase' },

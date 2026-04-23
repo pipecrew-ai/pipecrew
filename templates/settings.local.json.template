@@ -3,13 +3,13 @@
   "_generated_by": "/discover for workspace {{WORKSPACE_SLUG}} on {{DATE}}",
   "permissions": {
     "allow": [
-      "Edit(~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
-      "Write(~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
-      "Read(~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
-      "Bash(mkdir -p ~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
-      "Bash(cat ~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
-      "Bash(ls ~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
-      "Bash(find ~/.claude/workspaces/{{WORKSPACE_SLUG}}/**)",
+      "Edit({workspace_root}/{{WORKSPACE_SLUG}}/**)",
+      "Write({workspace_root}/{{WORKSPACE_SLUG}}/**)",
+      "Read({workspace_root}/{{WORKSPACE_SLUG}}/**)",
+      "Bash(mkdir -p {workspace_root}/{{WORKSPACE_SLUG}}/**)",
+      "Bash(cat {workspace_root}/{{WORKSPACE_SLUG}}/**)",
+      "Bash(ls {workspace_root}/{{WORKSPACE_SLUG}}/**)",
+      "Bash(find {workspace_root}/{{WORKSPACE_SLUG}}/**)",
       "Edit(~/.claude/agents/{{WORKSPACE_SLUG}}-*.md)",
       "Write(~/.claude/agents/{{WORKSPACE_SLUG}}-*.md)",
 

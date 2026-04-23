@@ -21,7 +21,7 @@ Run dir:     {run_dir}
 Scratchpad:  {run_dir}/scratchpad.md
 Checkpoints: {run_dir}/checkpoints.jsonl
 Stats cache: ~/.claude/stats-cache.json
-Prior runs:  ~/.claude/workspaces/{slug}/runs/feature/         (sibling run_id dirs — use for trend comparison)
+Prior runs:  {workspace_root}/{slug}/runs/feature/         (sibling run_id dirs — use for trend comparison)
 
 Validate the checkpoints log first:
   node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl
@@ -190,7 +190,7 @@ Archive anyway? (yes / no)
 
 No move, no copy — archival is implicit.
 
-`{run_dir}` = `~/.claude/workspaces/{slug}/runs/feature/{run_id}/` already sits in the permanent location. The timestamp prefix of `{run_id}` makes it chronologically sortable. Listing `runs/feature/` in reverse-sort gives the history view for free. The `scratchpad.md` in the dir carries `Status: COMPLETED`, and checkpoints.jsonl has a final `run_end` event with `status: "completed"` and `duration_ms` — the reporter and any cross-run analysis tool can distinguish finished from in-flight by either signal.
+`{run_dir}` = `{workspace_root}/{slug}/runs/feature/{run_id}/` already sits in the permanent location. The timestamp prefix of `{run_id}` makes it chronologically sortable. Listing `runs/feature/` in reverse-sort gives the history view for free. The `scratchpad.md` in the dir carries `Status: COMPLETED`, and checkpoints.jsonl has a final `run_end` event with `status: "completed"` and `duration_ms` — the reporter and any cross-run analysis tool can distinguish finished from in-flight by either signal.
 
 To finalize the run, emit the `run_end` event:
 

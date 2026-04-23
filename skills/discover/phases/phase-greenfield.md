@@ -49,7 +49,7 @@ The agent will ask questions — relay them to the user, pass answers back with 
 When the brainstormer returns an approved brief, extract the `<!-- BEGIN PROJECT_BRIEF -->` section and save to:
 
 ```
-~/.claude/workspaces/{slug}/brief.md
+{workspace_root}/{slug}/brief.md
 ```
 
 **Update scratchpad**: add a "Greenfield" row to Phase Status with COMPLETED. Note the brief path.
@@ -73,7 +73,7 @@ Options:
 If option 1, invoke the `scaffold` skill:
 
 ```
-/scaffold --from-scratch --brief=~/.claude/workspaces/{slug}/brief.md --parent={parent_dir}
+/scaffold --from-scratch --brief={workspace_root}/{slug}/brief.md --parent={parent_dir}
 ```
 
 Parse the `<!-- BEGIN SCAFFOLDED_REPOS -->` block from the output. Those paths feed into Phase A's repo list — skip Phase A's directory scan and use these paths directly.
@@ -100,7 +100,7 @@ Parse outputs. Feed paths into Phase A.
 If option 3, stop onboarding and tell the user:
 
 ```
-Saved the brief to ~/.claude/workspaces/{slug}/brief.md
+Saved the brief to {workspace_root}/{slug}/brief.md
 
 When your repos are ready, run:
   /discover {parent_dir}

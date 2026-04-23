@@ -16,10 +16,10 @@ claude plugin install https://github.com/ramy-hassan/pipecrew
 /discover /path/to/your/repos
 ```
 
-Scans repos, detects tech stacks, asks 4 domain questions, generates everything under `~/.claude/workspaces/{slug}/`:
+Scans repos, detects tech stacks, asks 4 domain questions, generates everything under `{workspace_root}/{slug}/`:
 
 ```
-~/.claude/workspaces/{slug}/
+{workspace_root}/{slug}/
 ├── config.json              ← workspace config
 ├── context/platform.md      ← domain architecture context
 ├── agents/                  ← domain-specific agents
@@ -154,7 +154,7 @@ The pipeline dispatches two kinds of agents via the `Agent` tool's `subagent_typ
 
 **Workspace agents** are generated per-workspace by `/discover` from templates in `{plugin_dir}/templates/agents/`. Three roles are produced: `product-owner`, `assessor`, `ux-consultant`. The filled files live at two paths:
 
-1. **Canonical copy**: `~/.claude/workspaces/{slug}/agents/{role}.md` — version-controlled alongside workspace config; hand-editable between onboardings.
+1. **Canonical copy**: `{workspace_root}/{slug}/agents/{role}.md` — version-controlled alongside workspace config; hand-editable between onboardings.
 2. **Published copy**: `~/.claude/agents/{slug}-{role}.md` — published by Phase C Step 3 of `/discover` so Claude Code's `Agent` tool resolves `subagent_type: {slug}-assessor` directly.
 
 Pipeline phases that dispatch these use the slug-prefixed published name (`dal-assessor`, `acme-product-owner`). If the published copy is missing (old onboarding), phases fall back to the `general-purpose` agent with a preamble that reads the canonical copy. Both scopes coexist cleanly.
@@ -165,7 +165,7 @@ Pipeline phases that dispatch these use the slug-prefixed published name (`dal-a
 
 ## Approval-free operation
 
-Onboarding Phase C Step 3.5 offers to write `~/.claude/workspaces/{slug}/settings.local.json` with pre-allow rules for the common patterns `/deliver` uses. This is per-workspace and opt-in — no global permissions are granted without consent.
+Onboarding Phase C Step 3.5 offers to write `{workspace_root}/{slug}/settings.local.json` with pre-allow rules for the common patterns `/deliver` uses. This is per-workspace and opt-in — no global permissions are granted without consent.
 
 If you skipped it during onboarding and want to add it later:
 - Re-run `/discover --resume --workspace={slug}` and say `yes` at Step 3.5, or

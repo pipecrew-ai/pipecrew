@@ -4,19 +4,21 @@
  *
  * Watches ONE feature run's scratchpad.md and streams state to the browser.
  *
- * Layout:   ~/.claude/workspaces/{slug}/runs/feature/{run_id}/scratchpad.md
- *           ~/.claude/workspaces/{slug}/runs/feature/{run_id}/checkpoints.jsonl
+ * Layout:   {workspace_root}/{slug}/runs/feature/{run_id}/scratchpad.md
+ *           {workspace_root}/{slug}/runs/feature/{run_id}/checkpoints.jsonl
  *
  *   - scratchpad.md is the primary source — phase table, task table, dispatch log
  *   - checkpoints.jsonl is enrichment — orchestrator-overhead tokens + retry markers
+ *   - {workspace_root} resolved via scripts/workspace-root.js
+ *     (default: ~/.claude/pipecrew/workspaces/)
  *
  * Usage:  node server.js [--workspace=<slug>] [--run-id=<id>] [--port=5173]
  *
  * Auto-detect rules when flags omitted:
- *   --workspace: single workspace under ~/.claude/workspaces/ → use it.
+ *   --workspace: single workspace under {workspace_root}/ → use it.
  *                Multiple → exit with list.
  *   --run-id:    most recently-modified scratchpad.md under
- *                ~/.claude/workspaces/{slug}/runs/feature/&lt;run-id&gt;/
+ *                {workspace_root}/{slug}/runs/feature/&lt;run-id&gt;/
  *
  * Zero dependencies — pure Node stdlib.
  */
@@ -26,8 +28,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
+const { resolveRoot: resolveWorkspaceRoot } = require('../../scripts/workspace-root');
 
 const HOME = os.homedir();
+const WORKSPACE_ROOT = resolveWorkspaceRoot();
 
 // ─── CLI args ────────────────────────────────────────────────
 let workspace = null;
@@ -42,9 +46,9 @@ for (const arg of process.argv.slice(2)) {
 // ─── Workspace resolution ────────────────────────────────────
 function resolveWorkspace() {
   if (workspace) return workspace;
-  const wsDir = path.join(HOME, '.claude', 'workspaces');
+  const wsDir = WORKSPACE_ROOT;
   if (!fs.existsSync(wsDir)) {
-    console.error('No workspaces directory at ~/.claude/workspaces/. Run /discover first.');
+    console.error(`No workspaces directory at ${wsDir}. Run /discover first.`);
     process.exit(1);
   }
   const workspaces = fs.readdirSync(wsDir).filter(d =>
@@ -66,7 +70,7 @@ workspace = resolveWorkspace();
 
 // ─── Run-id resolution ───────────────────────────────────────
 function runsDir() {
-  return path.join(HOME, '.claude', 'workspaces', workspace, 'runs', 'feature');
+  return path.join(WORKSPACE_ROOT, workspace, 'runs', 'feature');
 }
 
 let lastAnnouncedRunId = null;

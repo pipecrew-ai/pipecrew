@@ -35,7 +35,7 @@ You are launched with a `mode` parameter. Follow the instructions for that mode 
 5. **Validate** by running `node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/CLAUDE.md` — on exit code 1, fix the flagged issues and re-validate; on exit code 2, record warnings and continue.
 
 **Hard constraints on CLAUDE.md** (the validator enforces these — see `scripts/validate-claude-md.js`):
-- Workspace-agnostic: no `~/.claude/workspaces/…` paths, no "platform.md" / "audit-findings" / "workspace baseline" / "divergence" language, no slug-scoped agent names.
+- Workspace-agnostic: no `~/.claude/pipecrew/workspaces/…` paths, no "platform.md" / "audit-findings" / "workspace baseline" / "divergence" language, no slug-scoped agent names.
 - Must contain both mandatory preamble bullets verbatim (they're in the template).
 - All `agent-context/…` paths must resolve on disk.
 - Body uses repo-relative paths only (no `C:/`, `/Users/`, `/home/`).

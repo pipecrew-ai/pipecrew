@@ -190,7 +190,7 @@ Every task body MUST include a `## Known Pitfalls` section right above `## Repor
    - Every frontend task → include "i18n / RTL"
    - Mock task → include "Spec drift", "Seed data coverage"
    - CDK task → include "Resource cross-references", "IAM least-privilege"
-3. Reading `~/.claude/workspaces/{slug}/context/audit-findings.md` (if present) and filtering to bullets whose `file:line` refers to files the task will touch (look at `## {repo}` H2 sections; match on repo name). Include these under a `### Workspace-specific findings from onboarding` sub-heading, verbatim.
+3. Reading `{workspace_root}/{slug}/context/audit-findings.md` (if present) and filtering to bullets whose `file:line` refers to files the task will touch (look at `## {repo}` H2 sections; match on repo name). Include these under a `### Workspace-specific findings from onboarding` sub-heading, verbatim.
 4. If fewer than 3 bullets would survive the filtering + selection, drop the whole section — too-short pitfall lists dilute signal.
 
 Format the section as:

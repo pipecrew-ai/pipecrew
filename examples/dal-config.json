@@ -2,7 +2,7 @@
   "workspace": {
     "name": "Digital Arabic Library",
     "slug": "dal",
-    "pipeline_dir": "~/.claude/workspaces/dal/pipeline",
+    "pipeline_dir": "~/.claude/pipecrew/workspaces/dal/pipeline",
     "primary_language": "en"
   },
 

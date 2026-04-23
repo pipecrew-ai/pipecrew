@@ -32,7 +32,7 @@ Do NOT pass requirements or architecture files in the prompt. The assessor is fo
 
 #### Dispatch
 
-Launch the `{slug}-assessor` agent (published by onboarding Phase C Step 3 to `~/.claude/agents/`). If it does not exist, fall back to `subagent_type: general-purpose` with a preamble that reads `~/.claude/workspaces/{slug}/agents/assessor.md` — and log a warning prompting `/discover --resume --workspace={slug}` to publish workspace agents.
+Launch the `{slug}-assessor` agent (published by onboarding Phase C Step 3 to `~/.claude/agents/`). If it does not exist, fall back to `subagent_type: general-purpose` with a preamble that reads `{workspace_root}/{slug}/agents/assessor.md` — and log a warning prompting `/discover --resume --workspace={slug}` to publish workspace agents.
 
 **Tool**: `Agent`
 **subagent_type**: `{slug}-assessor` (substitute actual slug, e.g., `dal-assessor`)

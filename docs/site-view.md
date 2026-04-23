@@ -37,8 +37,8 @@ A local HTTP + SSE server at `{plugin_dir}/skills/site-view/server.js` that watc
 /site-view --workspace=<slug> [--run-id=<id>] [--port=5173]
 ```
 
-- `--workspace` auto-detects when exactly one workspace exists under `~/.claude/workspaces/`.
-- `--run-id` picks a specific run. When omitted, the server locks onto the most recently modified run under `~/.claude/workspaces/{slug}/runs/feature/`.
+- `--workspace` auto-detects when exactly one workspace exists under `{workspace_root}/`.
+- `--run-id` picks a specific run. When omitted, the server locks onto the most recently modified run under `{workspace_root}/{slug}/runs/feature/`.
 - `--port` is the initial port. Auto-increments up to 10 times on `EADDRINUSE`.
 
 ### Via Node directly
@@ -57,7 +57,7 @@ Pre-flight Step 6 launches the server in the background with `run_in_background:
 
 ## Data sources
 
-The server reads **three files** per run and merges them into a single state JSON. All live under `~/.claude/workspaces/{slug}/runs/feature/{run_id}/`.
+The server reads **three files** per run and merges them into a single state JSON. All live under `{workspace_root}/{slug}/runs/feature/{run_id}/`.
 
 | File | Primary / Secondary | Role |
 |------|---------------------|------|

@@ -19,7 +19,7 @@ Curated, stack-specific failure modes for each `type` in the workspace config. T
 During `/deliver` Phase 4.5, for each task file the orchestrator:
 
 1. Reads the relevant stack file from this directory based on the repo's `type`.
-2. Reads `~/.claude/workspaces/{slug}/context/audit-findings.md` and filters to findings whose `file_ref` falls under the task's `file_refs` (or the task's repo, if `file_refs` is empty).
+2. Reads `{workspace_root}/{slug}/context/audit-findings.md` and filters to findings whose `file_ref` falls under the task's `file_refs` (or the task's repo, if `file_refs` is empty).
 3. Merges both into a `## Known Pitfalls` section added to the task body — stack bullets first, audit findings second.
 4. Drops the section if fewer than 3 bullets survive the filter (avoids noise).
 

@@ -30,20 +30,20 @@ Every Agent prompt in Steps 2 and 4 MUST include the following trailing instruct
 > 9. **Hard-coded secrets or credentials** — flag immediately as `critical`.
 > 10. **Schema / spec drift** — a field present in DB but not spec, or vice versa.
 
-After the agent returns, parse its `## Audit Findings` section (if present) and append to `~/.claude/workspaces/{slug}/context/audit-findings.md` (create on first finding, one H2 section per source repo). See **Step 4: Collate audit findings** at the end of this phase.
+After the agent returns, parse its `## Audit Findings` section (if present) and append to `{workspace_root}/{slug}/context/audit-findings.md` (create on first finding, one H2 section per source repo). See **Step 4: Collate audit findings** at the end of this phase.
 
 ---
 
 ### Step 1: Generate workspace config
 
-Build `~/.claude/workspaces/{slug}/config.json` from the discovered repos + domain answers:
+Build `{workspace_root}/{slug}/config.json` from the discovered repos + domain answers:
 
 ```js
 {
   "workspace": {
     "name": "{from B1 answer 1}",
     "slug": "{derived slug}",
-    "pipeline_dir": "~/.claude/workspaces/{slug}/pipeline",
+    "pipeline_dir": "{workspace_root}/{slug}/pipeline",
     "primary_language": "{from B1 answer 4}"
   },
   "repos": {
@@ -97,7 +97,7 @@ Also probe with any alternate filenames (e.g., a typo'd spec — ABVI has `user-
 Write the file. Run the validator:
 
 ```bash
-node {plugin_dir}/scripts/validate-config.js ~/.claude/workspaces/{slug}/config.json
+node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 ```
 
 Expect **0 warnings** after the probing step. If validation emits path-not-found warnings for `spec_copies`, the probe missed something — do not ignore; re-run the probe with a wider search (e.g., increase maxdepth, include additional exclude-dir patterns) and fix the paths in config before continuing.
@@ -232,18 +232,18 @@ Replace placeholders using data from B1 + B2:
 | `{{WORKSPACE_NAME}}` | workspace config |
 | `{{QUALITY_STANDARDS}}` | Default quality bar (can be customized later). Include: "Backend: all spec endpoints implemented, DTOs match, tests cover happy path + main error. Frontend: all FR- requirements implemented, types match spec, i18n both languages. Mock: all endpoints covered, shapes match spec." |
 
-Note: the older `{{DOMAIN_CONTEXT}}` and `{{DESIGN_SYSTEM_CONTEXT}}` placeholders were removed from the templates. Agents now read `~/.claude/workspaces/{slug}/context/platform.md` and `design-system.md` directly at dispatch time. This keeps the agents' knowledge always fresh (no summary-drift risk) and leaves no baked-in copy of workspace context to go stale between onboarding refreshes. If older templates with these placeholders are encountered, treat them as pointers — replace their value with the "read the file" instruction already present in the current templates.
+Note: the older `{{DOMAIN_CONTEXT}}` and `{{DESIGN_SYSTEM_CONTEXT}}` placeholders were removed from the templates. Agents now read `{workspace_root}/{slug}/context/platform.md` and `design-system.md` directly at dispatch time. This keeps the agents' knowledge always fresh (no summary-drift risk) and leaves no baked-in copy of workspace context to go stale between onboarding refreshes. If older templates with these placeholders are encountered, treat them as pointers — replace their value with the "read the file" instruction already present in the current templates.
 
-Write the filled agents to `~/.claude/workspaces/{slug}/agents/`:
+Write the filled agents to `{workspace_root}/{slug}/agents/`:
 
 ```bash
-mkdir -p ~/.claude/workspaces/{slug}/agents
+mkdir -p {workspace_root}/{slug}/agents
 ```
 
 Write:
-- `~/.claude/workspaces/{slug}/agents/product-owner.md`
-- `~/.claude/workspaces/{slug}/agents/assessor.md`
-- `~/.claude/workspaces/{slug}/agents/ux-consultant.md`
+- `{workspace_root}/{slug}/agents/product-owner.md`
+- `{workspace_root}/{slug}/agents/assessor.md`
+- `{workspace_root}/{slug}/agents/ux-consultant.md`
 
 #### Publish to user-level agents directory (B1)
 
@@ -267,7 +267,7 @@ For each of (`product-owner`, `assessor`, `ux-consultant`):
      Act on the user's answer. Do NOT silently clobber.
 2. Copy the workspace-local file to the user-level path:
    ```bash
-   cp ~/.claude/workspaces/{slug}/agents/{role}.md ~/.claude/agents/{slug}-{role}.md
+   cp {workspace_root}/{slug}/agents/{role}.md ~/.claude/agents/{slug}-{role}.md
    ```
 
 After all three publish, verify Claude Code can see them:
@@ -287,7 +287,7 @@ Placeholders may appear more than once in a template (e.g., a shared slug refere
 After writing each agent file, verify zero placeholders remain:
 
 ```bash
-grep -c '{{' ~/.claude/workspaces/{slug}/agents/{product-owner,assessor,ux-consultant}.md
+grep -c '{{' {workspace_root}/{slug}/agents/{product-owner,assessor,ux-consultant}.md
 ```
 
 Every file must report `0`. If any file reports ≥1, halt, run `grep -n '{{' <file>` to list remaining placeholders by line, and fix before continuing. Do **not** ship an agent file with an unfilled placeholder — it will produce confusing behavior at runtime when the agent reads its own system prompt.
@@ -298,14 +298,14 @@ Every file must report `0`. If any file reports ≥1, halt, run `grep -n '{{' <f
 
 ### Step 3.5: Offer to write a `settings.local.json` for approval-free operation (C1 / C2 / C3)
 
-The `/deliver` pipeline triggers many Edit / Write / Bash calls scoped to paths under `~/.claude/workspaces/{slug}/**` and the repos in `config.repos`. Without pre-allow rules, every one prompts for approval, slowing the run and fragmenting flow.
+The `/deliver` pipeline triggers many Edit / Write / Bash calls scoped to paths under `{workspace_root}/{slug}/**` and the repos in `config.repos`. Without pre-allow rules, every one prompts for approval, slowing the run and fragmenting flow.
 
 Offer to write a `settings.local.json` in the workspace directory (not in the repos — that scope is each team's decision) that pre-allows the common patterns this pipeline uses. The file is user-scoped (not committed to any repo), so it's safe to write but ONLY with explicit user consent.
 
 Prompt:
 ```
-I can write ~/.claude/workspaces/{slug}/settings.local.json that pre-allows:
-  - Edit/Write/Read under ~/.claude/workspaces/{slug}/**
+I can write {workspace_root}/{slug}/settings.local.json that pre-allows:
+  - Edit/Write/Read under {workspace_root}/{slug}/**
   - Edit/Write on published workspace agents (~/.claude/agents/{slug}-*.md)
   - Read/Bash on plugin validator scripts
   - Bash on worktree commands (git worktree list/add/remove)
@@ -332,7 +332,7 @@ On `yes`:
          "Bash(cd {repo.path} && npx *)",      // only for node-based repos
    ```
    (Skip the `mvn` / `npm` lines per repo type as appropriate — check `config.repos[repo].type`.)
-4. Write to `~/.claude/workspaces/{slug}/settings.local.json`.
+4. Write to `{workspace_root}/{slug}/settings.local.json`.
 5. Suggest to the user:
    > "To make these allow rules active in this session, run `/permissions` and reload the settings, or run `/update-config reload-permissions`. New sessions pick them up automatically if this workspace directory is on the Claude Code settings search path."
 
@@ -344,7 +344,7 @@ On `no`: skip. Note in the Phase D summary: "settings.local.json skipped per use
 
 ### Step 4: Collate audit findings
 
-Assemble `~/.claude/workspaces/{slug}/context/audit-findings.md` from the per-agent `## Audit Findings` sections captured during Step 2 (merged CLAUDE.md + agent-context generation). Skip this step entirely if no agent reported any finding.
+Assemble `{workspace_root}/{slug}/context/audit-findings.md` from the per-agent `## Audit Findings` sections captured during Step 2 (merged CLAUDE.md + agent-context generation). Skip this step entirely if no agent reported any finding.
 
 **File structure:**
 
@@ -377,9 +377,9 @@ Surfaced during /discover on {date}. Each bullet is a real observation from code
 - Do NOT editorialize or summarize findings — copy verbatim from the agent response. The agents already committed to the format.
 - If any finding has severity `critical`, the final Phase D summary MUST surface it prominently (see phase-d.md Step 6).
 
-**Cross-reference from platform.md:** append the following paragraph to the **Known Constraints** section of `~/.claude/workspaces/{slug}/context/platform.md` (or create the section if missing):
+**Cross-reference from platform.md:** append the following paragraph to the **Known Constraints** section of `{workspace_root}/{slug}/context/platform.md` (or create the section if missing):
 
-> **Onboarding audit findings** (N critical / N high / N medium / N low): see `~/.claude/workspaces/{slug}/context/audit-findings.md` for the full list with file:line references. Review before touching the affected code paths.
+> **Onboarding audit findings** (N critical / N high / N medium / N low): see `{workspace_root}/{slug}/context/audit-findings.md` for the full list with file:line references. Review before touching the affected code paths.
 
 If zero findings were reported across the whole phase, write no file and add no cross-reference — silence is a valid signal too.
 

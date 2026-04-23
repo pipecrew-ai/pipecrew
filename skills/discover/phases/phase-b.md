@@ -123,7 +123,7 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
     (Empty by default. Fill in during or after onboarding.)
 ```
 
-**After the architect returns**: save the output as `~/.claude/workspaces/{slug}/context/platform.md`. Present a summary to the user:
+**After the architect returns**: save the output as `{workspace_root}/{slug}/context/platform.md`. Present a summary to the user:
 
 ```
 ## Platform Context Generated
@@ -134,7 +134,7 @@ The architect analyzed {N} repos and discovered:
 - Tech stack: {summary}
 - {N} established patterns identified
 
-Full context saved to: ~/.claude/workspaces/{slug}/context/platform.md
+Full context saved to: {workspace_root}/{slug}/context/platform.md
 
 Review it? (yes / continue)
 ```
@@ -188,7 +188,7 @@ Read ONLY these files (do not explore the rest of the repo):
 - {config file, if any}
 
 Read the Tech Stack section of platform.md at:
-~/.claude/workspaces/{slug}/context/platform.md
+{workspace_root}/{slug}/context/platform.md
 
 For this specific repo ({repo.name}), emit ONLY divergences from what
 platform.md claims about the workspace's tech stack. Format each as:
@@ -357,7 +357,7 @@ Output format — structured, not narrative:
 - Wrapper directory: {path or "none"}
 ```
 
-**After the agent returns**: save the report to `~/.claude/workspaces/{slug}/context/design-system.md`. This file will be used to fill `{{DESIGN_SYSTEM_CONTEXT}}` in Phase C.
+**After the agent returns**: save the report to `{workspace_root}/{slug}/context/design-system.md`. This file will be used to fill `{{DESIGN_SYSTEM_CONTEXT}}` in Phase C.
 
 **Step 3: If NO design system signals found** → ask the user:
 
@@ -375,7 +375,7 @@ Choose (a) or (b):
 ```
 
 - **(a)**: set `{{DESIGN_SYSTEM_CONTEXT}}` to: "No design system detected. Recommend components based on what exists in the codebase. Do not assume any component library is available — check before recommending."
-- **(b)**: same as (a), plus append to `~/.claude/workspaces/{slug}/context/platform.md` under `## Known Constraints`: "No established design system in the frontend. Components are ad-hoc. Consider establishing a component library + Storybook before scaling the frontend."
+- **(b)**: same as (a), plus append to `{workspace_root}/{slug}/context/platform.md` under `## Known Constraints`: "No established design system in the frontend. Components are ad-hoc. Consider establishing a component library + Storybook before scaling the frontend."
 
 **Update scratchpad**: Set Phase B3 status to COMPLETED. Set Current Phase to "C. Generation".
 

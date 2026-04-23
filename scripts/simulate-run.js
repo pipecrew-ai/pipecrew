@@ -3,7 +3,9 @@
  * simulate-run.js — dry-run harness for the pipeline-view UI.
  *
  * Creates a fake run directory under
- *   ~/.claude/workspaces/{slug}/runs/feature/{YYYY-MM-DD-HHMMSS}-simulated-demo/
+ *   {workspace_root}/{slug}/runs/feature/{YYYY-MM-DD-HHMMSS}-simulated-demo/
+ * where {workspace_root} is resolved via scripts/workspace-root.js
+ * (default: ~/.claude/pipecrew/workspaces/).
  * and steps through a scripted feature-pipeline timeline, writing to
  * scratchpad.md, checkpoints.jsonl, and awaiting_input.json in the same
  * shape a real /deliver run would produce.
@@ -37,6 +39,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
+const { resolveRoot: resolveWorkspaceRoot } = require('./workspace-root');
 
 // ─── CLI args ────────────────────────────────────────────────
 let workspace = null;
@@ -56,8 +59,9 @@ for (const arg of process.argv.slice(2)) {
 
 // ─── Workspace resolve ───────────────────────────────────────
 const HOME = os.homedir();
+const WORKSPACE_ROOT = resolveWorkspaceRoot();
 if (!workspace) {
-  const wsDir = path.join(HOME, '.claude', 'workspaces');
+  const wsDir = WORKSPACE_ROOT;
   const workspaces = fs.existsSync(wsDir)
     ? fs.readdirSync(wsDir).filter(d => fs.existsSync(path.join(wsDir, d, 'config.json')))
     : [];
@@ -79,7 +83,7 @@ const now = new Date();
 const pad = n => String(n).padStart(2, '0');
 const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`;
 const runId = `${ts}-${featureName}`;
-const runDir = path.join(HOME, '.claude', 'workspaces', workspace, 'runs', 'feature', runId);
+const runDir = path.join(WORKSPACE_ROOT, workspace, 'runs', 'feature', runId);
 
 fs.mkdirSync(path.join(runDir, 'outputs'), { recursive: true });
 fs.mkdirSync(path.join(runDir, 'tasks'),   { recursive: true });
@@ -198,7 +202,7 @@ function addDispatch(phase, agent, taskId, durationStr, tokensStr, outcome) {
 // ─── Optionally launch the UI ────────────────────────────────
 let uiChild = null;
 if (launchUi) {
-  const serverJs = path.join(__dirname, '..', 'skills', 'pipeline-view', 'server.js');
+  const serverJs = path.join(__dirname, '..', 'skills', 'site-view', 'server.js');
   uiChild = spawn('node', [serverJs, `--workspace=${workspace}`, `--run-id=${runId}`, `--port=${port}`], {
     stdio: 'inherit',
   });

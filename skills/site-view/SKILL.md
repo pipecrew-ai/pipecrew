@@ -16,7 +16,7 @@ Auto-started by `/deliver` at Pre-flight. Run manually with `/site-view` or `nod
 ```
 
 **Flags**:
-- `--workspace=<slug>` — workspace name. Auto-detected when only one exists under `~/.claude/workspaces/`.
+- `--workspace=<slug>` — workspace name. Auto-detected when only one exists under `{workspace_root}/`.
 - `--run-id=<id>` — specific feature run to watch. Defaults to most-recent run under `runs/feature/`.
 - `--port=<n>` — initial port. Auto-increments up to 10 on `EADDRINUSE`.
 

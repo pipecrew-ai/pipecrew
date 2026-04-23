@@ -17,7 +17,7 @@ Both banners share: persistent 4-second beep via Web Audio, stronger pulsing glo
 
 ### New
 
-- **`scripts/notify-hook.js`** — Claude Code hook invoked on `Notification`, `UserPromptSubmit`, and `PostToolUse`. Writes / clears `awaiting_claude_approval.json` in every active run dir (any run under `~/.claude/workspaces/*/runs/feature/*/` whose `scratchpad.md` was modified within the last hour). Always exits 0 so hook errors never break Claude Code's normal flow.
+- **`scripts/notify-hook.js`** — Claude Code hook invoked on `Notification`, `UserPromptSubmit`, and `PostToolUse`. Writes / clears `awaiting_claude_approval.json` in every active run dir (any run under `{workspace_root}/*/runs/feature/*/` whose `scratchpad.md` was modified within the last hour). Always exits 0 so hook errors never break Claude Code's normal flow.
 
 ### Modified
 
@@ -107,7 +107,7 @@ With a live Claude Code session open:
 ```bash
 # In any project, from Claude's bash tool:
 node ~/.claude/plugins/marketplaces/local/pipecrew/scripts/gate.js \
-  open --run-dir=~/.claude/workspaces/dal/runs/feature/<run-id> \
+  open --run-dir={workspace_root}/{slug}/runs/feature/<run-id> \
        --phase=3 --gate=approval \
        --question="Test gate — auto-approved?"
 ```

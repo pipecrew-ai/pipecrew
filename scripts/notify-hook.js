@@ -17,7 +17,9 @@
  *   { tool_name, tool_input, message, ... }. We only use fields for the
  *   banner preview; missing fields fall back to generic text.
  *
- * An "active" run dir = any run dir under ~/.claude/workspaces/<slug>/runs/feature/
+ * An "active" run dir = any run dir under {workspace_root}/<slug>/runs/feature/
+ *   ({workspace_root} resolved via scripts/workspace-root.js —
+ *    default ~/.claude/pipecrew/workspaces/)
  * whose scratchpad.md was modified in the last 60 minutes. This matches the
  * pipeline-view server's auto-detect heuristic.
  *
@@ -37,10 +39,11 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { resolveRoot: resolveWorkspaceRoot } = require('./workspace-root');
 
 const ACTION = process.argv[2] || 'on-notification';
 const HOME = os.homedir();
-const WS_DIR = path.join(HOME, '.claude', 'workspaces');
+const WS_DIR = resolveWorkspaceRoot();
 const FLAG_NAME = 'awaiting_claude_approval.json';
 const HOOK_ERROR_NAME = 'hook_error.json';
 const GLOBAL_HOOK_ERROR_LOG = path.join(HOME, '.claude', 'logs', 'pipeline-view-hook-errors.log');

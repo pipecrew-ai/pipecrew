@@ -5,7 +5,7 @@ This is the **source of truth** for how every skill in the plugin records what i
 ## Run directory — one dir per run, everything inside
 
 ```
-~/.claude/workspaces/{slug}/runs/{skill}/{run_id}/
+{workspace_root}/{slug}/runs/{skill}/{run_id}/
 ├── scratchpad.md              human-readable phase state (used by --resume)
 ├── checkpoints.jsonl          machine-readable event log (this doc)
 ├── outputs/                   phase artifacts consumed by later phases
@@ -22,7 +22,7 @@ This is the **source of truth** for how every skill in the plugin records what i
 ### Stable workspace-level files (live at workspace root, NOT per-run)
 
 ```
-~/.claude/workspaces/{slug}/
+{workspace_root}/{slug}/
 ├── config.json                the workspace contract
 ├── context/
 │   ├── platform.md            updated by /discover and /context-refresh

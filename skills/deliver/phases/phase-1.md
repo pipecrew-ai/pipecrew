@@ -5,7 +5,7 @@ Launch the workspace's product-owner agent. Onboarding published it to `~/.claud
 **Tool**: `Agent`
 **subagent_type**: `{slug}-product-owner` (substitute the actual workspace slug, e.g., `dal-product-owner`)
 
-**Fallback**: if `~/.claude/agents/{slug}-product-owner.md` does not exist (workspace was onboarded with an older plugin version that did not publish agents), warn the user and fall back to `subagent_type: general-purpose` with the prompt `"Read and behave as the agent defined at ~/.claude/workspaces/{slug}/agents/product-owner.md, then:"` prepended to the task prompt below. Also suggest the user re-run `/discover --resume --workspace={slug}` to publish the workspace agents.
+**Fallback**: if `~/.claude/agents/{slug}-product-owner.md` does not exist (workspace was onboarded with an older plugin version that did not publish agents), warn the user and fall back to `subagent_type: general-purpose` with the prompt `"Read and behave as the agent defined at {workspace_root}/{slug}/agents/product-owner.md, then:"` prepended to the task prompt below. Also suggest the user re-run `/discover --resume --workspace={slug}` to publish the workspace agents.
 
 **Build the prompt dynamically from the workspace config** — do NOT hardcode service names, spec paths, or assume a frontend exists.
 

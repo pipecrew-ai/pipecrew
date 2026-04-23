@@ -33,7 +33,7 @@ description: "Standalone code review. Diffs a feature branch against main in one
 ### Step 1: Resolve repo info
 
 **If `repo-key` is provided** (no `/` in the argument):
-1. Read `~/.claude/workspaces/{workspace}/config.json`
+1. Read `{workspace_root}/{workspace}/config.json`
 2. Look up `repos[repo-key]` → get `path`, `type`
 3. If not found, report error and stop
 

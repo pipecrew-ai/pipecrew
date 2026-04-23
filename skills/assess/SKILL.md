@@ -25,7 +25,7 @@ description: "Standalone cross-repo assessment. Checks a feature branch across a
 
 ### Step 1: Read workspace config
 
-Read `~/.claude/workspaces/{workspace}/config.json`. Get the list of all repos.
+Read `{workspace_root}/{workspace}/config.json`. Get the list of all repos.
 
 ### Step 2: Find repos with the branch
 
@@ -50,7 +50,7 @@ Assess anyway? (yes / no)
 ### Step 4: Dispatch the assessor
 
 **Tool**: `Agent`
-**subagent_type**: `dal-assessor` (or `{workspace}-assessor` if a workspace-specific one exists at `~/.claude/workspaces/{slug}/agents/assessor.md`)
+**subagent_type**: `dal-assessor` (or `{workspace}-assessor` if a workspace-specific one exists at `{workspace_root}/{slug}/agents/assessor.md`)
 **description**: `"Cross-repo assessment — {branch}"`
 **prompt**:
 
@@ -68,7 +68,7 @@ Read it via the Read tool.
 No explicit requirements doc. Assess spec compliance and cross-repo integration
 from the code diff and OpenAPI specs only.
 
-Platform context: ~/.claude/workspaces/{slug}/context/platform.md
+Platform context: {workspace_root}/{slug}/context/platform.md
 Read it for domain and architecture context.
 
 For each repo, get the diff:

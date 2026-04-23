@@ -7,7 +7,7 @@ Final checks and summary. Make sure everything generated is valid and the worksp
 ### Step 1: Validate workspace config
 
 ```bash
-node {plugin_dir}/scripts/validate-config.js ~/.claude/workspaces/{slug}/config.json
+node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 ```
 
 Must exit 0. If warnings, print them. If errors, fix them before continuing.
@@ -27,9 +27,9 @@ If any are missing, report and ask the user to resolve (re-run Phase C Step 2 fo
 Check that the three domain agents were generated:
 
 ```bash
-ls ~/.claude/workspaces/{slug}/agents/product-owner.md
-ls ~/.claude/workspaces/{slug}/agents/assessor.md
-ls ~/.claude/workspaces/{slug}/agents/ux-consultant.md
+ls {workspace_root}/{slug}/agents/product-owner.md
+ls {workspace_root}/{slug}/agents/assessor.md
+ls {workspace_root}/{slug}/agents/ux-consultant.md
 ```
 
 If any are missing, regenerate from the template.
@@ -37,7 +37,7 @@ If any are missing, regenerate from the template.
 ### Step 4: Verify platform context exists
 
 ```bash
-test -f ~/.claude/workspaces/{slug}/context/platform.md && echo "OK" || echo "MISSING"
+test -f {workspace_root}/{slug}/context/platform.md && echo "OK" || echo "MISSING"
 ```
 
 If missing, Phase B2 failed — ask user whether to re-run the architect discovery or create a minimal stub.
@@ -71,15 +71,15 @@ Do NOT commit them automatically. The user decides when and how to commit.
 ## ✅ Onboarding Complete: {workspace.name}
 
 ### Workspace Config
-  ~/.claude/workspaces/{slug}/config.json
+  {workspace_root}/{slug}/config.json
   {N} repos · {N} services · {N} user roles
 
 ### Platform Context
-  ~/.claude/workspaces/{slug}/context/platform.md
+  {workspace_root}/{slug}/context/platform.md
   {N} entities · {N} integration patterns · {N} established patterns
 
 ### Domain Agents
-  ~/.claude/workspaces/{slug}/agents/
+  {workspace_root}/{slug}/agents/
   ├── product-owner.md
   ├── assessor.md
   └── ux-consultant.md
@@ -92,7 +92,7 @@ Do NOT commit them automatically. The user decides when and how to commit.
 | {name} | ✅ manual | ⏭ skipped (simple) | — |
 
 ### Audit Findings (include ONLY if audit-findings.md exists)
-  ~/.claude/workspaces/{slug}/context/audit-findings.md
+  {workspace_root}/{slug}/context/audit-findings.md
   {N} critical · {N} high · {N} medium · {N} low
 
   ⚠ CRITICAL findings (list every critical bullet verbatim — these will bite at runtime if unaddressed):
@@ -103,7 +103,7 @@ Do NOT commit them automatically. The user decides when and how to commit.
 
 ### What to do next
 1. Review generated CLAUDE.md files — edit anything the agent missed
-2. Review ~/.claude/workspaces/{slug}/context/platform.md — correct any entity or pattern errors
+2. Review {workspace_root}/{slug}/context/platform.md — correct any entity or pattern errors
 3. Triage audit-findings.md (if present) — decide which findings to fix now vs. track
 4. Commit CLAUDE.md and agent-context/ files to your repos
 5. Run your first feature:
@@ -120,7 +120,7 @@ Do NOT commit them automatically. The user decides when and how to commit.
 
 ### Step 7: Execution summary (per-phase + per-agent token accounting)
 
-Read `~/.claude/workspaces/{slug}/runs/onboard/{run_id}/checkpoints.jsonl` and produce a two-table execution summary. This reads the event log emitted during the run (see the **OBSERVABILITY** section in `SKILL.md` and `{plugin_dir}/docs/observability.md` for the full schema).
+Read `{workspace_root}/{slug}/runs/onboard/{run_id}/checkpoints.jsonl` and produce a two-table execution summary. This reads the event log emitted during the run (see the **OBSERVABILITY** section in `SKILL.md` and `{plugin_dir}/docs/observability.md` for the full schema).
 
 Run `node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl` first — on exit 1, surface the schema violation before building the summary; on exit 2, note the warnings in the summary but continue.
 

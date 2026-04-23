@@ -1,6 +1,6 @@
 ---
 name: deliver
-description: "PipeCrew delivers a feature end-to-end across all workspace repos. Orchestrates: requirements → architecture → spec editing → parallel implementation (backend + frontend + mock + infra) → cross-repo assessment. Usage: /deliver <feature description>. Reads workspace config from ~/.claude/workspaces/{workspace}/config.json."
+description: "PipeCrew delivers a feature end-to-end across all workspace repos. Orchestrates: requirements → architecture → spec editing → parallel implementation (backend + frontend + mock + infra) → cross-repo assessment. Usage: /deliver <feature description>. Reads workspace config from {workspace_root}/{workspace}/config.json."
 ---
 
 ## Description
@@ -50,7 +50,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 ### CRITICAL RULES
 
 1. **Read the workspace config first.** Resolve the config path:
-   - If `--workspace=<slug>` was passed: use `~/.claude/workspaces/{slug}/config.json`
+   - If `--workspace=<slug>` was passed: use `{workspace_root}/{slug}/config.json`
    - If not passed: scan `~/.claude/` for files matching `*-config.json`. If exactly one exists, use it. If multiple exist, list them and ask the user to pick. If none exist, report: "No workspace config found. Run `/discover` first."
    Parse the JSON. Validate with `node {plugin}/scripts/validate-config.js {config-path}`. If validation fails, report errors and stop. All repo paths, service mappings, spec file locations, and domain context come from this config — nothing is hardcoded.
 2. **Config-driven phase auto-detection.** After loading the config, derive which phases to run based on what repos exist — NOT based on assumptions about the workspace shape. Flags override auto-detection, not the other way around.
@@ -73,7 +73,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 3. **Pre-flight check** — verify all repo paths from the config exist on disk. Report missing repos and stop.
 4. **Per-run isolation.** Each feature run has its own directory under the workspace:
    ```
-   ~/.claude/workspaces/{slug}/runs/feature/
+   {workspace_root}/{slug}/runs/feature/
    └── {run_id}/                    ← THIS run's {run_dir}  (run_id = {YYYY-MM-DD-HHMMSS}-{feature-slug})
        ├── scratchpad.md            lean phase index
        ├── checkpoints.jsonl        unified event log (see docs/observability.md)
@@ -85,7 +85,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
        ├── fix-rounds/              (optional — per fix-round artifacts)
        └── report.md                Phase 7 final report
    ```
-   The timestamp prefix of `{run_id}` makes sibling dirs chronologically sortable — no separate `active/` or `completed/` split. In all phase files, `{run_dir}` resolves to `~/.claude/workspaces/{slug}/runs/feature/{run_id}/`. See `phases/pre-flight.md` for run_id computation + directory creation. Update the scratchpad immediately after every phase completes.
+   The timestamp prefix of `{run_id}` makes sibling dirs chronologically sortable — no separate `active/` or `completed/` split. In all phase files, `{run_dir}` resolves to `{workspace_root}/{slug}/runs/feature/{run_id}/`. See `phases/pre-flight.md` for run_id computation + directory creation. Update the scratchpad immediately after every phase completes.
 5. **User approval gates** — pause after Phase 1 (requirements), Phase 2 (architecture), Phase 3 (spec changes), Phase 4.5 (implementation plan), **Phase 5b UX consultant** (before launching feature-implementer), and **Phase 5.5 code review** (only if the reviewer found critical issues — the gate asks whether to dispatch a fix round).
 
     **At EVERY gate, surface the wait to the UI**: before asking the user, run `node {plugin_dir}/scripts/gate.js open --run-dir={run_dir} --phase={N} --gate=approval --question="..." [--context="..."]`. After receiving the user's answer, run `node {plugin_dir}/scripts/gate.js close --run-dir={run_dir}`. This drives the yellow "waiting for input" banner in the pipeline-view UI and the `⏸` prefix in the browser tab title — essential when the user has the UI open in a second monitor and is working elsewhere. Forgetting to `close` leaves the banner stuck; treat open/close as mandatory bracketing around every gate. Full gate contract + label catalog in `{plugin_dir}/docs/site-view.md`.
@@ -96,7 +96,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 **Rollback on rejection**: if the user rejects at the Phase 3 approval gate, the orchestrator runs `git checkout <spec-file>` for each modified spec in each affected service repo to revert, then either stops the pipeline or re-dispatches `openapi-spec-editor` with updated instructions based on the user's feedback. The agent does not handle rollback itself — that's strictly an orchestrator responsibility.
 10. **In-session Agent tool dispatch — NEVER `claude -p`.** See `phases/dispatch-rules.md` for the full TYPE_TO_AGENT mapping table, worktree creation steps, and parallel dispatch rules. Load that file before Phase 4.5.
     - **Worktrees default ON.** Phase 3 creates worktrees for spec-owning repos; Phase 5 reuses them and creates more for repos not touched in Phase 3. Agents always work in the worktree path — never the main repo checkout. `--no-worktrees` opts out (see flag table).
-    - **Workspace agents:** Phase 1 / Phase 5b UX / Phase 6 dispatch by slug-prefixed name (`{slug}-product-owner`, `{slug}-ux-consultant`, `{slug}-assessor`). Onboarding Phase C Step 3 publishes these to `~/.claude/agents/` so they resolve as first-class `subagent_type`s. If not found, phases fall back to `general-purpose` with a preamble that reads the canonical copy at `~/.claude/workspaces/{slug}/agents/{role}.md`.
+    - **Workspace agents:** Phase 1 / Phase 5b UX / Phase 6 dispatch by slug-prefixed name (`{slug}-product-owner`, `{slug}-ux-consultant`, `{slug}-assessor`). Onboarding Phase C Step 3 publishes these to `~/.claude/agents/` so they resolve as first-class `subagent_type`s. If not found, phases fall back to `general-purpose` with a preamble that reads the canonical copy at `{workspace_root}/{slug}/agents/{role}.md`.
 11. **Context hygiene** — after dispatching Phase 5 agents, do NOT re-reference Phase 1/2 outputs from conversation history. Use the scratchpad output files when Phase 6 needs them.
 12. **Agent naming** — name agents by their role, not their phase number. E.g., "Backend implementer — publisher-service" not "Phase 5a: Backend implementation".
 13. **SendMessage for follow-ups** — if an agent returns incomplete output, use `SendMessage` to continue the existing agent rather than spawning a new one.

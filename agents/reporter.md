@@ -17,7 +17,7 @@ The orchestrator provides:
 2. **Scratchpad** at `{run_dir}/scratchpad.md` — human-readable phase state, Agent Dispatch Log, Implementation Tasks table.
 3. **Checkpoints** at `{run_dir}/checkpoints.jsonl` — machine event log in the unified schema. Source of truth for timings and tokens.
 4. **Stats cache** at `~/.claude/stats-cache.json` — daily model token aggregates (the `/usage` data source).
-5. **Sibling runs** under `~/.claude/workspaces/{slug}/runs/{skill}/` — prior run dirs for trend comparison. Each contains its own `checkpoints.jsonl` and `report.md`.
+5. **Sibling runs** under `{workspace_root}/{slug}/runs/{skill}/` — prior run dirs for trend comparison. Each contains its own `checkpoints.jsonl` and `report.md`.
 
 Before processing, optionally run the checkpoints validator:
 ```
@@ -80,7 +80,7 @@ Daily token usage:
 
 ### 4. Trend Comparison
 
-List sibling run dirs at `~/.claude/workspaces/{slug}/runs/{skill}/`, take the N most recent completed runs (by `run_id` timestamp prefix, excluding this one), and compare:
+List sibling run dirs at `{workspace_root}/{slug}/runs/{skill}/`, take the N most recent completed runs (by `run_id` timestamp prefix, excluding this one), and compare:
 - This run's total tokens vs. the sibling runs' average.
 - This run's wall-clock duration vs. average.
 - Which phase grew or shrank the most (by `phase_end.duration_ms`).

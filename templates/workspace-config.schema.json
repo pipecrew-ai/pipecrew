@@ -20,7 +20,7 @@
         },
         "pipeline_dir": {
           "type": "string",
-          "description": "Override pipeline scratchpad location. Default: ~/.claude/workspaces/{slug}/pipeline"
+          "description": "Override pipeline scratchpad location. Default: ~/.claude/pipecrew/workspaces/{slug}/pipeline"
         },
         "primary_language": {
           "type": "string",

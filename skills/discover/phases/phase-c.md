@@ -58,10 +58,12 @@ Build `{workspace_root}/{slug}/config.json` from the discovered repos + domain a
     }
   },
   "services": {
-    // one entry per api-service repo
+    // one entry per service repo — includes api-services (HTTP) AND workers (event-driven).
+    // Both participate in /deliver; spec_policy tells the pipeline which contract phase applies.
     "{service-short-name}": {
       "repo": "{repo key}",
-      "spec_file": "{relative spec path}",
+      "spec_policy": "{api-first | code-first | no-api — see below}",
+      "spec_file": "{relative spec path — required when spec_policy is api-first, omitted otherwise}",
       "description": "{from architect's service map}"
     }
   },
@@ -76,6 +78,20 @@ Build `{workspace_root}/{slug}/config.json` from the discovered repos + domain a
   }
 }
 ```
+
+#### Filling `spec_policy` per service
+
+Carry the value inferred in Phase A Step 3.5 (and confirmed by the user in Step 6) through to the generated config:
+
+| Repo role (from Phase A) | Emitted `services.{name}.spec_policy` | `spec_file` required? |
+|---|---|---|
+| `api-service` with a discovered spec | `api-first` | yes — use the discovered path |
+| `api-service` with no spec | `code-first` | no — omit the field |
+| `worker` (python-worker etc.) | `no-api` | no — omit the field |
+
+Do **not** emit `services` entries for repos with `role` of `frontend`, `mock-server`, `infrastructure`, `contract`, or `other` — they are not services.
+
+`schemas` / `api-collections` repos (role `contract`) are tracked only under `repos.*` for now. Future slices will add a `contracts` block that drives Phase 3 ordering.
 
 #### Probing `spec_copies` for frontend and mock-server repos
 

@@ -9,10 +9,14 @@ Curated, stack-specific failure modes for each `type` in the workspace config. T
 | Spring Boot | `spring-boot.md` | `spring-boot` |
 | NestJS | `nestjs.md` | `nestjs` |
 | FastAPI | `fastapi.md` | `fastapi` |
+| Flask | `flask.md` | `flask` |
+| Django | `django.md` | `django` |
+| Python worker | `python-worker.md` | `python-worker` |
 | React | `react.md` | `react` |
 | Next.js | `nextjs.md` | `nextjs` |
 | Node mock | `node-mock.md` | `node-mock` |
 | AWS CDK | `cdk.md` | `cdk` |
+| Terraform | `terraform.md` | `terraform` |
 
 ## How the task-file generator uses these
 

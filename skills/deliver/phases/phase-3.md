@@ -1,36 +1,122 @@
-### Phase 3: Spec Edit (openapi-spec-editor agent)
+### Phase 3: Contract + Spec Edit
 
-Skip if `--skip-spec-edit` or the architect found no spec changes needed.
+Phase 3 has two sub-phases:
 
-Phase 3 dispatches the `openapi-spec-editor` agent to apply the approved technical design's `API_DESIGN` section to every affected spec file. The orchestrator does NOT read or edit spec files directly — it passes the agent the file paths and the design, and receives a structured diff summary back. This keeps the spec bodies (~5–10K tokens each) out of the orchestrator's live context.
+- **Phase 3a: Contract Edit** — dispatches the `schema-implementer` agent for every contract repo listed in the architect's `AFFECTED_CONTRACTS` section. Runs FIRST because service specs and service code may reference contract schemas (JSON Schema, Avro, Protobuf).
+- **Phase 3b: API Spec Edit** — dispatches the `openapi-spec-editor` agent for every service listed in `AFFECTED_SERVICES` **with `spec_policy: api-first`**. Services with `spec_policy: code-first` or `no-api` are skipped — their contract lives in the architect's design or in contract repos, not in an OpenAPI file.
 
-**WORKTREE RULE (A1)**: spec edits land in per-repo worktrees — not on the main branch — unless `--no-worktrees` was passed. Phase 5 reuses these same worktrees, so spec edits and implementation stay on the same feature branch per repo.
+The user sees BOTH diff summaries at a single approval gate at the end of the phase.
 
-#### Step 0: Create worktrees for spec-owning repos
+Skip the whole phase if `--skip-spec-edit` was passed. Skip 3a if `AFFECTED_CONTRACTS` is `N/A` / empty. Skip 3b if no affected service has `spec_policy: api-first`.
 
-Unless `--no-worktrees` was passed, before the spec editor is dispatched:
+**WORKTREE RULE (A1)**: contract and spec edits both land in per-repo worktrees — not on the main branch — unless `--no-worktrees` was passed. Phase 5 reuses these same worktrees, so edits and implementation stay on the same feature branch per repo.
 
-1. Build the list of distinct repos that own specs to be edited: for each service in `AFFECTED_SERVICES`, resolve `config.services[service].repo` → `config.repos[repo].path`. Deduplicate so each repo is created once even if it hosts multiple specs.
-2. For each distinct repo, create the worktree at a sibling path named `{repo-name}-{feature-slug}` on branch `feature/{feature-slug}`:
+---
+
+#### Step 0: Extract the design inputs once
+
+Read `outputs/phase-2-architecture.md`. Extract three sections:
+
+1. `<!-- BEGIN AFFECTED_CONTRACTS -->` … `<!-- END AFFECTED_CONTRACTS -->` — gives the ordered list of `(repo_key, [file_targets])` for contracts.
+2. `<!-- BEGIN AFFECTED_SERVICES -->` … `<!-- END AFFECTED_SERVICES -->` — gives the ordered list of service keys.
+3. `<!-- BEGIN CONTRACT_DESIGN -->` … `<!-- END CONTRACT_DESIGN -->` and `<!-- BEGIN API_DESIGN -->` … `<!-- END API_DESIGN -->` — the design bodies the two agents need.
+
+Filter `AFFECTED_SERVICES` against the workspace config: keep only services where `config.services[svc].spec_policy` is `api-first` (or omitted, which defaults to `api-first` for backward compat). Record the filtered list as `services_to_edit`. Services filtered out are flagged in the scratchpad: `"Phase 3b skipped {svc} — spec_policy is {policy}"`.
+
+---
+
+## Phase 3a: Contract Edit (schema-implementer)
+
+Skip this sub-phase entirely if `AFFECTED_CONTRACTS` resolves to `N/A` / empty. Log: `"Phase 3a skipped — no contract repos affected"`.
+
+#### Step 0a: Create worktrees for contract-owning repos
+
+Unless `--no-worktrees` was passed:
+
+1. Build the distinct list of contract repos from `AFFECTED_CONTRACTS`: resolve each `repo_key` → `config.repos[repo_key].path`.
+2. For each, create a worktree at a sibling path named `{repo-name}-{feature-slug}` on branch `feature/{feature-slug}`:
    ```bash
    cd {repo_path} && git worktree add ../{repo-name}-{feature-slug} -b feature/{feature-slug}
    ```
-   If a worktree already exists (resume case), leave it alone — `git worktree list` will show it.
+   If a worktree already exists (resume case), leave it alone.
+3. Record worktree paths in the scratchpad's Architecture Flags section as `contract_worktrees: {repo → worktree_path}` so Phase 5 can reuse them if a later step generates code from these schemas.
+
+If `--no-worktrees` was passed, skip this step; file paths below use the repo root.
+
+#### Step 1a: Build the schema-implementer input list
+
+For each repo in `AFFECTED_CONTRACTS` (in the architect's declared order):
+
+- Resolve its path (worktree path if Step 0a ran, else repo root).
+- Collect the file_targets the architect listed, translating each relative path to an absolute one against the resolved path.
+
+Build an ordered list of `(repo_key, absolute_repo_path, [file_targets])` tuples.
+
+#### Step 2a: Dispatch schema-implementer
+
+**Tool**: `Agent`
+**subagent_type**: `schema-implementer`
+**description**: `"Apply contract changes — {feature-slug}"`
+**prompt template**:
+
+```
+You are applying contract (schema) changes for feature "{feature_summary}".
+
+AFFECTED CONTRACTS (in edit order — contracts that are referenced by other contracts come first):
+
+1. {repo_key_1} at {absolute_repo_path_1}
+   Files to edit:
+   - {relative_path_1a} — {one-line change from the architect}
+   - {relative_path_1b} — {one-line change}
+2. {repo_key_2} at {absolute_repo_path_2}
+   Files to edit:
+   - {relative_path_2a} — {one-line change}
+...
+
+CONTRACT DESIGN (source of truth — apply faithfully, do not invent or improve):
+
+{the full text of the <!-- BEGIN CONTRACT_DESIGN --> ... <!-- END CONTRACT_DESIGN --> section from outputs/phase-2-architecture.md}
+
+Follow your system prompt's process: detect each file's format, classify each change as additive or breaking, refuse breaking changes unless the design contains the authorization sentence, validate per-format syntax, run compat tests if the repo has them, and return the structured diff summary with one section per repo.
+
+The files are in feature worktrees (branch `feature/{feature-slug}`) — edit them in place at the paths given above. Do NOT create new worktrees yourself.
+```
+
+#### Step 3a: Track the 3a dispatch
+
+Per critical rule #13: parse `duration_ms` and `total_tokens` from the agent's `<usage>` block, append a row to the `## Agent Dispatch Log` in the scratchpad with phase `3a`, agent `schema-implementer`, task ID `—`, and the reported outcome. Capture the diff summary in a scratch variable `contract_diff_summary` for Step 4.
+
+---
+
+## Phase 3b: API Spec Edit (openapi-spec-editor)
+
+Skip this sub-phase entirely if `services_to_edit` from Step 0 is empty. Log: `"Phase 3b skipped — no api-first services affected"`.
+
+#### Step 0b: Create worktrees for spec-owning repos
+
+Unless `--no-worktrees` was passed:
+
+1. Build the distinct repos that own specs to be edited: for each service in `services_to_edit`, resolve `config.services[svc].repo` → `config.repos[repo].path`. Deduplicate so each repo is created once even if it hosts multiple specs.
+2. For each distinct repo that is not already covered by a contract worktree from Step 0a, create a worktree at a sibling path named `{repo-name}-{feature-slug}` on branch `feature/{feature-slug}`:
+   ```bash
+   cd {repo_path} && git worktree add ../{repo-name}-{feature-slug} -b feature/{feature-slug}
+   ```
 3. Verify each worktree exists before dispatch.
 
 Record worktree paths in the scratchpad's Architecture Flags section as `spec_worktrees: {repo → worktree_path}` so Phase 5 reuses them.
 
-**If `--no-worktrees` was passed**: log "Phase 3 spec edits on current branch ({branch}) — no worktrees per flag" and skip Step 0 entirely. Spec paths in Step 1 use the repo root instead of the worktree.
+If `--no-worktrees` was passed, skip; spec paths below use the repo root.
 
-#### Step 1: Extract inputs
+#### Step 1b: Extract inputs for openapi-spec-editor
 
-1. Read `outputs/phase-2-architecture.md` and extract the `<!-- BEGIN API_DESIGN -->` section and the `<!-- BEGIN AFFECTED_SERVICES -->` section. The architect's `AFFECTED_SERVICES` section specifies the Spec Edit Order.
-2. Build the ordered list of `(service_name, absolute_spec_file_path)` pairs:
-   - For each service in the architect's `AFFECTED_SERVICES` list: resolve `config.services[service].repo` → `config.repos[repo].path` → combine with `service.spec_file`.
-   - If worktrees exist (Step 0 ran), the path is `{spec_worktree_path}/{spec_file}` — NOT the main repo path.
-   - If `--no-worktrees` was passed, the path is `{repo.path}/{spec_file}`.
+For each service in `services_to_edit` (in the architect's declared order):
 
-#### Step 2: Dispatch the agent
+- Resolve `config.services[svc].repo` → repo path (worktree path if Step 0b ran, else repo root).
+- Combine with `config.services[svc].spec_file` to get the absolute spec path.
+
+Build the ordered `(service_name, absolute_spec_file_path)` pairs.
+
+#### Step 2b: Dispatch openapi-spec-editor
 
 **Tool**: `Agent`
 **subagent_type**: `openapi-spec-editor`
@@ -50,52 +136,74 @@ API DESIGN (source of truth — apply these changes faithfully, do not invent or
 
 {the full text of the <!-- BEGIN API_DESIGN --> ... <!-- END API_DESIGN --> section from outputs/phase-2-architecture.md}
 
+If API_DESIGN references contract schemas that were edited in Phase 3a (look for "see CONTRACT_DESIGN" cross-links), match your $ref targets to those schema shapes. The contract edits have already landed on the same branch.
+
 Follow your system prompt's process: Read each spec, apply additions / modifications / removals from the API_DESIGN, verify YAML well-formedness, capture a diff summary. Return the structured Output Format with one section per service.
 
 The spec files are in feature worktrees (branch `feature/{feature-slug}`) — edit them in place at the paths given above. Do NOT create new worktrees yourself. If any service's spec fails YAML validation after your edits, STOP and report — do not proceed to later services.
 ```
 
-The agent returns a structured diff summary per service. The orchestrator receives only this summary — the full spec contents never enter its context.
+#### Step 3b: Track the 3b dispatch
 
-#### Step 3: Track the dispatch
+Same as Step 3a: append a Dispatch Log row with phase `3b`, agent `openapi-spec-editor`. Capture the diff summary in `spec_diff_summary` for Step 4.
 
-Per critical rule #13: parse `duration_ms` and `total_tokens` from the agent's `<usage>` block, append a row to the `## Agent Dispatch Log` in the scratchpad with phase `3`, agent `openapi-spec-editor`, task ID `—` (no task — this dispatch is at a phase where Phase 4.5 task persistence hasn't happened yet), and the reported outcome.
+---
 
 #### Step 4: Present to user and handle the approval gate
 
-Show the agent's diff summary to the user. Ask:
+Render a combined view that shows the user both artifacts:
 
-> "Approve these spec changes to continue to Phase 4 (spec sync), or reject and revert?"
+```markdown
+# Phase 3 diffs — feature "{feature_summary}"
+
+## Contract changes (Phase 3a)
+{contract_diff_summary, or "N/A — no contract repos affected"}
+
+## API spec changes (Phase 3b)
+{spec_diff_summary, or "N/A — no api-first services affected"}
+
+## Services skipped for Phase 3b (not api-first)
+- {svc_key}: spec_policy is {policy}, handled by {code-first: "architect's inline endpoint contract in API_DESIGN" | no-api: "event schema in Phase 3a contract repo"}
+```
+
+Ask:
+
+> "Approve these contract + spec changes to continue to Phase 4 (spec sync), or reject and revert?"
 
 **On approval**: proceed to Phase 4.
 
-**On rejection with worktrees**: the worktrees contain only the spec edits on branch `feature/{feature-slug}`. For each spec-owning worktree, revert via:
+**On rejection**: revert BOTH sub-phases.
 
-```bash
-cd {spec_worktree_path} && git checkout {spec_file}
-```
+With worktrees (default):
+- For each contract worktree, revert the edited files:
+  ```bash
+  cd {contract_worktree_path} && git checkout {file_target_1} {file_target_2} ...
+  ```
+- For each spec worktree, revert the edited spec:
+  ```bash
+  cd {spec_worktree_path} && git checkout {spec_file}
+  ```
 
-(The worktree stays — Phase 5 would recreate it anyway if the pipeline continues. The edits are reverted; the branch remains.)
-
-If the user also wants to drop the worktree entirely (e.g., they're abandoning the feature):
+Worktrees stay — Phase 5 would recreate them if the pipeline continues, and they may still be needed for a re-dispatch. If the user wants to drop a worktree entirely (abandoning the feature):
 ```bash
 cd {repo_path} && git worktree remove ../{repo-name}-{feature-slug} && git branch -D feature/{feature-slug}
 ```
 
-**On rejection without worktrees (`--no-worktrees`)**: revert each modified spec via `git checkout` on the main branch:
+Without worktrees (`--no-worktrees`):
 ```bash
-cd {repo_path} && git checkout {spec_file}
+cd {repo_path} && git checkout {file_path}
 ```
 
-Run these in parallel (one Bash call per service). After reverting, ask the user whether to:
-- **Stop** the pipeline entirely (the feature is not ready for spec-level work)
-- **Re-dispatch** `openapi-spec-editor` with revised instructions (user provides the adjustment they want; orchestrator rewrites the prompt to incorporate the feedback and dispatches again)
-- **Re-enter Phase 2** to adjust the architecture first (uncommon; user wants a design change)
+Run the reverts in parallel (one Bash call per file). After reverting, ask the user whether to:
+- **Stop** the pipeline entirely
+- **Re-dispatch 3a** with revised CONTRACT_DESIGN
+- **Re-dispatch 3b** with revised API_DESIGN
+- **Re-enter Phase 2** to adjust the architecture first
 
-The `openapi-spec-editor` agent does not know about rollback — all git operations are the orchestrator's responsibility.
+Neither agent knows about rollback — all git operations are the orchestrator's responsibility.
 
 #### Step 5: Persist the outcome
 
-**Update scratchpad**: Set Phase 3 Status to COMPLETED. Write the agent's diff summary to `outputs/phase-3-diffs.md` — this is what the summary becomes. Set Current Phase to "Phase 4: Spec Sync".
+**Update scratchpad**: Set Phase 3a Status and Phase 3b Status per what ran (COMPLETED / SKIPPED with reason). Write the combined diff view to `outputs/phase-3-diffs.md`. Set Current Phase to "Phase 4: Spec Sync".
 
 ---

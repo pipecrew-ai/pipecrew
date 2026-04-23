@@ -36,11 +36,70 @@ When called from `/deliver`, you receive requirements from the product-owner and
 ### CRITICAL: Spec Gap Analysis
 
 The product-owner identifies capability gaps (what's missing). YOUR job is to:
-1. Confirm the gaps by reading the actual OpenAPI spec
+1. Confirm the gaps by reading the actual OpenAPI spec (for api-first services only — see `spec_policy` below)
 2. Design the specific endpoint changes needed (new endpoints, modified schemas, removed endpoints)
-3. Document these as concrete spec changes in the API_DESIGN section
+3. Document these as concrete contract changes in the API_DESIGN section
 
-This is a key responsibility — you bridge the gap between "what capability is needed" and "what spec changes are required."
+This is a key responsibility — you bridge the gap between "what capability is needed" and "what contract changes are required."
+
+### CRITICAL: `spec_policy`-aware API design
+
+Every service in the workspace config has a `spec_policy` field: `api-first`, `code-first`, or `no-api`. **Your API_DESIGN output must respect each service's policy** — the downstream pipeline uses the policy to decide which contract phase runs for that service.
+
+**For `api-first` services** (OpenAPI spec exists): describe endpoint additions/changes as references to the spec — field names, status codes, tags. Phase 3b will edit the spec; implementers generate types from the spec.
+
+**For `code-first` services** (no OpenAPI spec): the `API_DESIGN` section IS the contract. There is no spec to edit, no spec to reference. For every endpoint, you MUST include the COMPLETE inline contract — the implementer has nowhere else to look:
+
+```markdown
+#### Endpoint: POST /orders/{order_id}/ship (service: ordermanagement-console [code-first])
+
+**Method**: POST
+**Path**: `/orders/{order_id}/ship`
+**Path params**:
+  - `order_id` (string, UUID, required)
+**Auth**: `Bearer` — requires role `ops_manager` or `order_admin`
+**Request body** (JSON, Content-Type: application/json):
+  - `carrier` (string, required, enum: ["dhl","ups","fedex"])
+  - `tracking_number` (string, required, non-empty, max 64 chars)
+  - `shipped_at` (string, ISO-8601 datetime, required)
+  - `notes` (string, optional, max 500 chars)
+**Success response** (200 OK, application/json):
+  - `order_id` (string, UUID)
+  - `status` (string, enum: ["shipped"])
+  - `shipped_at` (string, ISO-8601 datetime)
+  - `tracking_url` (string, URL)
+**Error responses**:
+  - 400: `{ "error": "invalid_carrier" | "invalid_tracking_number" | "future_shipped_at" }`
+  - 403: `{ "error": "forbidden" }`
+  - 404: `{ "error": "order_not_found" }`
+  - 409: `{ "error": "order_already_shipped" | "order_not_confirmed" }`
+```
+
+Field names, types, enums, and error codes in the inline contract must be treated as load-bearing — the implementer matches them byte-for-byte. Do NOT summarize or shorten.
+
+**For `no-api` services** (event-driven workers): the API_DESIGN section replaces the endpoints block with an **Event Triggers** block describing each handler's trigger + schema:
+
+```markdown
+#### Handler: handle_order_shipped (service: order-info-observer [no-api])
+
+**Trigger source**: SQS queue `order-events-{env}.fifo` (FIFO, content-based deduplication ON)
+**Event schema**: `ccf.data-schemas/events/order-shipped.avsc` (Avro, see CONTRACT_DESIGN for the edits landing in Phase 3a)
+**Delivery semantics**: at-least-once — handler must be idempotent on `event.event_id`
+**Batch size**: 10 messages per invocation; partial-failure reporting required
+**Downstream**:
+  - writes to DynamoDB table `order-history-{env}` (PK: `order_id`, SK: `event_id`)
+  - emits SNS notification to `order-ops-notify-{env}` on state transition
+**Failure modes**:
+  - schema parse failure → DLQ (`order-events-dlq-{env}`) after 3 receives
+  - DynamoDB conditional check failure → ignored (idempotency hit, log INFO)
+  - SNS publish failure → retry via exponential backoff, do NOT DLQ
+```
+
+Workers get no HTTP endpoints and no spec. The schema + trigger specification IS the contract — Phase 3a edits the schema in the contract repo, Phase 5a dispatches the worker implementer with this block in the task file.
+
+### How `spec_policy` affects the structured output delimiters
+
+The template below always emits AFFECTED_SERVICES + API_DESIGN. Inside API_DESIGN, partition your description by service, and for each service use the format appropriate to its `spec_policy`. The orchestrator extracts the right shape based on the config at dispatch time — you don't need to add new delimiters per service, just make the content faithful to each policy.
 
 ### Reading Context — Be Efficient
 
@@ -86,6 +145,23 @@ Your output should describe **WHAT to build and WHERE**, not **HOW to code it**.
 ```markdown
 # Technical Design: [Feature Name]
 
+<!-- BEGIN AFFECTED_CONTRACTS -->
+## Affected Contracts
+List every **contract repo** this feature touches. Contract repos host shared data definitions (JSON Schema, Apache Avro, Protobuf) consumed by multiple services. Contracts are edited by `/deliver` Phase 3a, BEFORE service specs and implementers, because service specs may `$ref` these schemas and service code may generate types from them.
+
+For each affected contract repo:
+- **{repo-key}** (format: Avro | JSON Schema | Protobuf | mixed): [one-line reason]
+  - file: `{relative_path_from_repo_root}` — {one-line change description}
+  - file: `{another_path}` — {change description}
+
+If the feature requires no contract changes: write `N/A`.
+
+## Contract Edit Order
+[If multiple contract repos are affected, specify order — a contract referenced by another contract must come first. E.g., "1. shared-types (defines PublisherRef record), 2. order-events (references PublisherRef in new OrderCreated field)".
+If only one contract repo: just list it.
+If no contracts: `N/A`.]
+<!-- END AFFECTED_CONTRACTS -->
+
 <!-- BEGIN AFFECTED_SERVICES -->
 ## Affected Services
 List every backend service this feature touches and why.
@@ -120,22 +196,43 @@ If no spec changes needed: "N/A"]
 [New tables, columns, indexes, migrations needed]
 <!-- END DATA_MODEL -->
 
+<!-- BEGIN CONTRACT_DESIGN -->
+## Contract Design
+For each file listed in AFFECTED_CONTRACTS, give the concrete change with an explicit **additive/breaking** annotation. The schema-implementer refuses to apply breaking changes unless the design includes the sentence `breaking changes authorized: yes` immediately after listing them.
+
+For each contract repo in edit order:
+
+### {repo-key}
+- **File**: `{relative_path}` (format: {Avro | JSON Schema | Protobuf})
+  - **Change**: {add field `contractId` of type `["null", "string"]` with default `null` to the `Order` record}
+  - **Classification**: additive | breaking
+  - **Rationale**: {one line on why this is needed}
+  - **Consumers**: {which services/workers read this schema today — helps reviewers judge blast radius}
+
+### Breaking Change Authorization
+[Include this sub-section ONLY if any change above is classified as `breaking`. Otherwise omit.]
+The following breaking changes are needed because {reason}. Consumers that must be updated in lockstep: {list}. Migration plan: {one paragraph}.
+breaking changes authorized: yes
+
+If no contract changes are needed, write the single line: `N/A — no contract repos affected`.
+<!-- END CONTRACT_DESIGN -->
+
 <!-- BEGIN API_DESIGN -->
 ## API Design
-### Endpoint Design
-For each endpoint:
-- Method + Path
-- Request schema (with field types, required/optional)
-- Response schema
-- Status codes (success + error)
-- Authorization (which roles)
-- Which service owns this endpoint
+Partition by service. For each affected service, look up its `spec_policy` in the workspace config and use the right format per the "`spec_policy`-aware API design" section above:
+
+- **api-first** service: short endpoint descriptor + reference to the spec path the openapi-spec-editor will edit in Phase 3b.
+- **code-first** service: complete inline endpoint contract (method, path, auth, request body, response body, status codes, error shapes) — the implementer has no spec to read, this block is the contract.
+- **no-api** service: Event Triggers block per handler — trigger source, schema file reference, delivery semantics, batch config, downstream targets, failure modes.
 
 ### Cross-Service Calls
 [If service A needs to call service B, document it]
 
 ### Spec Changes Required
-[Yes/No — if Yes, which service spec files need editing]
+[Yes/No — if Yes, list ONLY the api-first services whose spec files need editing. code-first and no-api services never appear here (they have no spec file).]
+
+### Reference to Contract Schemas
+[If any endpoint's request/response references a schema defined in an affected contract repo, cross-link it: "`OrderResponse.items[]` uses the Avro `OrderLine` record from ccf-data-schemas (see CONTRACT_DESIGN above)". This tells the openapi-spec-editor which `$ref` shapes to expect and the service implementers which generated types to consume. no-api worker handlers should also reference their event schemas here by name.]
 <!-- END API_DESIGN -->
 
 <!-- BEGIN FRONTEND_ARCHITECTURE -->

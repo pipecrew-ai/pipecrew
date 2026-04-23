@@ -48,8 +48,15 @@ else {
 if (!config.repos || typeof config.repos !== 'object') {
   err('Missing top-level "repos" block');
 } else {
-  const VALID_TYPES = ['spring-boot', 'react', 'nextjs', 'nestjs', 'fastapi', 'node-mock', 'cdk', 'other'];
-  const VALID_ROLES = ['api-service', 'frontend', 'mock-server', 'infrastructure', 'shared-lib', 'other'];
+  const VALID_TYPES = [
+    'spring-boot', 'react', 'nextjs', 'nestjs', 'fastapi', 'node-mock', 'cdk',
+    'flask', 'django', 'python-worker', 'terraform', 'schemas', 'api-collections',
+    'other',
+  ];
+  const VALID_ROLES = [
+    'api-service', 'frontend', 'mock-server', 'infrastructure', 'shared-lib',
+    'worker', 'contract', 'other',
+  ];
 
   for (const [name, repo] of Object.entries(config.repos)) {
     if (!repo.path) err(`repos.${name}.path is required`);
@@ -79,6 +86,8 @@ if (!config.repos || typeof config.repos !== 'object') {
 }
 
 // ── services block ────────────────────────────────────────
+const VALID_SPEC_POLICIES = ['api-first', 'code-first', 'no-api'];
+
 if (!config.services || typeof config.services !== 'object') {
   err('Missing top-level "services" block');
 } else {
@@ -87,17 +96,31 @@ if (!config.services || typeof config.services !== 'object') {
     else if (config.repos && !config.repos[svc.repo])
       err(`services.${name}.repo "${svc.repo}" does not match any key in repos`);
 
-    // Check spec_file exists if repo path is known
+    // spec_policy is optional; defaults to 'api-first' when omitted for backward-compat.
+    // Validate the enum when present, and cross-check against spec_file presence.
+    const policy = svc.spec_policy;
+    if (policy !== undefined && !VALID_SPEC_POLICIES.includes(policy)) {
+      err(`services.${name}.spec_policy "${policy}" is not valid — must be one of: ${VALID_SPEC_POLICIES.join(', ')}`);
+    }
+
     const repoKey = svc.repo;
     const repo = config.repos && config.repos[repoKey];
-    if (repo && repo.path) {
-      const specFile = svc.spec_file || repo.spec_file;
-      if (specFile) {
-        const resolved = repo.path.replace(/^~/, process.env.HOME || process.env.USERPROFILE || '~');
-        const full = path.join(resolved, specFile);
-        if (fs.existsSync(resolved) && !fs.existsSync(full))
-          warn(`services.${name} spec file not found: ${full}`);
-      }
+    const specFile = svc.spec_file || (repo && repo.spec_file);
+    const effectivePolicy = policy || 'api-first';
+
+    if (effectivePolicy === 'api-first' && !specFile) {
+      warn(`services.${name} has spec_policy "api-first" but no spec_file — set spec_policy to "code-first" if the service has no OpenAPI spec`);
+    }
+    if (effectivePolicy === 'no-api' && specFile) {
+      warn(`services.${name} has spec_policy "no-api" but declares spec_file "${specFile}" — no-api services should not have an OpenAPI spec`);
+    }
+
+    // Check spec_file exists if repo path is known
+    if (repo && repo.path && specFile) {
+      const resolved = repo.path.replace(/^~/, process.env.HOME || process.env.USERPROFILE || '~');
+      const full = path.join(resolved, specFile);
+      if (fs.existsSync(resolved) && !fs.existsSync(full))
+        warn(`services.${name} spec file not found: ${full}`);
     }
   }
 }

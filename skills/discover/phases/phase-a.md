@@ -31,11 +31,19 @@ For each discovered repo, detect the tech stack by checking for sentinel files:
 | `package.json` + `nest-cli.json` OR `src/main.ts` with `@nestjs` | `nestjs` |
 | `package.json` + `src/App.tsx` OR `vite.config.*` OR `react-scripts` in deps | `react` |
 | `requirements.txt` OR `pyproject.toml` + `fastapi` in deps | `fastapi` |
+| `requirements.txt` OR `pyproject.toml` + `flask` in deps | `flask` |
+| `manage.py` at root, OR `django` in deps | `django` |
 | `package.json` + `cdk.json` | `cdk` |
 | `package.json` + files matching `**/server.js` with `express` | `node-mock` |
+| `template.yaml`/`template.yml` (SAM), `serverless.yml`, `lambda_function.py`, `handler.py` with Python, OR Python + `celery`/`boto3` SQS/SNS consumer patterns and no web framework | `python-worker` |
+| `.tf` files at repo root or in a top-level module directory | `terraform` |
+| `.avsc` (Avro), `.proto` (Protobuf), or top-level `*.schema.json` / `schemas/` directory with JSON Schema and no service code | `schemas` |
+| `*.postman_collection.json`, Insomnia export, or directory named `collections/`/`postman/` with no service code | `api-collections` |
 | None of the above | `other` |
 
-Run these checks with `Bash` (test file existence) or `Grep` (search for patterns in package.json/pom.xml). Do them in parallel across repos (multiple Bash calls in one message).
+Run these checks with `Bash` (test file existence) or `Grep` (search for patterns in `package.json`, `pom.xml`, `requirements.txt`, `pyproject.toml`). Do them in parallel across repos (multiple Bash calls in one message).
+
+**Ordering note**: when multiple sentinels match (e.g., a Spring Boot repo also contains a Terraform subfolder), pick the more specific runtime type (`spring-boot`) over infra (`terraform`). Python framework detection (`fastapi` > `flask` > `django` > `python-worker`) follows the order in the table — `python-worker` is the fallback for "Python with no web framework". Schema/collections repos are only classified as such when there is **no** runtime service code in the same repo.
 
 ### Step 3: Detect role per repo
 
@@ -43,10 +51,12 @@ Infer the architectural role from the tech stack and directory name:
 
 | Heuristic | Detected `role` |
 |-----------|----------------|
-| `type` is `spring-boot` or `nestjs` or `fastapi` AND has an OpenAPI spec file | `api-service` |
+| `type` is `spring-boot`, `nestjs`, `fastapi`, `flask`, or `django` | `api-service` |
 | `type` is `react` or `nextjs` | `frontend` |
 | `type` is `node-mock` OR directory name contains `mock` | `mock-server` |
-| `type` is `cdk` OR directory name contains `infra` or `ops` or `platform` | `infrastructure` |
+| `type` is `cdk` or `terraform` OR directory name contains `infra` or `ops` or `platform` | `infrastructure` |
+| `type` is `python-worker` | `worker` |
+| `type` is `schemas` or `api-collections` | `contract` |
 | None of the above | `other` |
 
 For api-services, also search for OpenAPI spec files. Use a broad pattern that covers the common conventions (`openapi.yaml`, `specs.yaml`, files under an `openapi/` directory, and the `*-api-specs.yaml` convention seen in many API-first Spring Boot / FastAPI repos):
@@ -65,6 +75,20 @@ find {repo_path} -maxdepth 5 \
 
 If more than one spec is returned for the same repo, pick the first as `spec_file` and record the rest as `additional_specs` — common when one backend service hosts multiple bounded-context APIs (e.g., ABVI backoffice-service hosting backoffice + contract + publisher specs).
 
+### Step 3.5: Infer `spec_policy` per service
+
+For every repo classified as a **service** (roles `api-service` or `worker`), pick a `spec_policy` value. This drives whether `/deliver` Phase 3 edits an OpenAPI spec for this service, asks the architect to inline the endpoint contract, or skips the spec step entirely.
+
+| Condition | `spec_policy` |
+|-----------|---------------|
+| `role` is `api-service` AND an OpenAPI spec file was found in Step 3 | `api-first` |
+| `role` is `api-service` AND no spec file was found | `code-first` |
+| `role` is `worker` (python-worker or other non-HTTP runtime) | `no-api` |
+
+Repos with `role` other than `api-service` / `worker` (`frontend`, `mock-server`, `infrastructure`, `contract`, `other`) do **not** get a `spec_policy` — the field is omitted for them.
+
+Surface the inferred value in the Step 6 table so the user can correct it (e.g., "repo 13 is code-first, not api-first").
+
 ### Step 4: Check for existing CLAUDE.md
 
 For each repo, check if `{repo_path}/CLAUDE.md` or `{repo_path}/.claude/CLAUDE.md` exists. Record the result.
@@ -80,15 +104,25 @@ Show a table and ask for confirmation:
 ```
 ## Discovered Repos
 
-| # | Repo | Type | Role | Spec | CLAUDE.md | Agent-Context |
-|---|------|------|------|------|-----------|---------------|
-| 1 | abvi-publisher-service | spring-boot | api-service | openapi/specs.yaml | exists | — |
-| 2 | abvi-pms-frontend | react | frontend | — | missing | exists (v2) |
-| 3 | abvi-backends-mock | node-mock | mock-server | — | missing | — |
-| 4 | abvi-ops-platform | cdk | infrastructure | — | missing | — |
+| # | Repo | Type | Role | Spec | Policy | CLAUDE.md | Agent-Context |
+|---|------|------|------|------|--------|-----------|---------------|
+| 1 | abvi-publisher-service | spring-boot | api-service | openapi/specs.yaml | api-first | exists | — |
+| 2 | abvi-pms-frontend | react | frontend | — | — | missing | exists (v2) |
+| 3 | abvi-backends-mock | node-mock | mock-server | — | — | missing | — |
+| 4 | abvi-ops-platform | cdk | infrastructure | — | — | missing | — |
+| 5 | abvi-admin-service | spring-boot | api-service | — | code-first | missing | — |
+| 6 | abvi-event-worker | python-worker | worker | — | no-api | missing | — |
+| 7 | abvi-shared-schemas | schemas | contract | — | — | missing | — |
+
+Legend for the `Policy` column:
+- `api-first` — OpenAPI spec exists; /deliver will edit it before implementation.
+- `code-first` — service has HTTP endpoints but no spec; architect inlines the endpoint contract, /deliver skips the spec-edit step.
+- `no-api` — worker with no HTTP endpoints; /deliver skips the spec-edit step, contract comes from schema repos.
+- `—` — not applicable (not a service).
 
 Corrections? You can:
 - Change type/role for any repo (e.g., "repo 3 is actually nestjs, role api-service")
+- Change `spec_policy` (e.g., "repo 5 is api-first — spec is at specs/admin.yaml, I missed it")
 - Exclude a repo (e.g., "exclude repo 4")
 - Add a repo not in this list (e.g., "add /path/to/another-repo as spring-boot api-service")
 

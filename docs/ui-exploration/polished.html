@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pipeline Crew — Landscape Edition</title>
+<style>
+  :root {
+    --pip:     #F5A623;
+    --archie:  #3B82F6;
+    --yara:    #10B981;
+    --bruno:   #D97706;
+    --pixel:   #8B5CF6;
+    --mira:    #EC4899;
+    --echo:    #22C55E;
+    --stratos: #06B6D4;
+    --crit:    #EF4444;
+    --judge:   #7C3AED;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #fff;
+    transition: background 0.8s ease;
+  }
+
+  body.scene-office    { background: linear-gradient(180deg, #2a2d3a 0%, #1a1d28 100%); }
+  body.scene-park      { background: linear-gradient(180deg, #7dc8f0 0%, #fde68a 100%); }
+  body.scene-site      { background: linear-gradient(180deg, #5a4330 0%, #8b6543 100%); }
+  body.scene-orchestra { background: linear-gradient(180deg, #1a0a1a 0%, #2a0f1a 100%); }
+
+  /* ─────── HEADER ─────── */
+  header {
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    z-index: 10;
+    position: relative;
+  }
+  header .brand h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+  header .brand p  { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+
+  .scene-switcher {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+  }
+  .scene-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    opacity: 0.6;
+  }
+  .scene-btn:hover { opacity: 1; background: rgba(255,255,255,0.08); }
+  .scene-btn.active {
+    background: rgba(255,255,255,0.18);
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+  }
+
+  /* ─────── MAIN ─────── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    height: calc(100vh - 65px);
+  }
+
+  .stage {
+    position: relative;
+    overflow: hidden;
+  }
+  .stage svg { width: 100%; height: 100%; display: block; }
+
+  /* ─────── CHARACTER STYLES ─────── */
+  .character {
+    cursor: pointer;
+    transform-origin: center bottom;
+    transition: filter 0.3s;
+  }
+  .character:hover .char-body { filter: brightness(1.15); }
+  .character.selected .selection-ring { opacity: 1; }
+  .selection-ring {
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  /* name label */
+  .char-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-anchor: middle;
+    fill: #fff;
+    paint-order: stroke;
+    stroke: rgba(0,0,0,0.7);
+    stroke-width: 2.5px;
+    stroke-linejoin: round;
+    pointer-events: none;
+  }
+
+  /* status dot above character */
+  .char-status {
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .character.working .char-status,
+  .character.done .char-status,
+  .character.blocked .char-status { opacity: 1; }
+
+  /* idle bob */
+  .char-body {
+    animation: bob 3s ease-in-out infinite;
+    transform-origin: center bottom;
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+
+  /* working state — shake + scene fx */
+  .character.working .char-body {
+    animation: workBob 0.5s ease-in-out infinite;
+  }
+  @keyframes workBob {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    25%      { transform: translateY(-1px) rotate(-1.5deg); }
+    75%      { transform: translateY(-2px) rotate(1.5deg); }
+  }
+
+  /* done state */
+  .character.done .char-body {
+    animation: celebrate 0.8s ease-out 2;
+  }
+  @keyframes celebrate {
+    0%   { transform: translateY(0) scale(1); }
+    30%  { transform: translateY(-14px) scale(1.08); }
+    60%  { transform: translateY(0) scale(1); }
+    100% { transform: translateY(0) scale(1); }
+  }
+
+  /* blocked state */
+  .character.blocked .char-body {
+    animation: shake 0.3s ease-in-out infinite;
+    filter: grayscale(0.5);
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-2px) rotate(-2deg); }
+    75%      { transform: translateX(2px) rotate(2deg); }
+  }
+
+  /* work particles */
+  .work-fx { opacity: 0; }
+  .character.working .work-fx {
+    opacity: 1;
+    animation: fxRise 1.5s ease-out infinite;
+  }
+  @keyframes fxRise {
+    0%   { transform: translateY(0); opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: translateY(-30px); opacity: 0; }
+  }
+
+  /* scene prop animations */
+  .scene-prop-anim { transform-origin: center; }
+  .anim-sway { animation: sway 4s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-2deg); }
+    50%      { transform: rotate(2deg); }
+  }
+
+  .anim-float { animation: float 5s ease-in-out infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
+  .anim-spin { animation: spin 8s linear infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes spin {
+    from { transform: rotate(0); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .cloud { animation: drift 30s linear infinite; }
+  @keyframes drift {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(40px); }
+  }
+
+  .duck-bob { animation: duckBob 2s ease-in-out infinite; transform-origin: center; }
+  @keyframes duckBob {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    50%      { transform: translateY(-2px) rotate(3deg); }
+  }
+
+  .sparkle { animation: sparkle 1s ease-in-out infinite; transform-origin: center; }
+  @keyframes sparkle {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50%      { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* ─────── SIDE PANEL ─────── */
+  aside {
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(18px);
+    border-left: 1px solid rgba(255,255,255,0.12);
+    padding: 22px 22px 22px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .demo-btn {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #F5A623, #D97706);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px -4px rgba(245,166,35,0.6);
+  }
+  .demo-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+  .demo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .secondary-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .secondary-btn:hover { background: rgba(255,255,255,0.15); }
+
+  /* ─────── FEEDBACK BUBBLE ─────── */
+  .feedback-bubble {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .character.needs-feedback .feedback-bubble {
+    opacity: 1;
+    pointer-events: all;
+    animation: bubbleFloat 1.2s ease-in-out infinite;
+  }
+  @keyframes bubbleFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  .character.needs-feedback .char-body {
+    animation: askBob 0.8s ease-in-out infinite;
+  }
+  @keyframes askBob {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    50%      { transform: translateY(-3px) rotate(-2deg); }
+  }
+
+  /* header flash when someone needs feedback */
+  header.needs-attention {
+    animation: headerFlash 1s ease-in-out 3;
+  }
+  @keyframes headerFlash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
+    50%      { box-shadow: inset 0 -3px 0 0 rgba(245, 166, 35, 0.8), 0 8px 24px -4px rgba(245, 166, 35, 0.5); }
+  }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    opacity: 0.55;
+    margin: 20px 0 10px;
+  }
+
+  .panel-empty {
+    font-size: 12px;
+    opacity: 0.45;
+    padding: 16px;
+    text-align: center;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    border: 1px dashed rgba(255,255,255,0.1);
+  }
+
+  #detail { flex-shrink: 0; }
+  #detail.visible { display: block; }
+  #detail:not(.visible) { display: none; }
+
+  .detail-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .detail-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .detail-avatar svg { width: 44px; height: 44px; }
+  .detail-name { font-size: 18px; font-weight: 700; }
+  .detail-role {
+    display: inline-block;
+    padding: 2px 10px;
+    background: var(--c);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 8px;
+    margin-top: 3px;
+  }
+  .detail-desc {
+    font-size: 12px;
+    line-height: 1.55;
+    opacity: 0.85;
+    margin: 10px 0;
+  }
+  .detail-quote {
+    font-size: 11px;
+    font-style: italic;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.05);
+    border-left: 3px solid var(--c);
+    border-radius: 4px;
+    margin: 10px 0;
+    opacity: 0.85;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .stat {
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+  }
+  .stat b { display: block; font-size: 15px; font-weight: 700; }
+  .stat span { font-size: 10px; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.8px; }
+
+  /* feed */
+  #feed {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 200px;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .feed-line {
+    font-size: 11px;
+    font-family: 'Consolas', 'Cascadia Mono', monospace;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid var(--lc, rgba(255,255,255,0.15));
+    border-radius: 4px;
+    opacity: 0;
+    animation: feedIn 0.4s forwards;
+  }
+  @keyframes feedIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* scrollbar */
+  aside::-webkit-scrollbar, #feed::-webkit-scrollbar { width: 6px; }
+  aside::-webkit-scrollbar-thumb, #feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+</style>
+</head>
+<body class="scene-office">
+
+<header>
+  <div class="brand">
+    <h1>🎨 Pipeline Crew — Landscape Edition</h1>
+    <p>Pick a scene. Watch your agents work where they belong.</p>
+  </div>
+  <div class="scene-switcher">
+    <button class="scene-btn active" data-scene="office">🏢 Office</button>
+    <button class="scene-btn" data-scene="park">🌳 Park</button>
+    <button class="scene-btn" data-scene="site">🏗️ Site</button>
+    <button class="scene-btn" data-scene="orchestra">🎼 Orchestra</button>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <svg id="stage-svg" viewBox="0 0 1400 780" preserveAspectRatio="xMidYMid slice">
+      <!-- scene injected here -->
+    </svg>
+  </div>
+
+  <aside>
+    <button class="demo-btn" id="demoBtn" onclick="runDemo()">▶ Run Demo Pipeline</button>
+    <button class="secondary-btn" onclick="simulateFeedback()">💬 Simulate Feedback Request</button>
+
+    <div class="panel-title">Selected Agent</div>
+    <div id="detail-empty" class="panel-empty">Click a character in the scene to see details.</div>
+    <div id="detail" style="--c: #F5A623;">
+      <div class="detail-head">
+        <div class="detail-avatar" id="detail-avatar"></div>
+        <div>
+          <div class="detail-name" id="detail-name"></div>
+          <div class="detail-role" id="detail-role"></div>
+        </div>
+      </div>
+      <div class="detail-desc" id="detail-desc"></div>
+      <div class="detail-quote" id="detail-quote"></div>
+      <div class="stats" id="detail-stats"></div>
+    </div>
+
+    <div class="panel-title">Live Feed</div>
+    <div id="feed">
+      <div class="feed-line" style="--lc: #8b949e">System ready. Select a scene and run the demo.</div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   CHARACTER DEFINITIONS
+   Each character is a function that returns SVG body content.
+   The character is placed at (0,0) and sized ~60px tall.
+   ════════════════════════════════════════════════════════════ */
+
+const CHARS = {
+  pip: {
+    name: 'Pip', role: 'Product Owner', color: '#F5A623', skin: '#FFD4A3',
+    desc: 'Transforms vague feature ideas into crystal-clear requirements. Always curious, always asking WHY.',
+    quote: '"What does the user ACTUALLY need here? Let me ask three more questions."',
+    stats: [['12','Features'],['4.2','Avg Qs'],['98%','Clarity'],['0','Reworks']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#3a2718"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#3a2718"/>
+      <rect x="-11" y="-22" width="22" height="18" rx="5" fill="${c}"/>
+      <rect x="-13" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <rect x="9" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <ellipse cx="0" cy="-40" rx="13" ry="4" fill="${c}"/>
+      <circle cx="7" cy="-43" r="2" fill="${c}"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="-6" cy="-29" r="1.5" fill="#FFB4B4" opacity="0.7"/>
+      <circle cx="6" cy="-29" r="1.5" fill="#FFB4B4" opacity="0.7"/>
+      <path d="M-3 -26 Q0 -24 3 -26" stroke="#2a1f12" fill="none" stroke-width="1.3" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<text x="18" y="-30" font-size="11" fill="${c}">?</text>`
+  },
+
+  archie: {
+    name: 'Archie', role: 'Solution Architect', color: '#3B82F6', skin: '#FFD4A3',
+    desc: 'Sees the whole system at once. Draws service boundaries, writes ADRs, ensures the crew never re-litigates solved problems.',
+    quote: '"We already ruled out Lambda in ADR-002. SQS direct it is."',
+    stats: [['8','Designs'],['14','ADRs'],['72K','Avg Tokens'],['0','Reworks']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#1e3a5f"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#1e3a5f"/>
+      <rect x="-11" y="-22" width="22" height="18" rx="5" fill="${c}"/>
+      <path d="M-11 -20 L11 -20 L0 -10 Z" fill="#fff" opacity="0.25"/>
+      <rect x="-13" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <rect x="9" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <path d="M-10 -42 Q0 -46 10 -42 L10 -38 Q0 -40 -10 -38 Z" fill="#2a1f12"/>
+      <rect x="-6" y="-34" width="4" height="3" rx="0.5" fill="none" stroke="#2a1f12" stroke-width="1.2"/>
+      <rect x="2" y="-34" width="4" height="3" rx="0.5" fill="none" stroke="#2a1f12" stroke-width="1.2"/>
+      <line x1="-2" y1="-32.5" x2="2" y2="-32.5" stroke="#2a1f12" stroke-width="1.2"/>
+      <path d="M-3 -26 L3 -26" stroke="#2a1f12" stroke-width="1.3" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<rect x="14" y="-38" width="10" height="12" rx="1" fill="${c}" opacity="0.8"/><line x1="16" y1="-34" x2="22" y2="-34" stroke="#fff" stroke-width="0.7"/><line x1="16" y1="-32" x2="22" y2="-32" stroke="#fff" stroke-width="0.7"/><line x1="16" y1="-30" x2="22" y2="-30" stroke="#fff" stroke-width="0.7"/>`
+  },
+
+  yara: {
+    name: 'Yara', role: 'Spec Editor', color: '#10B981', skin: '#E8B888',
+    desc: 'Keeper of the contract. Every endpoint, every schema — edited with surgical precision. Nothing leaves her hands without YAML validation.',
+    quote: '"Indentation drift detected on line 847. Fixed."',
+    stats: [['34','Specs'],['0','YAML Errors'],['2m 10s','Duration'],['1','Rollback']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#2d3748"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#2d3748"/>
+      <rect x="-12" y="-24" width="24" height="20" rx="5" fill="#fff"/>
+      <rect x="-11" y="-24" width="22" height="20" rx="4" fill="${c}" opacity="0.15"/>
+      <line x1="-6" y1="-20" x2="6" y2="-20" stroke="${c}" stroke-width="1" opacity="0.6"/>
+      <line x1="-6" y1="-16" x2="4" y2="-16" stroke="${c}" stroke-width="1" opacity="0.6"/>
+      <rect x="-14" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <rect x="10" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <path d="M-12 -36 Q-11 -44 0 -45 Q11 -44 12 -36 L11 -30 Q0 -33 -11 -30 Z" fill="#2a1f12"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <path d="M-3 -26 Q0 -25 3 -26" stroke="#2a1f12" fill="none" stroke-width="1.3" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<circle cx="16" cy="-34" r="5" fill="none" stroke="${c}" stroke-width="2"/><line x1="19" y1="-31" x2="23" y2="-27" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`
+  },
+
+  bruno: {
+    name: 'Bruno', role: 'Backend Implementer', color: '#D97706', skin: '#E8B888',
+    desc: 'Builds the engine. Spring Boot, JPA, Liquibase. Stocky and reliable, never ships without running the tests first.',
+    quote: '"221 tests, all green. Changelog registered. Done."',
+    stats: [['221','Tests'],['8m 12s','Duration'],['100%','Pass'],['84K','Tokens']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-9" y="-8" width="7" height="10" rx="2" fill="#1a202c"/>
+      <rect x="2" y="-8" width="7" height="10" rx="2" fill="#1a202c"/>
+      <rect x="-13" y="-24" width="26" height="20" rx="5" fill="${c}"/>
+      <rect x="-13" y="-23" width="26" height="4" fill="#fff" opacity="0.15"/>
+      <rect x="-15" y="-22" width="5" height="16" rx="2.5" fill="${skin}"/>
+      <rect x="10" y="-22" width="5" height="16" rx="2.5" fill="${skin}"/>
+      <circle cx="0" cy="-33" r="12" fill="${skin}"/>
+      <path d="M-13 -38 Q-14 -46 0 -47 Q14 -46 13 -38 Z" fill="${c}"/>
+      <rect x="-14" y="-40" width="28" height="5" rx="1" fill="#fff" opacity="0.3"/>
+      <circle cx="-4" cy="-33" r="1.4" fill="#2a1f12"/>
+      <circle cx="4" cy="-33" r="1.4" fill="#2a1f12"/>
+      <path d="M-3 -27 L3 -27" stroke="#2a1f12" stroke-width="1.5" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<circle class="sparkle" cx="18" cy="-32" r="2" fill="#fff"/><circle class="sparkle" cx="22" cy="-36" r="1.5" fill="${c}" style="animation-delay:0.3s"/><circle class="sparkle" cx="15" cy="-38" r="1.5" fill="#fff" style="animation-delay:0.6s"/>`
+  },
+
+  pixel: {
+    name: 'Pixel', role: 'Frontend Implementer', color: '#8B5CF6', skin: '#FFD4A3',
+    desc: 'Pure creative energy, disciplined. Every type matches the spec. Every string has an AR key. Every layout works in RTL.',
+    quote: '"Types first, always. The spec says attachmentType, not kind."',
+    stats: [['0','Type Errors'],['EN+AR','i18n'],['✓','RTL'],['12m','Duration']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#312e81"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#312e81"/>
+      <rect x="-11" y="-22" width="22" height="18" rx="5" fill="${c}"/>
+      <circle cx="-5" cy="-15" r="2" fill="#EC4899" opacity="0.8"/>
+      <circle cx="4" cy="-18" r="1.5" fill="#10B981" opacity="0.8"/>
+      <circle cx="6" cy="-11" r="1.5" fill="#F5A623" opacity="0.8"/>
+      <rect x="-13" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <rect x="9" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <path d="M-11 -42 Q-8 -48 0 -44 Q8 -48 11 -42 L9 -35 Q0 -37 -9 -35 Z" fill="#2a1f12"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <path d="M-3 -26 Q0 -23 3 -26" stroke="#2a1f12" fill="none" stroke-width="1.3" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<rect x="14" y="-36" width="3" height="14" fill="#8B4513"/><polygon points="12,-38 19,-38 15.5,-36" fill="${c}"/>`
+  },
+
+  mira: {
+    name: 'Mira', role: 'UX Consultant', color: '#EC4899', skin: '#FFD4A3',
+    desc: 'Never recommends a component she hasn\'t seen in the actual design system. Reads Storybook, studies patterns, produces specs so precise Pixel has no questions.',
+    quote: '"Use DataTable, not a raw table. And no Drawer — RTL is broken on it."',
+    stats: [['8','Consultations'],['100%','Match'],['0','A11y Issues'],['3m 44s','Duration']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <path d="M-10 -8 L-6 2 L-4 -8" fill="#4a1d3c"/>
+      <path d="M4 -8 L6 2 L10 -8" fill="#4a1d3c"/>
+      <path d="M-13 -24 Q-13 -5 -6 -4 L6 -4 Q13 -5 13 -24 Z" fill="${c}"/>
+      <rect x="-14" y="-22" width="4" height="16" rx="2" fill="${skin}"/>
+      <rect x="10" y="-22" width="4" height="16" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <path d="M-12 -38 Q-13 -46 0 -46 Q13 -46 12 -38 L14 -28 Q10 -34 0 -33 Q-10 -34 -14 -28 Z" fill="#3d1f12"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <path d="M-3 -26 Q0 -24 3 -26" stroke="#C2185B" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="14" cy="-32" r="1.5" fill="${c}"/>
+    `,
+    fx: (c) => `<rect x="14" y="-38" width="12" height="9" rx="1" fill="none" stroke="${c}" stroke-width="1.5"/><line x1="16" y1="-34" x2="24" y2="-34" stroke="${c}" stroke-width="0.8"/><line x1="16" y1="-32" x2="22" y2="-32" stroke="${c}" stroke-width="0.8"/>`
+  },
+
+  echo: {
+    name: 'Echo', role: 'Mock Implementer', color: '#22C55E', skin: '#BEF264',
+    desc: 'Mirrors the real backend perfectly. A shapeshifter, Echo reads the spec (not the frontend) and makes the mock indistinguishable from production.',
+    quote: '"I don\'t copy the frontend types. I copy the spec. Big difference."',
+    stats: [['12','Routes'],['0','Drift'],['48','Seeds'],['1m 12s','Duration']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#14532d"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#14532d"/>
+      <ellipse cx="0" cy="-14" rx="13" ry="11" fill="${c}"/>
+      <ellipse cx="0" cy="-16" rx="10" ry="7" fill="${skin}" opacity="0.4"/>
+      <rect x="-13" y="-18" width="4" height="12" rx="2" fill="${c}"/>
+      <rect x="9" y="-18" width="4" height="12" rx="2" fill="${c}"/>
+      <ellipse cx="0" cy="-33" rx="13" ry="11" fill="${c}"/>
+      <circle cx="-5" cy="-36" r="3" fill="#fff"/>
+      <circle cx="5" cy="-36" r="3" fill="#fff"/>
+      <circle cx="-5" cy="-36" r="1.5" fill="#000"/>
+      <circle cx="5" cy="-36" r="1.5" fill="#000"/>
+      <path d="M-2 -28 Q0 -26 2 -28" stroke="#0a3a1a" fill="none" stroke-width="1.3" stroke-linecap="round"/>
+      <path d="M0 -28 Q0 -23 3 -22" stroke="${c}" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<circle class="sparkle" cx="17" cy="-32" r="2" fill="${c}"/><circle class="sparkle" cx="-17" cy="-32" r="2" fill="${c}" style="animation-delay:0.5s"/>`
+  },
+
+  stratos: {
+    name: 'Stratos', role: 'Infra Implementer', color: '#06B6D4', skin: '#FFD4A3',
+    desc: 'Lives in the clouds — literally. CDK stacks, SQS queues, Fargate services. Reads existing stacks before writing new ones, copies naming conventions exactly.',
+    quote: '"Queue name must match exactly what the service config expects. No drift."',
+    stats: [['3','Stacks'],['✓','CDK Synth'],['0','Drifts'],['4m 30s','Duration']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <ellipse cx="-10" cy="2" rx="10" ry="3" fill="#fff" opacity="0.6"/>
+      <ellipse cx="10" cy="2" rx="8" ry="3" fill="#fff" opacity="0.6"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#0e7490"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#0e7490"/>
+      <rect x="-11" y="-22" width="22" height="18" rx="5" fill="${c}"/>
+      <path d="M-9 -18 L-2 -12 L-5 -8 M3 -18 L8 -10" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+      <rect x="-13" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <rect x="9" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <path d="M-11 -38 Q-11 -46 0 -46 Q11 -46 11 -38" fill="#2a1f12"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <path d="M-3 -26 L3 -26" stroke="#2a1f12" stroke-width="1.3" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<path d="M15 -35 L20 -30 L18 -30 L23 -25" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`
+  },
+
+  crit: {
+    name: 'Crit', role: 'Code Reviewer', color: '#EF4444', skin: '#FFD4A3',
+    desc: 'Reads every line. Every DTO checked field-by-field. Every FR must have an enforcement point. Not mean — thorough.',
+    quote: '"Line 174: types `kind` but spec says `attachmentType`. Critical."',
+    stats: [['47','Findings'],['12','Critical'],['0','Misses'],['5m 20s','Duration']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <rect x="-8" y="-8" width="6" height="10" rx="2" fill="#1a1a1a"/>
+      <rect x="2" y="-8" width="6" height="10" rx="2" fill="#1a1a1a"/>
+      <rect x="-11" y="-22" width="22" height="18" rx="5" fill="${c}"/>
+      <rect x="-13" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <rect x="9" y="-20" width="4" height="14" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <rect x="-12" y="-42" width="24" height="5" rx="1" fill="#2a1f12"/>
+      <rect x="-12" y="-45" width="24" height="3" fill="#2a1f12"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <path d="M-3 -25 L3 -25" stroke="#2a1f12" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M-6 -36 L-4 -34 M4 -36 L6 -34" stroke="#2a1f12" stroke-width="1.2" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<rect x="14" y="-38" width="2.5" height="14" fill="${c}"/><polygon points="12,-36 17,-36 14.5,-38" fill="#1a1a1a"/>`
+  },
+
+  judge: {
+    name: 'Judge', role: 'Cross-Repo Assessor', color: '#7C3AED', skin: '#FFD4A3',
+    desc: 'Sees the whole picture across every repo. Asks: does the frontend role guard match the backend? Do mock and real agree on every field?',
+    quote: '"Backend enforces it. Frontend guards it. Mock mirrors it. PASS."',
+    stats: [['9','Assessments'],['8','PASS'],['1','FAIL'],['2','Fix Rounds']],
+    body: (c, skin) => `
+      <ellipse cx="0" cy="2" rx="14" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <path d="M-13 -26 L-16 2 L16 2 L13 -26 Z" fill="${c}"/>
+      <rect x="-12" y="-26" width="24" height="4" fill="#4c1d95"/>
+      <rect x="-14" y="-22" width="4" height="16" rx="2" fill="${skin}"/>
+      <rect x="10" y="-22" width="4" height="16" rx="2" fill="${skin}"/>
+      <circle cx="0" cy="-32" r="11" fill="${skin}"/>
+      <ellipse cx="0" cy="-44" rx="13" ry="7" fill="#fff"/>
+      <path d="M-12 -43 Q-10 -38 -7 -40 Q-4 -38 -1 -40 Q2 -38 5 -40 Q8 -38 11 -40 Q13 -43 12 -44" stroke="#ddd" stroke-width="1.5" fill="none"/>
+      <circle cx="-3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <circle cx="3.5" cy="-32" r="1.3" fill="#2a1f12"/>
+      <path d="M-3 -26 Q0 -24 3 -26" stroke="#2a1f12" fill="none" stroke-width="1.3" stroke-linecap="round"/>
+    `,
+    fx: (c) => `<rect x="14" y="-38" width="12" height="5" rx="1" fill="${c}"/><rect x="18" y="-42" width="3" height="10" fill="${c}"/>`
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   SCENE DEFINITIONS
+   Each scene has: a background function + character positions
+   ════════════════════════════════════════════════════════════ */
+
+const POSITIONS = {
+  office: {
+    pip:     { x: 180,  y: 440 },
+    archie:  { x: 380,  y: 440 },
+    yara:    { x: 580,  y: 440 },
+    bruno:   { x: 780,  y: 440 },
+    pixel:   { x: 980,  y: 440 },
+    mira:    { x: 1180, y: 440 },
+    echo:    { x: 280,  y: 640 },
+    stratos: { x: 540,  y: 640 },
+    crit:    { x: 820,  y: 640 },
+    judge:   { x: 1080, y: 640 },
+  },
+  park: {
+    pip:     { x: 170, y: 560 },
+    archie:  { x: 330, y: 480 },
+    yara:    { x: 510, y: 600 },
+    bruno:   { x: 680, y: 560 },
+    pixel:   { x: 830, y: 480 },
+    mira:    { x: 990, y: 620 },
+    echo:    { x: 1160, y: 580 },
+    stratos: { x: 250, y: 320 },
+    crit:    { x: 1280, y: 500 },
+    judge:   { x: 420, y: 660 },
+  },
+  site: {
+    pip:     { x: 150, y: 620 },
+    archie:  { x: 310, y: 520 },
+    yara:    { x: 490, y: 620 },
+    bruno:   { x: 660, y: 620 },
+    pixel:   { x: 830, y: 620 },
+    mira:    { x: 990, y: 620 },
+    echo:    { x: 1160, y: 620 },
+    stratos: { x: 1300, y: 340 },
+    crit:    { x: 390, y: 480 },
+    judge:   { x: 1050, y: 480 },
+  },
+  orchestra: {
+    // conductor on podium, front center, facing the orchestra
+    pip:     { x: 700, y: 745 },
+    // front row (strings) — closest to audience
+    archie:  { x: 500, y: 690 },
+    mira:    { x: 700, y: 690 },
+    yara:    { x: 900, y: 690 },
+    // middle row (winds)
+    echo:    { x: 400, y: 590 },
+    pixel:   { x: 560, y: 590 },
+    crit:    { x: 760, y: 590 },
+    stratos: { x: 920, y: 590 },
+    // back row (brass + percussion)
+    judge:   { x: 560, y: 490 },
+    bruno:   { x: 810, y: 490 },
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   INSTRUMENTS (orchestra scene only)
+   Each returns SVG markup rendered ALONGSIDE the character body
+   at the character's origin.
+   ════════════════════════════════════════════════════════════ */
+const INSTRUMENTS = {
+  pip: () => `
+    <!-- conductor baton -->
+    <line x1="14" y1="-22" x2="30" y2="-40" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="14" cy="-22" r="1.6" fill="#8b4513"/>
+  `,
+  archie: () => `
+    <!-- violin under chin -->
+    <g transform="translate(-14 -32) rotate(-20)">
+      <path d="M-3 -7 Q-5 -2 -3 3 Q0 5 3 3 Q5 -2 3 -7 Q2 -9 0 -10 Q-2 -9 -3 -7 Z" fill="#8b4513"/>
+      <rect x="-0.5" y="-12" width="1" height="3" fill="#2a1f12"/>
+      <line x1="-1.5" y1="-9" x2="-1.5" y2="2" stroke="#fff" stroke-width="0.3"/>
+      <line x1="0" y1="-9" x2="0" y2="2" stroke="#fff" stroke-width="0.3"/>
+      <line x1="1.5" y1="-9" x2="1.5" y2="2" stroke="#fff" stroke-width="0.3"/>
+    </g>
+    <!-- bow -->
+    <line x1="-22" y1="-18" x2="8" y2="-28" stroke="#d4a574" stroke-width="1.2"/>
+    <line x1="-22" y1="-17" x2="8" y2="-27" stroke="#fff" stroke-width="0.4" opacity="0.8"/>
+  `,
+  yara: () => `
+    <!-- harp (tall, to her right) -->
+    <g transform="translate(18 -10)">
+      <path d="M0 0 L-2 -50 Q0 -56 10 -54 L12 0 Z" fill="#c8a058"/>
+      <path d="M2 -4 Q1 -30 -1 -48" stroke="#8b6f47" stroke-width="2" fill="none"/>
+      <line x1="2" y1="-4" x2="0" y2="-48" stroke="#e0c080" stroke-width="0.4"/>
+      <line x1="4" y1="-4" x2="3" y2="-48" stroke="#e0c080" stroke-width="0.4"/>
+      <line x1="6" y1="-4" x2="6" y2="-48" stroke="#e0c080" stroke-width="0.4"/>
+      <line x1="8" y1="-4" x2="9" y2="-48" stroke="#e0c080" stroke-width="0.4"/>
+      <rect x="-3" y="-2" width="16" height="4" rx="1" fill="#8b6f47"/>
+    </g>
+  `,
+  mira: () => `
+    <!-- cello body between knees -->
+    <g transform="translate(0 -8)">
+      <ellipse cx="0" cy="0" rx="11" ry="15" fill="#8b4513"/>
+      <ellipse cx="0" cy="0" rx="9" ry="13" fill="#a0542a" opacity="0.5"/>
+      <path d="M-3 -3 Q-4 0 -3 3 M3 -3 Q4 0 3 3" stroke="#2a1f12" stroke-width="0.8" fill="none"/>
+      <rect x="-0.5" y="-22" width="1" height="8" fill="#2a1f12"/>
+      <rect x="-3" y="-26" width="6" height="3" fill="#2a1f12"/>
+    </g>
+    <!-- bow in hand -->
+    <line x1="12" y1="-20" x2="28" y2="-12" stroke="#d4a574" stroke-width="1.2"/>
+  `,
+  echo: () => `
+    <!-- clarinet (vertical, long black tube) -->
+    <g transform="translate(10 -20)">
+      <rect x="-1.5" y="-18" width="3" height="28" rx="0.8" fill="#1a1a1a"/>
+      <rect x="-2.5" y="10" width="5" height="3" rx="0.5" fill="#1a1a1a"/>
+      <circle cx="1" cy="-10" r="0.7" fill="#c0c0c0"/>
+      <circle cx="1" cy="-5" r="0.7" fill="#c0c0c0"/>
+      <circle cx="1" cy="0" r="0.7" fill="#c0c0c0"/>
+      <circle cx="1" cy="5" r="0.7" fill="#c0c0c0"/>
+    </g>
+  `,
+  pixel: () => `
+    <!-- flute (horizontal, silver) -->
+    <g transform="translate(10 -32)">
+      <rect x="-2" y="0" width="28" height="2.5" rx="1" fill="#c0c0c0"/>
+      <rect x="-2" y="0" width="28" height="1" fill="#fff" opacity="0.5"/>
+      <circle cx="4" cy="1.2" r="0.7" fill="#1a1a1a"/>
+      <circle cx="9" cy="1.2" r="0.7" fill="#1a1a1a"/>
+      <circle cx="14" cy="1.2" r="0.7" fill="#1a1a1a"/>
+      <circle cx="19" cy="1.2" r="0.7" fill="#1a1a1a"/>
+    </g>
+  `,
+  crit: () => `
+    <!-- oboe (vertical brown tube with reed) -->
+    <g transform="translate(10 -20)">
+      <rect x="-1.5" y="-20" width="3" height="26" rx="0.8" fill="#3a2010"/>
+      <rect x="-2.5" y="6" width="5" height="4" rx="0.5" fill="#2a1810"/>
+      <rect x="-0.8" y="-23" width="1.6" height="4" fill="#d4a574"/>
+      <circle cx="1" cy="-10" r="0.6" fill="#c0c0c0"/>
+      <circle cx="1" cy="-5" r="0.6" fill="#c0c0c0"/>
+      <circle cx="1" cy="0" r="0.6" fill="#c0c0c0"/>
+    </g>
+  `,
+  stratos: () => `
+    <!-- french horn (circular brass) -->
+    <g transform="translate(14 -22)">
+      <circle cx="0" cy="0" r="13" fill="none" stroke="#c8a058" stroke-width="2.5"/>
+      <circle cx="0" cy="0" r="9" fill="none" stroke="#d4b068" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="5" fill="none" stroke="#c8a058" stroke-width="1.5"/>
+      <path d="M10 4 Q16 8 20 6" stroke="#c8a058" stroke-width="2.5" fill="none"/>
+      <ellipse cx="22" cy="5" rx="5" ry="4" fill="none" stroke="#c8a058" stroke-width="2"/>
+      <ellipse cx="22" cy="5" rx="3.5" ry="2.5" fill="#8b6f20"/>
+    </g>
+  `,
+  judge: () => `
+    <!-- trombone (horizontal brass with slide) -->
+    <g transform="translate(10 -30)">
+      <rect x="0" y="0" width="30" height="2.5" rx="1" fill="#c8a058"/>
+      <rect x="26" y="-3" width="10" height="8" rx="1" fill="#c8a058"/>
+      <path d="M36 1 L42 -2 L42 4 Z" fill="#d4b068"/>
+      <rect x="0" y="0" width="8" height="2.5" fill="#d4b068"/>
+    </g>
+  `,
+  bruno: () => `
+    <!-- timpani drums behind him -->
+    <g transform="translate(-20 -48)">
+      <ellipse cx="0" cy="0" rx="16" ry="4" fill="#e0e0e0"/>
+      <ellipse cx="0" cy="-1" rx="14" ry="3" fill="#f0f0f0"/>
+      <path d="M-16 0 Q-18 12 -14 20 L14 20 Q18 12 16 0 Z" fill="#8b4513"/>
+      <line x1="-12" y1="2" x2="-10" y2="20" stroke="#2a1f12" stroke-width="0.6"/>
+      <line x1="0" y1="2" x2="0" y2="20" stroke="#2a1f12" stroke-width="0.6"/>
+      <line x1="12" y1="2" x2="10" y2="20" stroke="#2a1f12" stroke-width="0.6"/>
+    </g>
+    <g transform="translate(18 -44)">
+      <ellipse cx="0" cy="0" rx="13" ry="3.5" fill="#e0e0e0"/>
+      <ellipse cx="0" cy="-1" rx="11" ry="2.5" fill="#f0f0f0"/>
+      <path d="M-13 0 Q-15 10 -11 17 L11 17 Q15 10 13 0 Z" fill="#8b4513"/>
+    </g>
+    <!-- mallets in hands -->
+    <line x1="-8" y1="-18" x2="-14" y2="-30" stroke="#8b4513" stroke-width="1.2"/>
+    <circle cx="-14" cy="-30" r="2" fill="#f5e6c8"/>
+    <line x1="8" y1="-18" x2="14" y2="-30" stroke="#8b4513" stroke-width="1.2"/>
+    <circle cx="14" cy="-30" r="2" fill="#f5e6c8"/>
+  `,
+};
+
+/* SCENE BACKGROUNDS */
+function sceneOffice() {
+  return `
+    <rect width="1400" height="780" fill="url(#officeWall)"/>
+    <defs>
+      <linearGradient id="officeWall" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a3f4e"/>
+        <stop offset="0.7" stop-color="#2a2d3a"/>
+        <stop offset="0.71" stop-color="#4a4030"/>
+        <stop offset="1" stop-color="#3a3020"/>
+      </linearGradient>
+      <linearGradient id="desk" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8b6f47"/>
+        <stop offset="1" stop-color="#5c4a30"/>
+      </linearGradient>
+    </defs>
+
+    <!-- window -->
+    <rect x="50" y="80" width="300" height="180" rx="6" fill="#6db4f5" opacity="0.35"/>
+    <line x1="200" y1="80" x2="200" y2="260" stroke="#2a2d3a" stroke-width="4"/>
+    <line x1="50" y1="170" x2="350" y2="170" stroke="#2a2d3a" stroke-width="4"/>
+    <circle cx="280" cy="120" r="25" fill="#ffd966" opacity="0.7"/>
+
+    <!-- whiteboard -->
+    <rect x="900" y="90" width="400" height="200" rx="4" fill="#fff"/>
+    <rect x="900" y="90" width="400" height="200" rx="4" fill="none" stroke="#888" stroke-width="3"/>
+    <path d="M930 160 L990 130 L1050 150 L1100 120 L1160 140" stroke="#3B82F6" stroke-width="3" fill="none"/>
+    <rect x="930" y="200" width="40" height="4" fill="#EF4444"/>
+    <rect x="985" y="200" width="40" height="4" fill="#10B981"/>
+    <rect x="1040" y="200" width="40" height="4" fill="#F5A623"/>
+    <text x="930" y="240" font-size="14" fill="#555">Phase Plan</text>
+
+    <!-- plant -->
+    <rect x="430" y="180" width="50" height="60" rx="4" fill="#8b4513"/>
+    <ellipse cx="455" cy="170" rx="40" ry="30" fill="#22C55E"/>
+    <ellipse cx="440" cy="160" rx="20" ry="18" fill="#16a34a"/>
+    <ellipse cx="470" cy="160" rx="20" ry="18" fill="#16a34a"/>
+
+    <!-- desks (top row) -->
+    ${[0,1,2,3,4,5].map(i => `
+      <rect x="${100 + i*200}" y="470" width="160" height="70" rx="3" fill="url(#desk)"/>
+      <rect x="${100 + i*200}" y="470" width="160" height="6" fill="#b8945c"/>
+      <rect x="${120 + i*200}" y="420" width="80" height="50" rx="3" fill="#1a1a2e"/>
+      <rect x="${125 + i*200}" y="425" width="70" height="40" rx="2" fill="#4a90e2" opacity="0.6"/>
+      <rect x="${155 + i*200}" y="540" width="50" height="6" fill="#3a3020"/>
+      <rect x="${150 + i*200}" y="546" width="60" height="4" fill="#2a2010"/>
+    `).join('')}
+
+    <!-- desks (bottom row) -->
+    ${[0,1,2,3].map(i => `
+      <rect x="${200 + i*260}" y="670" width="160" height="70" rx="3" fill="url(#desk)"/>
+      <rect x="${200 + i*260}" y="670" width="160" height="6" fill="#b8945c"/>
+      <rect x="${220 + i*260}" y="620" width="80" height="50" rx="3" fill="#1a1a2e"/>
+      <rect x="${225 + i*260}" y="625" width="70" height="40" rx="2" fill="#4a90e2" opacity="0.6"/>
+      <rect x="${255 + i*260}" y="740" width="50" height="6" fill="#3a3020"/>
+    `).join('')}
+  `;
+}
+
+function scenePark() {
+  return `
+    <rect width="1400" height="780" fill="url(#parkSky)"/>
+    <defs>
+      <linearGradient id="parkSky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#7dc8f0"/>
+        <stop offset="0.5" stop-color="#b8e0f0"/>
+        <stop offset="0.55" stop-color="#7bc940"/>
+        <stop offset="1" stop-color="#5aa030"/>
+      </linearGradient>
+      <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#fff9c4"/>
+        <stop offset="1" stop-color="#fbbf24"/>
+      </radialGradient>
+    </defs>
+
+    <!-- sun -->
+    <circle cx="1200" cy="120" r="60" fill="url(#sun)"/>
+
+    <!-- clouds -->
+    <g class="cloud">
+      <ellipse cx="300" cy="150" rx="50" ry="18" fill="#fff" opacity="0.9"/>
+      <ellipse cx="330" cy="140" rx="35" ry="20" fill="#fff" opacity="0.9"/>
+      <ellipse cx="270" cy="140" rx="30" ry="15" fill="#fff" opacity="0.9"/>
+    </g>
+    <g class="cloud" style="animation-delay:-10s">
+      <ellipse cx="800" cy="200" rx="60" ry="20" fill="#fff" opacity="0.85"/>
+      <ellipse cx="830" cy="185" rx="35" ry="22" fill="#fff" opacity="0.85"/>
+      <ellipse cx="770" cy="190" rx="30" ry="16" fill="#fff" opacity="0.85"/>
+    </g>
+
+    <!-- mountains -->
+    <path d="M0 440 L150 280 L280 400 L420 240 L580 400 L720 320 L900 430 L1100 280 L1400 420 L1400 440 Z"
+          fill="#4a6b4e" opacity="0.8"/>
+    <path d="M0 450 L180 340 L320 450 L480 330 L640 440 L800 360 L1000 440 L1200 340 L1400 430 L1400 450 Z"
+          fill="#5a7b5e" opacity="0.9"/>
+
+    <!-- trees -->
+    ${[100, 1340].map(tx => `
+      <rect x="${tx-6}" y="350" width="12" height="60" fill="#5c3a1e"/>
+      <ellipse cx="${tx}" cy="340" rx="40" ry="38" fill="#2d5016"/>
+      <ellipse cx="${tx-15}" cy="325" rx="22" ry="20" fill="#3d6a2a"/>
+      <ellipse cx="${tx+15}" cy="325" rx="22" ry="20" fill="#3d6a2a"/>
+      <ellipse cx="${tx}" cy="310" rx="20" ry="18" fill="#4a8232"/>
+    `).join('')}
+
+    <!-- pond -->
+    <ellipse cx="250" cy="600" rx="140" ry="35" fill="#2a6b9e" opacity="0.85"/>
+    <ellipse cx="250" cy="595" rx="130" ry="28" fill="#3a8bbe" opacity="0.7"/>
+    <ellipse cx="230" cy="590" rx="20" ry="4" fill="#fff" opacity="0.5"/>
+    <!-- ducks -->
+    <g class="duck-bob" transform="translate(200 590)">
+      <ellipse cx="0" cy="0" rx="10" ry="6" fill="#fff"/>
+      <circle cx="8" cy="-4" r="5" fill="#fff"/>
+      <polygon points="12,-4 16,-3 12,-2" fill="#f59e0b"/>
+      <circle cx="10" cy="-5" r="0.8" fill="#000"/>
+    </g>
+    <g class="duck-bob" style="animation-delay:0.7s" transform="translate(290 585)">
+      <ellipse cx="0" cy="0" rx="10" ry="6" fill="#fff"/>
+      <circle cx="8" cy="-4" r="5" fill="#fff"/>
+      <polygon points="12,-4 16,-3 12,-2" fill="#f59e0b"/>
+      <circle cx="10" cy="-5" r="0.8" fill="#000"/>
+    </g>
+
+    <!-- path -->
+    <path d="M0 700 Q400 680 700 700 T1400 700" stroke="#d4a574" stroke-width="40" fill="none" opacity="0.7"/>
+
+    <!-- bench -->
+    <g transform="translate(1000 640)">
+      <rect x="-40" y="-8" width="80" height="6" fill="#5c3a1e"/>
+      <rect x="-40" y="0" width="80" height="4" fill="#5c3a1e"/>
+      <rect x="-36" y="4" width="4" height="16" fill="#5c3a1e"/>
+      <rect x="32" y="4" width="4" height="16" fill="#5c3a1e"/>
+    </g>
+
+    <!-- flowers -->
+    ${[[450,720],[550,715],[1100,725],[1250,720]].map(([fx,fy]) => `
+      <circle cx="${fx}" cy="${fy}" r="4" fill="#ec4899"/>
+      <circle cx="${fx-3}" cy="${fy-3}" r="3" fill="#fbbf24"/>
+      <circle cx="${fx+3}" cy="${fy-3}" r="3" fill="#8b5cf6"/>
+      <circle cx="${fx}" cy="${fy-6}" r="3" fill="#ef4444"/>
+    `).join('')}
+  `;
+}
+
+function sceneSite() {
+  return `
+    <rect width="1400" height="780" fill="url(#siteSky)"/>
+    <defs>
+      <linearGradient id="siteSky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f4a94a"/>
+        <stop offset="0.55" stop-color="#e07b2a"/>
+        <stop offset="0.56" stop-color="#7a5a3a"/>
+        <stop offset="1" stop-color="#4a3020"/>
+      </linearGradient>
+      <pattern id="brickPattern" width="30" height="15" patternUnits="userSpaceOnUse">
+        <rect width="30" height="15" fill="#c0392b"/>
+        <rect x="0" y="0" width="14" height="7" fill="#a0291b"/>
+        <rect x="15" y="8" width="14" height="7" fill="#a0291b"/>
+      </pattern>
+    </defs>
+
+    <!-- distant sun -->
+    <circle cx="1050" cy="180" r="55" fill="#ffd966" opacity="0.9"/>
+
+    <!-- distant buildings silhouette -->
+    <rect x="50" y="280" width="80" height="150" fill="#3a2818" opacity="0.7"/>
+    <rect x="150" y="240" width="100" height="190" fill="#3a2818" opacity="0.8"/>
+    <rect x="270" y="300" width="70" height="130" fill="#3a2818" opacity="0.7"/>
+    <rect x="880" y="260" width="90" height="170" fill="#3a2818" opacity="0.7"/>
+    <rect x="990" y="290" width="60" height="140" fill="#3a2818" opacity="0.75"/>
+
+    <!-- crane -->
+    <g transform="translate(1280 200)">
+      <rect x="-5" y="0" width="10" height="240" fill="#f5a623"/>
+      <rect x="-120" y="-10" width="160" height="8" fill="#f5a623"/>
+      <rect x="-115" y="-2" width="4" height="40" fill="#f5a623"/>
+      <line x1="-100" y1="-10" x2="-100" y2="40" stroke="#2a1f12" stroke-width="2"/>
+      <rect x="-108" y="40" width="16" height="20" rx="2" fill="#8b5a2a"/>
+    </g>
+
+    <!-- scaffolding -->
+    <g transform="translate(250 300)">
+      <rect x="0" y="0" width="140" height="180" fill="none" stroke="#f5a623" stroke-width="4"/>
+      <line x1="0" y1="60" x2="140" y2="60" stroke="#f5a623" stroke-width="3"/>
+      <line x1="0" y1="120" x2="140" y2="120" stroke="#f5a623" stroke-width="3"/>
+      <line x1="70" y1="0" x2="70" y2="180" stroke="#f5a623" stroke-width="3"/>
+      <rect x="5" y="55" width="130" height="8" fill="#b8945c"/>
+      <rect x="5" y="115" width="130" height="8" fill="#b8945c"/>
+    </g>
+
+    <!-- half-built wall -->
+    <rect x="650" y="430" width="250" height="130" fill="url(#brickPattern)"/>
+    <rect x="650" y="425" width="250" height="8" fill="#8b4513"/>
+    <path d="M650 430 L650 430 L900 430 L900 460 L870 455 L840 460 L810 450 L780 455 L750 460 L720 450 L690 455 L650 460 Z" fill="url(#siteSky)"/>
+
+    <!-- bricks stack -->
+    <g transform="translate(1100 660)">
+      <rect x="0" y="0" width="120" height="15" fill="#c0392b"/>
+      <rect x="5" y="-15" width="110" height="15" fill="#c0392b"/>
+      <rect x="0" y="-30" width="120" height="15" fill="#c0392b"/>
+      <rect x="15" y="-45" width="90" height="15" fill="#c0392b"/>
+    </g>
+
+    <!-- wheelbarrow -->
+    <g transform="translate(540 680)">
+      <rect x="-30" y="-15" width="60" height="20" rx="3" fill="#5a5a5a"/>
+      <rect x="-28" y="-13" width="56" height="12" fill="#3a3a3a"/>
+      <rect x="-30" y="5" width="4" height="15" fill="#5c3a1e"/>
+      <circle cx="-15" cy="25" r="12" fill="#2a1f12"/>
+      <circle cx="-15" cy="25" r="4" fill="#5a5a5a"/>
+    </g>
+
+    <!-- traffic cones -->
+    ${[[420,700],[960,720],[80,720]].map(([cx,cy]) => `
+      <polygon points="${cx},${cy-25} ${cx-10},${cy} ${cx+10},${cy}" fill="#f5a623"/>
+      <rect x="${cx-11}" y="${cy-17}" width="22" height="3" fill="#fff"/>
+      <rect x="${cx-12}" y="${cy-3}" width="24" height="3" fill="#2a1f12"/>
+    `).join('')}
+
+    <!-- ground line -->
+    <line x1="0" y1="720" x2="1400" y2="720" stroke="#2a1f12" stroke-width="2" opacity="0.3"/>
+  `;
+}
+
+function sceneOrchestra() {
+  return `
+    <defs>
+      <linearGradient id="stageBackdrop" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1a0510"/>
+        <stop offset="1" stop-color="#3a1020"/>
+      </linearGradient>
+      <linearGradient id="stageFloor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#6b4a2a"/>
+        <stop offset="1" stop-color="#3a2515"/>
+      </linearGradient>
+      <linearGradient id="curtain" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#a00a0a"/>
+        <stop offset="0.5" stop-color="#700505"/>
+        <stop offset="1" stop-color="#4a0303"/>
+      </linearGradient>
+      <radialGradient id="spotlight" cx="0.5" cy="0" r="1">
+        <stop offset="0" stop-color="#fffde7" stop-opacity="0.35"/>
+        <stop offset="0.5" stop-color="#fff8c4" stop-opacity="0.12"/>
+        <stop offset="1" stop-color="#fff8c4" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- backdrop -->
+    <rect width="1400" height="780" fill="url(#stageBackdrop)"/>
+
+    <!-- back wall / dark area -->
+    <rect x="0" y="0" width="1400" height="420" fill="#0a0308"/>
+
+    <!-- spotlight from above -->
+    <ellipse cx="700" cy="0" rx="600" ry="500" fill="url(#spotlight)"/>
+
+    <!-- left curtain -->
+    <path d="M0 0 L240 0 Q230 200 215 400 Q200 600 180 780 L0 780 Z" fill="url(#curtain)"/>
+    <path d="M30 0 L25 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M75 0 L68 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M120 0 L110 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M165 0 L152 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M210 0 L195 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+
+    <!-- right curtain -->
+    <path d="M1400 0 L1160 0 Q1170 200 1185 400 Q1200 600 1220 780 L1400 780 Z" fill="url(#curtain)"/>
+    <path d="M1370 0 L1375 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M1325 0 L1332 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M1280 0 L1290 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M1235 0 L1248 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+    <path d="M1190 0 L1205 780" stroke="rgba(0,0,0,0.5)" stroke-width="4" fill="none"/>
+
+    <!-- curtain valance (top drape) -->
+    <path d="M200 0 Q280 80 340 40 Q400 80 460 30 Q520 80 580 40 Q640 80 700 30 Q760 80 820 40 Q880 80 940 30 Q1000 80 1060 40 Q1120 80 1200 0 L1200 -10 L200 -10 Z" fill="#8a0505"/>
+
+    <!-- stage floor -->
+    <rect x="180" y="420" width="1040" height="360" fill="url(#stageFloor)"/>
+    <!-- floor planks -->
+    <line x1="200" y1="450" x2="1200" y2="450" stroke="#2a1810" stroke-width="0.8" opacity="0.5"/>
+    <line x1="200" y1="500" x2="1200" y2="500" stroke="#2a1810" stroke-width="0.8" opacity="0.5"/>
+    <line x1="200" y1="560" x2="1200" y2="560" stroke="#2a1810" stroke-width="0.8" opacity="0.5"/>
+    <line x1="200" y1="630" x2="1200" y2="630" stroke="#2a1810" stroke-width="0.8" opacity="0.5"/>
+    <line x1="200" y1="700" x2="1200" y2="700" stroke="#2a1810" stroke-width="0.8" opacity="0.5"/>
+
+    <!-- stage edge -->
+    <rect x="180" y="420" width="1040" height="6" fill="#b8945c"/>
+
+    <!-- conductor podium -->
+    <rect x="670" y="735" width="70" height="30" rx="2" fill="#3a2010"/>
+    <rect x="665" y="728" width="80" height="10" rx="2" fill="#5a3a20"/>
+    <rect x="670" y="738" width="70" height="3" fill="#6a4520"/>
+
+    <!-- music stands (small, in front of seated musicians) -->
+    ${[
+      [500,720],[700,720],[900,720],
+      [400,620],[560,620],[760,620],[920,620],
+      [560,520],[810,520]
+    ].map(([sx, sy]) => `
+      <rect x="${sx-12}" y="${sy-18}" width="24" height="14" rx="1" fill="#1a1a1a"/>
+      <rect x="${sx-11}" y="${sy-17}" width="22" height="12" fill="#f0eada"/>
+      <line x1="${sx-7}" y1="${sy-14}" x2="${sx+7}" y2="${sy-14}" stroke="#2a1f12" stroke-width="0.4"/>
+      <line x1="${sx-7}" y1="${sy-12}" x2="${sx+7}" y2="${sy-12}" stroke="#2a1f12" stroke-width="0.4"/>
+      <line x1="${sx-7}" y1="${sy-10}" x2="${sx+7}" y2="${sy-10}" stroke="#2a1f12" stroke-width="0.4"/>
+      <line x1="${sx-7}" y1="${sy-8}" x2="${sx+7}" y2="${sy-8}" stroke="#2a1f12" stroke-width="0.4"/>
+      <line x1="${sx}" y1="${sy-4}" x2="${sx}" y2="${sy+4}" stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="${sx-4}" y1="${sy+4}" x2="${sx+4}" y2="${sy+4}" stroke="#1a1a1a" stroke-width="1.5"/>
+    `).join('')}
+
+    <!-- floating music notes -->
+    <g class="anim-float" opacity="0.6">
+      <text x="250" y="200" font-size="32" fill="#fff">♪</text>
+    </g>
+    <g class="anim-float" style="animation-delay:-2s" opacity="0.5">
+      <text x="1100" y="250" font-size="28" fill="#fff">♫</text>
+    </g>
+    <g class="anim-float" style="animation-delay:-3.5s" opacity="0.55">
+      <text x="350" y="140" font-size="24" fill="#fff">♩</text>
+    </g>
+    <g class="anim-float" style="animation-delay:-1s" opacity="0.5">
+      <text x="980" y="160" font-size="26" fill="#fff">♬</text>
+    </g>
+  `;
+}
+
+const SCENES = { office: sceneOffice, park: scenePark, site: sceneSite, orchestra: sceneOrchestra };
+
+/* ════════════════════════════════════════════════════════════
+   RENDERING
+   ════════════════════════════════════════════════════════════ */
+let currentScene = 'office';
+
+function renderScene(name) {
+  currentScene = name;
+  document.body.className = 'scene-' + name;
+  document.querySelectorAll('.scene-btn').forEach(b => b.classList.toggle('active', b.dataset.scene === name));
+
+  const svg = document.getElementById('stage-svg');
+  const positions = POSITIONS[name];
+
+  // Build characters markup
+  const charMarkup = Object.keys(CHARS).map(key => {
+    const char = CHARS[key];
+    const pos = positions[key];
+    const instrumentMarkup = (name === 'orchestra' && INSTRUMENTS[key]) ? INSTRUMENTS[key]() : '';
+    return `
+      <g class="character" id="char-${key}" data-char="${key}" transform="translate(${pos.x} ${pos.y})" onclick="selectChar('${key}')">
+        <ellipse class="selection-ring" cx="0" cy="2" rx="22" ry="6" fill="none" stroke="${char.color}" stroke-width="2.5" opacity="0"/>
+        <g class="char-body">
+          ${char.body(char.color, char.skin)}
+          ${instrumentMarkup}
+        </g>
+        <g class="work-fx">${char.fx(char.color)}</g>
+        <g class="char-status" transform="translate(0 -60)">
+          <circle cx="0" cy="0" r="5" fill="#fbbf24"/>
+          <circle cx="0" cy="0" r="5" fill="#fbbf24" opacity="0.5">
+            <animate attributeName="r" values="5;10;5" dur="1.2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.5;0;0.5" dur="1.2s" repeatCount="indefinite"/>
+          </circle>
+        </g>
+        <g class="feedback-bubble" transform="translate(32 -68)" onclick="event.stopPropagation(); respondToFeedback('${key}')">
+          <path d="M-30 -14 L30 -14 Q38 -14 38 -6 L38 6 Q38 14 30 14 L-6 14 L-14 22 L-10 14 L-30 14 Q-38 14 -38 6 L-38 -6 Q-38 -14 -30 -14 Z"
+                fill="#fff" stroke="${char.color}" stroke-width="2"/>
+          <text x="0" y="3" font-size="10" font-weight="700" fill="${char.color}" text-anchor="middle">Help?</text>
+        </g>
+        <text class="char-label" y="18">${char.name}</text>
+      </g>
+    `;
+  }).join('');
+
+  svg.innerHTML = SCENES[name]() + charMarkup;
+}
+
+/* ════════════════════════════════════════════════════════════
+   CHARACTER SELECTION + DETAILS
+   ════════════════════════════════════════════════════════════ */
+function selectChar(id) {
+  document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
+  document.getElementById('char-' + id).classList.add('selected');
+
+  const char = CHARS[id];
+  const detail = document.getElementById('detail');
+  document.getElementById('detail-empty').style.display = 'none';
+  detail.classList.add('visible');
+  detail.style.setProperty('--c', char.color);
+
+  // avatar: render a small version
+  document.getElementById('detail-avatar').innerHTML =
+    `<svg viewBox="-22 -50 44 60">${char.body(char.color, char.skin)}</svg>`;
+  document.getElementById('detail-name').textContent = char.name;
+  document.getElementById('detail-role').textContent = char.role;
+  document.getElementById('detail-desc').textContent = char.desc;
+  document.getElementById('detail-quote').textContent = char.quote;
+  document.getElementById('detail-stats').innerHTML =
+    char.stats.map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+}
+
+/* ════════════════════════════════════════════════════════════
+   STATE CONTROL
+   ════════════════════════════════════════════════════════════ */
+function setState(id, state) {
+  const el = document.getElementById('char-' + id);
+  if (!el) return;
+  el.classList.remove('working', 'done', 'blocked', 'needs-feedback');
+  if (state) el.classList.add(state);
+}
+
+function resetStates() {
+  Object.keys(CHARS).forEach(id => setState(id, null));
+}
+
+/* ════════════════════════════════════════════════════════════
+   FEEDBACK REQUEST MECHANISM
+   When an agent hits an approval gate or needs input, it enters
+   the 'needs-feedback' state and shows a speech bubble. Clicking
+   the bubble acknowledges and resumes the agent.
+   ════════════════════════════════════════════════════════════ */
+function requestFeedback(id, context) {
+  const el = document.getElementById('char-' + id);
+  if (!el) return;
+  el.classList.remove('working', 'done', 'blocked');
+  el.classList.add('needs-feedback');
+
+  // flash the header
+  const header = document.querySelector('header');
+  header.classList.remove('needs-attention');
+  void header.offsetWidth; // force reflow
+  header.classList.add('needs-attention');
+
+  addFeed(`⚠ ${CHARS[id].name} needs your feedback — ${context || 'click the bubble'}`, CHARS[id].color);
+
+  // Try a subtle beep via WebAudio
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 660;
+    gain.gain.value = 0.08;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) { /* audio blocked — silent */ }
+}
+
+function respondToFeedback(id) {
+  const el = document.getElementById('char-' + id);
+  if (!el || !el.classList.contains('needs-feedback')) return;
+  el.classList.remove('needs-feedback');
+  el.classList.add('working');
+  addFeed(`✓ You responded to ${CHARS[id].name}. Resuming...`, '#22C55E');
+
+  // after a moment, transition to done
+  setTimeout(() => {
+    if (el.classList.contains('working')) {
+      el.classList.remove('working');
+      el.classList.add('done');
+      addFeed(`${CHARS[id].name}: thanks! continuing ✓`, CHARS[id].color);
+    }
+  }, 1500);
+}
+
+function simulateFeedback() {
+  // pick a random character that isn't in feedback state
+  const candidates = Object.keys(CHARS).filter(id => {
+    const el = document.getElementById('char-' + id);
+    return el && !el.classList.contains('needs-feedback');
+  });
+  if (candidates.length === 0) return;
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  const contexts = [
+    'choose between two design options',
+    'approve requirements draft',
+    'confirm spec changes',
+    'review findings',
+    'unblock ambiguous ACL rule',
+    'pick naming for new field',
+  ];
+  const ctx = contexts[Math.floor(Math.random() * contexts.length)];
+  requestFeedback(pick, ctx);
+}
+
+/* ════════════════════════════════════════════════════════════
+   LIVE FEED
+   ════════════════════════════════════════════════════════════ */
+function addFeed(message, color) {
+  const feed = document.getElementById('feed');
+  const line = document.createElement('div');
+  line.className = 'feed-line';
+  line.style.setProperty('--lc', color || 'rgba(255,255,255,0.2)');
+  line.textContent = message;
+  feed.prepend(line);
+  // cap at 30 lines
+  while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+}
+
+/* ════════════════════════════════════════════════════════════
+   DEMO PIPELINE
+   ════════════════════════════════════════════════════════════ */
+const DEMO_STEPS = [
+  { d: 400,  c: 'pip',     s: 'working', m: 'Pip: reading OpenAPI spec...' },
+  { d: 1400, c: 'pip',     s: 'feedback', m: 'approve requirements draft' },
+  { d: 0,    c: 'pip',     s: 'done',    m: 'Pip: requirements approved ✓' },
+  { d: 300,  c: 'archie',  s: 'working', m: 'Archie: analyzing service boundaries...' },
+  { d: 1600, c: 'archie',  s: 'feedback', m: 'confirm tech design approach' },
+  { d: 0,    c: 'archie',  s: 'done',    m: 'Archie: tech design approved ✓' },
+  { d: 300,  c: 'yara',    s: 'working', m: 'Yara: editing publisher spec...' },
+  { d: 1400, c: 'yara',    s: 'done',    m: 'Yara: YAML validated, synced to frontend ✓' },
+  { d: 300,  c: 'bruno',   s: 'working', m: 'Bruno: generating DTOs from spec...' },
+  { d: 200,  c: 'echo',    s: 'working', m: 'Echo: creating mock endpoints...' },
+  { d: 200,  c: 'stratos', s: 'working', m: 'Stratos: provisioning SQS queue...' },
+  { d: 1000, c: 'mira',    s: 'working', m: 'Mira: consulting design system...' },
+  { d: 500,  c: 'pixel',   s: 'working', m: 'Pixel: wiring API layer...' },
+  { d: 800,  c: 'mira',    s: 'done',    m: 'Mira: UX spec produced ✓' },
+  { d: 1800, c: 'echo',    s: 'done',    m: 'Echo: 12 mock routes live ✓' },
+  { d: 400,  c: 'stratos', s: 'done',    m: 'Stratos: CDK synth passed ✓' },
+  { d: 1200, c: 'bruno',   s: 'done',    m: 'Bruno: 221 tests passing ✓' },
+  { d: 800,  c: 'pixel',   s: 'done',    m: 'Pixel: EN+AR translations done ✓' },
+  { d: 300,  c: 'crit',    s: 'working', m: 'Crit: reviewing each diff line...' },
+  { d: 1600, c: 'crit',    s: 'done',    m: 'Crit: 0 critical findings ✓' },
+  { d: 300,  c: 'judge',   s: 'working', m: 'Judge: cross-repo validation...' },
+  { d: 1800, c: 'judge',   s: 'done',    m: 'Judge: PASS — all green ✓' },
+];
+
+function waitForFeedbackResponse(id) {
+  return new Promise(resolve => {
+    const el = document.getElementById('char-' + id);
+    const check = () => {
+      if (!el.classList.contains('needs-feedback')) {
+        resolve();
+      } else {
+        setTimeout(check, 120);
+      }
+    };
+    check();
+  });
+}
+
+async function runDemo() {
+  const btn = document.getElementById('demoBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Pipeline Running...';
+  resetStates();
+  addFeed('─── Pipeline started ───', '#F5A623');
+
+  for (const step of DEMO_STEPS) {
+    await new Promise(r => setTimeout(r, step.d));
+    if (step.s === 'feedback') {
+      requestFeedback(step.c, step.m);
+      btn.textContent = '⏸ Waiting for your feedback...';
+      await waitForFeedbackResponse(step.c);
+      btn.textContent = '⏳ Pipeline Running...';
+      continue;
+    }
+    setState(step.c, step.s);
+    addFeed(step.m, CHARS[step.c].color);
+  }
+
+  await new Promise(r => setTimeout(r, 1500));
+  addFeed('─── Pipeline complete ───', '#22C55E');
+  btn.disabled = false;
+  btn.textContent = '▶ Run Demo Pipeline';
+}
+
+/* ════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.scene-btn').forEach(btn => {
+  btn.addEventListener('click', () => renderScene(btn.dataset.scene));
+});
+
+renderScene('office');
+</script>
+</body>
+</html>

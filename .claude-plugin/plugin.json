@@ -1,0 +1,27 @@
+{
+  "name": "pipecrew",
+  "version": "1.0.0",
+  "description": "PipeCrew — a multi-repo agent crew that ships features end-to-end. Discover a project (/discover), deliver a feature (/deliver), review code (/review), assess cross-repo integration (/assess), and manage agent context (/context-refresh). Supports Spring Boot, React, Next.js, NestJS, FastAPI, CDK, and Node mock stacks.",
+  "author": {
+    "name": "Ramy Hassan"
+  },
+  "homepage": "https://github.com/ramy-hassan/pipecrew",
+  "repository": "https://github.com/ramy-hassan/pipecrew",
+  "license": "MIT",
+  "keywords": [
+    "pipecrew",
+    "feature-pipeline",
+    "multi-repo",
+    "spec-first",
+    "openapi",
+    "spring-boot",
+    "react",
+    "nextjs",
+    "nestjs",
+    "fastapi",
+    "cdk",
+    "code-review",
+    "cross-repo",
+    "orchestration"
+  ]
+}

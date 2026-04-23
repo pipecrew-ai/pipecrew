@@ -1,0 +1,63 @@
+{
+  "workspace": {
+    "name": "Acme SaaS Platform",
+    "slug": "acme",
+    "primary_language": "en"
+  },
+
+  "repos": {
+    "api-gateway": {
+      "path": "/home/dev/acme/api-gateway",
+      "type": "nestjs",
+      "role": "api-service",
+      "spec_file": "openapi/spec.yaml",
+      "description": "NestJS API gateway — auth, routing, rate limiting"
+    },
+    "billing-service": {
+      "path": "/home/dev/acme/billing-service",
+      "type": "fastapi",
+      "role": "api-service",
+      "spec_file": "openapi.yaml",
+      "description": "FastAPI billing — subscriptions, invoices, Stripe integration"
+    },
+    "web-app": {
+      "path": "/home/dev/acme/web-app",
+      "type": "nextjs",
+      "role": "frontend",
+      "description": "Next.js customer dashboard",
+      "spec_copies": {
+        "api-gateway": "src/api/gateway-spec.yaml",
+        "billing-service": "src/api/billing-spec.yaml"
+      }
+    },
+    "infra": {
+      "path": "/home/dev/acme/infra",
+      "type": "cdk",
+      "role": "infrastructure",
+      "description": "AWS CDK — ECS, RDS, SQS, CloudFront"
+    }
+  },
+
+  "services": {
+    "gateway": {
+      "repo": "api-gateway",
+      "spec_file": "openapi/spec.yaml",
+      "description": "API gateway — auth, user management, routing"
+    },
+    "billing": {
+      "repo": "billing-service",
+      "spec_file": "openapi.yaml",
+      "description": "Billing — subscriptions, invoices, payments"
+    }
+  },
+
+  "domain": {
+    "name": "Acme SaaS Platform",
+    "primary_entities": ["User", "Organization", "Subscription", "Invoice", "Plan"],
+    "user_roles": ["Admin", "Member", "Billing Admin"],
+    "auth_type": "jwt",
+    "i18n_languages": ["en"],
+    "rtl_support": false,
+    "domain_notes": "B2B SaaS platform with multi-tenant organizations, role-based access, and Stripe-backed billing."
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "workspace": {
+    "name": "Digital Arabic Library",
+    "slug": "dal",
+    "pipeline_dir": "~/.claude/workspaces/dal/pipeline",
+    "primary_language": "en"
+  },
+
+  "repos": {
+    "publisher-service": {
+      "path": "C:/ABVI/abvi-publisher-service",
+      "type": "spring-boot",
+      "role": "api-service",
+      "spec_file": "openapi/specs.yaml",
+      "description": "Publisher-facing REST API — book catalog, contracts, uploads"
+    },
+    "backoffice-service": {
+      "path": "C:/ABVI/abvi-backoffice-service",
+      "type": "spring-boot",
+      "role": "api-service",
+      "spec_file": "openapi/specs.yaml",
+      "description": "Internal backoffice — review assignments, reports"
+    },
+    "user-management": {
+      "path": "C:/ABVI/abvi-user-management",
+      "type": "spring-boot",
+      "role": "api-service",
+      "spec_file": "openapi/specs.yaml",
+      "description": "Auth, user profiles, roles"
+    },
+    "frontend": {
+      "path": "C:/ABVI/abvi-pms-frontend",
+      "type": "react",
+      "role": "frontend",
+      "description": "Publisher Management System — React + TypeScript SPA",
+      "spec_copies": {
+        "publisher-service": "src/api/publisher-api-specs.yaml",
+        "backoffice-service": "src/api/backoffice-api-specs.yaml"
+      }
+    },
+    "mock-server": {
+      "path": "C:/ABVI/abvi-backends-mock",
+      "type": "node-mock",
+      "role": "mock-server",
+      "description": "Express mock server mirroring real backend APIs",
+      "spec_copies": {
+        "publisher-service": "publisher-service/specs.yaml",
+        "backoffice-service": "backoffice-service/specs.yaml"
+      }
+    },
+    "infra": {
+      "path": "C:/ABVI/abvi-ops-platform",
+      "type": "cdk",
+      "role": "infrastructure",
+      "description": "AWS CDK stacks — SQS, S3, Fargate"
+    }
+  },
+
+  "services": {
+    "publisher": {
+      "repo": "publisher-service",
+      "spec_file": "openapi/specs.yaml",
+      "description": "Publisher management — book catalog, contracts, uploads"
+    },
+    "backoffice": {
+      "repo": "backoffice-service",
+      "spec_file": "openapi/specs.yaml",
+      "description": "Internal management — review assignments, reports"
+    },
+    "user-management": {
+      "repo": "user-management",
+      "spec_file": "openapi/specs.yaml",
+      "description": "Auth and user management"
+    }
+  },
+
+  "domain": {
+    "name": "Digital Arabic Library",
+    "primary_entities": ["Book", "Publisher", "Contract", "Reviewer", "Review"],
+    "user_roles": ["Publisher", "ALC Manager", "Reviewer"],
+    "auth_type": "jwt",
+    "i18n_languages": ["en", "ar"],
+    "rtl_support": true,
+    "domain_notes": "Arabic-language book publishing and review platform. Publishers submit books; ALC managers assign reviewers; reviewers submit evaluations."
+  }
+}

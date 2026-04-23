@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pipeline Crew — Peeps Edition</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #fef6e4;
+    color: #172c66;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive;
+    min-height: 100vh;
+    padding: 28px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 24px;
+    border-bottom: 3px solid #172c66;
+    margin-bottom: 28px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  h1 { font-size: 24px; }
+  .sub { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+  .demo-btn {
+    margin-left: auto;
+    padding: 12px 22px;
+    background: #f582ae;
+    border: 3px solid #172c66;
+    color: #172c66;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 30px;
+    box-shadow: 4px 4px 0 #172c66;
+    transform: rotate(-1deg);
+  }
+  .demo-btn:hover { transform: rotate(1deg); }
+  .demo-btn:active { transform: translate(2px,2px) rotate(0); box-shadow: 2px 2px 0 #172c66; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .card {
+    background: #fff;
+    border: 3px solid #172c66;
+    border-radius: 24px;
+    padding: 18px 12px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    box-shadow: 4px 4px 0 #172c66;
+  }
+  .card:nth-child(2n) { transform: rotate(-1deg); }
+  .card:nth-child(3n) { transform: rotate(1.5deg); }
+  .card:nth-child(5n) { transform: rotate(-0.5deg); }
+  .card:hover { transform: translateY(-6px) rotate(0); box-shadow: 6px 6px 0 #172c66; }
+  .card.selected { background: #fef6e4; }
+
+  .card svg { width: 130px; height: 140px; display: block; margin: 0 auto 6px; }
+  .card.working svg { animation: wobble 0.8s ease-in-out infinite; }
+  .card.done svg { animation: jump 0.6s ease-out 2; }
+  @keyframes wobble {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+  }
+  @keyframes jump {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    50% { transform: translateY(-14px) rotate(-5deg) scale(1.08); }
+  }
+
+  .name { font-size: 18px; font-weight: 700; }
+  .role { font-size: 11px; opacity: 0.65; margin-top: 3px; font-family: 'Segoe UI', sans-serif; }
+
+  .status {
+    position: absolute;
+    top: 10px; right: 12px;
+    padding: 3px 9px;
+    background: #e5e5e5;
+    border: 2px solid #172c66;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .card.working .status { background: #ffd166; }
+  .card.done .status { background: #72efb2; }
+  .card.working .status::after { content: 'WORK'; }
+  .card.done .status::after { content: 'DONE'; }
+  .card:not(.working):not(.done) .status::after { content: 'IDLE'; }
+
+  .note {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 11px;
+    opacity: 0.5;
+    font-family: 'Segoe UI', sans-serif;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>✏️ Pipeline Crew — Peeps Edition</h1>
+    <div class="sub">Hand-drawn, sketchy, imperfect lines. Inspired by Open Peeps style.</div>
+  </div>
+  <button class="demo-btn" onclick="runDemo()">▶ Run the Demo!</button>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<div class="note">
+  These characters are hand-coded SVG with rough stroke paths and organic shapes.
+  For a production version you'd use the actual Open Peeps asset library (openpeeps.com).
+</div>
+
+<script>
+/* shared body template: only head detail + body color vary
+   proportions: taller than chibi, more adult */
+function peep({ color, hair, hairStyle, skin, accessory }) {
+  const h = hairStyle || 'short';
+  const hairPath = {
+    short:   `<path d="M40 38 Q42 24 60 22 Q78 22 82 36 Q82 42 78 44 L42 44 Q40 42 40 38 Z" fill="${hair}" stroke="#172c66" stroke-width="2" stroke-linejoin="round"/>`,
+    long:    `<path d="M36 48 Q34 24 60 20 Q86 22 86 46 Q86 72 82 82 L82 46 Q80 44 78 44 L42 44 Q40 44 38 46 L38 80 Q36 64 36 48 Z" fill="${hair}" stroke="#172c66" stroke-width="2" stroke-linejoin="round"/>`,
+    curly:   `<path d="M38 42 Q34 28 46 22 Q50 18 58 20 Q68 16 74 22 Q86 24 84 40 Q88 44 84 46 L40 46 Q36 46 38 42 Z" fill="${hair}" stroke="#172c66" stroke-width="2" stroke-linejoin="round"/><circle cx="42" cy="34" r="4" fill="${hair}" stroke="#172c66" stroke-width="1.5"/><circle cx="50" cy="26" r="4" fill="${hair}" stroke="#172c66" stroke-width="1.5"/><circle cx="62" cy="22" r="4" fill="${hair}" stroke="#172c66" stroke-width="1.5"/><circle cx="74" cy="26" r="4" fill="${hair}" stroke="#172c66" stroke-width="1.5"/><circle cx="82" cy="36" r="4" fill="${hair}" stroke="#172c66" stroke-width="1.5"/>`,
+    bald:    ``,
+    hat:     `<rect x="38" y="26" width="44" height="16" rx="4" fill="${hair}" stroke="#172c66" stroke-width="2"/><rect x="34" y="40" width="52" height="5" rx="1" fill="${hair}" stroke="#172c66" stroke-width="2"/>`,
+    bun:     `<circle cx="60" cy="20" r="8" fill="${hair}" stroke="#172c66" stroke-width="2"/><path d="M40 44 Q38 32 48 28 Q58 26 60 28 Q62 26 72 28 Q82 32 80 44 Z" fill="${hair}" stroke="#172c66" stroke-width="2"/>`,
+  }[h];
+
+  const accs = {
+    none:    ``,
+    glasses: `<circle cx="52" cy="60" r="6" fill="none" stroke="#172c66" stroke-width="2"/><circle cx="68" cy="60" r="6" fill="none" stroke="#172c66" stroke-width="2"/><line x1="58" y1="60" x2="62" y2="60" stroke="#172c66" stroke-width="2"/>`,
+    beard:   `<path d="M46 76 Q52 86 60 88 Q68 86 74 76 L72 74 Q66 80 60 80 Q54 80 48 74 Z" fill="${hair}" stroke="#172c66" stroke-width="1.8" stroke-linejoin="round"/>`,
+    earring: `<circle cx="38" cy="68" r="2.5" fill="#ffd166" stroke="#172c66" stroke-width="1"/><circle cx="82" cy="68" r="2.5" fill="#ffd166" stroke="#172c66" stroke-width="1"/>`,
+  }[accessory || 'none'];
+
+  return `
+    <svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
+      <!-- neck -->
+      <path d="M54 78 Q54 88 52 94 L68 94 Q66 88 66 78 Z" fill="${skin}" stroke="#172c66" stroke-width="2" stroke-linejoin="round"/>
+      <!-- body -->
+      <path d="M32 96 Q30 92 48 90 L72 90 Q90 92 88 96 L92 140 Q80 146 60 146 Q40 146 28 140 Z"
+            fill="${color}" stroke="#172c66" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- collar/neck line -->
+      <path d="M48 92 Q60 98 72 92" stroke="#172c66" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- arms -->
+      <path d="M30 98 Q22 114 26 132" stroke="#172c66" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M90 98 Q98 114 94 132" stroke="#172c66" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- head -->
+      <path d="M38 56 Q38 38 60 38 Q82 38 82 56 L82 72 Q80 82 60 82 Q40 82 38 72 Z"
+            fill="${skin}" stroke="#172c66" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- ears -->
+      <ellipse cx="38" cy="66" rx="3" ry="5" fill="${skin}" stroke="#172c66" stroke-width="2"/>
+      <ellipse cx="82" cy="66" rx="3" ry="5" fill="${skin}" stroke="#172c66" stroke-width="2"/>
+      <!-- eyes -->
+      <circle cx="52" cy="60" r="1.6" fill="#172c66"/>
+      <circle cx="68" cy="60" r="1.6" fill="#172c66"/>
+      <!-- eyebrows -->
+      <path d="M48 54 Q52 52 56 54" stroke="#172c66" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M64 54 Q68 52 72 54" stroke="#172c66" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <!-- cheeks -->
+      <ellipse cx="46" cy="68" rx="3" ry="2" fill="#f582ae" opacity="0.5"/>
+      <ellipse cx="74" cy="68" rx="3" ry="2" fill="#f582ae" opacity="0.5"/>
+      <!-- mouth -->
+      <path d="M54 70 Q60 74 66 70" stroke="#172c66" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      ${hairPath}
+      ${accs}
+    </svg>
+  `;
+}
+
+const CHARS = [
+  { id: 'pip',     name: 'Pip',     role: 'Product Owner',      color: '#ffd166', hair: '#3a2718', hairStyle: 'short',   skin: '#FFD4A3', accessory: 'none' },
+  { id: 'archie',  name: 'Archie',  role: 'Solution Architect', color: '#74c0fc', hair: '#2a1f12', hairStyle: 'short',   skin: '#FFD4A3', accessory: 'glasses' },
+  { id: 'yara',    name: 'Yara',    role: 'Spec Editor',        color: '#72efb2', hair: '#2a1f12', hairStyle: 'long',    skin: '#E8B888', accessory: 'none' },
+  { id: 'bruno',   name: 'Bruno',   role: 'Backend',            color: '#f7a23a', hair: '#1a1a1a', hairStyle: 'hat',     skin: '#E8B888', accessory: 'beard' },
+  { id: 'pixel',   name: 'Pixel',   role: 'Frontend',           color: '#b197fc', hair: '#2a1f12', hairStyle: 'curly',   skin: '#FFD4A3', accessory: 'none' },
+  { id: 'mira',    name: 'Mira',    role: 'UX Consultant',      color: '#f582ae', hair: '#3d1f12', hairStyle: 'long',    skin: '#FFD4A3', accessory: 'earring' },
+  { id: 'echo',    name: 'Echo',    role: 'Mock',               color: '#72efb2', hair: '#14532d', hairStyle: 'short',   skin: '#BEF264', accessory: 'none' },
+  { id: 'stratos', name: 'Stratos', role: 'Infra',              color: '#7dd3fc', hair: '#2a1f12', hairStyle: 'bald',    skin: '#FFD4A3', accessory: 'beard' },
+  { id: 'crit',    name: 'Crit',    role: 'Reviewer',           color: '#ff6b6b', hair: '#1a1a1a', hairStyle: 'short',   skin: '#FFD4A3', accessory: 'glasses' },
+  { id: 'judge',   name: 'Judge',   role: 'Assessor',           color: '#b197fc', hair: '#dddddd', hairStyle: 'bun',     skin: '#FFD4A3', accessory: 'none' },
+];
+
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = CHARS.map(c => `
+    <div class="card" id="card-${c.id}" onclick="select('${c.id}')">
+      <div class="status"></div>
+      ${peep(c)}
+      <div class="name">${c.name}</div>
+      <div class="role">${c.role}</div>
+    </div>
+  `).join('');
+}
+
+function select(id) {
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('card-' + id).classList.add('selected');
+}
+
+function setState(id, state) {
+  const el = document.getElementById('card-' + id);
+  el.classList.remove('working', 'done');
+  if (state) el.classList.add(state);
+}
+
+async function runDemo() {
+  CHARS.forEach(c => setState(c.id, null));
+  const seq = ['pip','archie','yara','bruno','echo','stratos','mira','pixel','crit','judge'];
+  for (const id of seq) {
+    setState(id, 'working');
+    await new Promise(r => setTimeout(r, 800));
+    setState(id, 'done');
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+
+render();
+</script>
+</body>
+</html>

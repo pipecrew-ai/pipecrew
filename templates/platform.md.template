@@ -1,0 +1,46 @@
+# {{WORKSPACE_NAME}} — Platform Context
+
+> This file is the always-loaded foundation context for all coordinating agents (product-owner, solution-architect, assessor). It describes the domain, entities, service map, tech stack, and established patterns. Enriched by /init Phase B2 architect-led discovery.
+
+## Domain
+{{DOMAIN_NAME}}
+{{DOMAIN_NOTES}}
+
+## Entities & Ownership
+
+| Entity | Owning Service | Key States |
+|--------|---------------|------------|
+{{ENTITY_TABLE}}
+
+## User Roles & Permissions
+
+| Role | Description | Key Permissions |
+|------|-------------|-----------------|
+{{ROLE_TABLE}}
+
+## Status Lifecycles
+{{STATUS_LIFECYCLES}}
+
+## Service Map
+
+| Service | Repo | Type | Spec | Description |
+|---------|------|------|------|-------------|
+{{SERVICE_TABLE}}
+
+## Tech Stack
+{{TECH_STACK_SUMMARY}}
+
+## Integration Patterns
+{{INTEGRATION_PATTERNS}}
+
+## Infrastructure Topology
+{{INFRA_TOPOLOGY}}
+
+## Established Patterns (all agents must know these)
+{{ESTABLISHED_PATTERNS}}
+
+## Known Constraints
+{{KNOWN_CONSTRAINTS}}
+
+## Open Questions / Evolving Decisions
+{{OPEN_QUESTIONS}}

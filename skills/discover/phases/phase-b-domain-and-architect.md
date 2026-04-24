@@ -114,15 +114,14 @@ For the `## Architecture Diagram` section in platform.md, write EXACTLY this poi
     directly to update the diagram — re-running `/discover` will merge rather
     than overwrite if the file already exists.
 
-The **actual diagram** is written to a SEPARATE file at `{workspace_root}/{slug}/context/architecture.mmd`. Produce a Mermaid `graph LR` (or `graph TB` if the topology is better top-down) that captures:
+The **actual diagram** is written to a SEPARATE file at `{workspace_root}/{slug}/context/architecture.mmd`. Follow the Mermaid conventions defined in your system prompt (edge semantics, `classDef` palette, observation-only discipline). What to put into this particular diagram:
 
-- **Every service** from the Service Map as a node. Use the service key as the node id; use the service name + type as the label. Group api-services, workers, and infrastructure into `subgraph` blocks.
-- **Every cross-service edge** from Integration Patterns. Use `-->` for sync REST calls (label with the endpoint prefix like `/books/*`), `-.->` for async events (label with the queue/topic name), and `==>` for shared-resource writes (e.g., S3 bucket, database).
-- **External actors** (end-user roles, external third-party services) as nodes outside the service subgraphs, drawn at the top of the diagram.
-- **Infrastructure resources** (queues, buckets, databases) as nodes with a distinct style using `classDef infra fill:#2a3a50,stroke:#5577aa,color:#ccddff;`.
-- Apply `classDef worker fill:#3a2a50,stroke:#8855aa,color:#eeccff;` to workers and `classDef frontend fill:#2a5030,stroke:#55aa66,color:#ccffdd;` to frontend nodes so the types are visually distinguishable.
+- **Every service** from the Service Map as a node, grouped in `subgraph` blocks by role (Frontends, Services, Workers, Databases, Infrastructure, External).
+- **External actors** (user roles, third-party services) as nodes outside the service subgraphs, drawn at the top.
+- **Every edge** comes from the Integration Patterns you captured — label each edge with the endpoint prefix, queue/topic name, or resource name so a reader can audit it against the code.
+- Choose `graph LR` by default; switch to `graph TB` only if the topology is clearly top-down.
 
-Example skeleton (do not copy literally — produce the real topology from the workspace):
+Example skeleton (illustrates the conventions — do NOT copy literally; produce the real topology from the workspace):
 
 ```mermaid
 graph LR
@@ -164,8 +163,6 @@ graph LR
     classDef worker fill:#3a2a50,stroke:#8855aa,color:#eeccff;
     classDef frontend fill:#2a5030,stroke:#55aa66,color:#ccffdd;
 ```
-
-**Keep the diagram honest.** Only draw edges you observed in code. If you're unsure whether service A calls service B synchronously vs via events, say so in the label or leave it out and add a note under `## Open Questions`.
 
 For the `## Architect Guidance` section, write EXACTLY this stub content (replace {workspace.name} with the actual name):
 

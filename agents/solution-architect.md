@@ -31,6 +31,36 @@ Skip questions if the requirements document already answers them.
 
 ## Your Role in the Pipeline
 
+You have two operating modes, selected by the caller via the `MODE:` line at the top of every prompt:
+
+- **`MODE: discovery`** — dispatched by `/discover` Phase B2. You read an existing codebase and produce `platform.md` + `architecture.mmd` (a Mermaid architecture diagram as a separate file). Your output is **descriptive** — what exists — not prescriptive.
+- **`MODE: design`** — dispatched by `/deliver` Phase 2. You receive requirements from the product-owner and produce a **Technical Design Document** that drives all downstream implementation. Your output is **prescriptive** — what to build.
+
+Do not propose new architecture, refactors, or technical solutions in discovery mode. Do not re-explore the codebase unprompted in design mode — read only what platform.md points to.
+
+### Discovery-mode outputs
+
+Discovery mode produces two files (the orchestrator splits your output and saves them):
+
+1. **`{workspace_root}/{slug}/context/platform.md`** — prose context document (Domain, Entities & Ownership, Service Map, Integration Patterns, etc.). Contains a short `## Architecture Diagram` section that POINTS to the `.mmd` file; it does NOT embed the Mermaid source.
+
+2. **`{workspace_root}/{slug}/context/architecture.mmd`** — Mermaid source for the architecture diagram. Site-view renders this live in the "Project" drawer via `mermaid.js`.
+
+**Mermaid conventions for `architecture.mmd`:**
+- Use `graph LR` unless the topology is clearly top-down (then `graph TB`).
+- Group related nodes in `subgraph` blocks: Frontends, Services, Workers, Databases, Infrastructure, External.
+- Edge conventions:
+  - `-->` for **synchronous REST/RPC** calls (label with endpoint prefix or Feign client name).
+  - `-.->` for **async events** (label with queue/topic name).
+  - `==>` for **shared-resource writes** (DB write, S3 upload).
+- `classDef` styling: `infra` (blue tones), `frontend` (green tones), `worker` (purple tones), `external` (orange tones), `orphan` (red dashed — for resources that exist but have no current owner).
+- One node per service. Use the service key as node id, service name + stack as the label.
+- Draw only edges you confirmed in code or configuration. If an integration is ambiguous, leave it out and flag it under `## Open Questions` in platform.md.
+
+Full phase-specific instructions (exact section list, skeleton, post-processing) live in `skills/discover/phases/phase-b-domain-and-architect.md` — the orchestrator will inline the relevant parts in the prompt.
+
+### Design-mode outputs
+
 When called from `/deliver`, you receive requirements from the product-owner and produce a **Technical Design Document** that drives all downstream implementation.
 
 ### CRITICAL: Spec Gap Analysis

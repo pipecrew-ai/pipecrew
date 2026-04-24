@@ -165,16 +165,16 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | Phase | File | ~Lines |
 |-------|------|--------|
 | Pre-flight + Resume + Scratchpad template | `phases/pre-flight.md` | 181 |
-| 1. Requirements | `phases/phase-1.md` | 38 |
-| 2. Architecture | `phases/phase-2.md` | 53 |
-| 3. Contract + Spec Edit (3a + 3b) | `phases/phase-3.md` | 209 |
-| 4. Sync + 4.5 Plan | `phases/phase-4.md` | 231 |
+| 1. Requirements | `phases/phase-1-requirements.md` | 38 |
+| 2. Architecture | `phases/phase-2-architecture.md` | 53 |
+| 3. Contract + Spec Edit (3a + 3b) | `phases/phase-3-spec-edit.md` | 209 |
+| 4. Sync + 4.5 Plan | `phases/phase-4-plan.md` | 231 |
 | Dispatch rules + task contract | `phases/dispatch-rules.md` | 83 |
-| 5. Implementation | `phases/phase-5.md` | 141 |
-| 5.5. Code Review | `phases/phase-5.5.md` | 126 |
-| 5.75. Security Review | `phases/phase-5.75.md` | 78 |
-| 6. Assessment | `phases/phase-6.md` | 101 |
-| 7. Summary + Archive | `phases/phase-7.md` | 216 |
+| 5. Implementation | `phases/phase-5-build.md` | 141 |
+| 5.5. Code Review | `phases/phase-5.5-code-review.md` | 126 |
+| 5.75. Security Review | `phases/phase-5.75-security-review.md` | 78 |
+| 6. Assessment | `phases/phase-6-assess.md` | 101 |
+| 7. Summary + Archive | `phases/phase-7-report.md` | 216 |
 
 **When entering a phase**: `Read {plugin_dir}/skills/deliver/phases/{phase-file}` — follow the instructions in that file for the phase.
 

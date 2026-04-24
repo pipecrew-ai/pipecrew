@@ -909,6 +909,119 @@
     justify-content: space-between;
     text-transform: uppercase;
   }
+
+  /* Workspace overview drawer (from /discover outputs) */
+  .project-btn {
+    background: transparent;
+    border: 1px solid var(--line-d, #7a5a20);
+    color: var(--accent, #f5a623);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 2px;
+    text-transform: uppercase;
+    margin-left: 8px;
+  }
+  .project-btn:hover { background: rgba(245, 166, 35, 0.12); }
+  .project-drawer[hidden] { display: none !important; }
+  .project-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(680px, 90vw);
+    background: var(--bg, #1a1410);
+    border-left: 2px solid var(--accent, #f5a623);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .project-drawer-inner { padding: 0; }
+  .project-drawer-header {
+    position: sticky;
+    top: 0;
+    background: var(--bg, #1a1410);
+    border-bottom: 1px solid var(--line-d, #7a5a20);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+  }
+  .project-drawer-header h2 {
+    font-size: 14px;
+    margin: 0;
+    color: var(--accent, #f5a623);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .project-drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--muted, #a88a50);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 8px;
+  }
+  .project-drawer-close:hover { color: var(--accent, #f5a623); }
+  .project-drawer-body {
+    padding: 18px 20px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text, #d9c3a0);
+  }
+  .project-drawer-body h3 {
+    font-size: 11px;
+    color: var(--accent, #f5a623);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin: 16px 0 8px 0;
+    border-bottom: 1px dashed var(--line-d, #7a5a20);
+    padding-bottom: 4px;
+  }
+  .project-drawer-body h3:first-child { margin-top: 0; }
+  .project-drawer-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .project-drawer-body th, .project-drawer-body td {
+    text-align: left;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(122, 90, 32, 0.3);
+  }
+  .project-drawer-body th {
+    color: var(--muted, #a88a50);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .project-drawer-body pre {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(122, 90, 32, 0.4);
+    padding: 10px;
+    font-size: 10px;
+    overflow-x: auto;
+    max-height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .audit-pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .audit-pill.critical { background: #5a1818; color: #ff9999; }
+  .audit-pill.high { background: #5a3818; color: #ffb366; }
+  .audit-pill.medium { background: #5a5218; color: #ffe066; }
+  .audit-pill.low { background: #2a3818; color: #a3d98a; }
 </style>
 </head>
 <body>
@@ -955,8 +1068,24 @@
     <button type="button" class="mute-btn" id="mute-btn"
       aria-label="mute notifications"
       title="Mute notification sounds (resets on next gate)">🔔</button>
+    <button type="button" class="project-btn" id="project-btn"
+      aria-label="Show project overview (from /discover)"
+      title="Workspace overview — repos, services, audit findings (from /discover)">📖 Project</button>
   </div>
 </header>
+
+<!-- Workspace overview drawer — shows /discover outputs (static across /deliver runs) -->
+<div id="project-drawer" class="project-drawer" role="dialog" aria-modal="false" aria-labelledby="project-drawer-title" hidden>
+  <div class="project-drawer-inner">
+    <div class="project-drawer-header">
+      <h2 id="project-drawer-title">Workspace overview</h2>
+      <button type="button" class="project-drawer-close" id="project-drawer-close" aria-label="Close">✕</button>
+    </div>
+    <div class="project-drawer-body" id="project-drawer-body">
+      Loading…
+    </div>
+  </div>
+</div>
 
 <div id="awaiting-input" class="awaiting-input" role="alert" aria-live="polite">
   <span class="pause-icon">⏸</span>
@@ -2061,6 +2190,116 @@ function renderHookErrors(errors) {
     return `${when} (${e.source}) — ${e.error}${ctx}`;
   }).join('\n');
 }
+
+// ── Workspace overview drawer (/discover outputs)
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function renderWorkspaceOverview(data) {
+  const body = document.getElementById('project-drawer-body');
+  if (!body) return;
+  if (!data) { body.textContent = 'No data.'; return; }
+
+  const parts = [];
+
+  // Domain block
+  parts.push('<h3>Domain</h3>');
+  if (data.domain) {
+    const d = data.domain;
+    parts.push('<table>');
+    if (d.name) parts.push(`<tr><th>Name</th><td>${escapeHtml(d.name)}</td></tr>`);
+    if (d.domain_notes) parts.push(`<tr><th>What it does</th><td>${escapeHtml(d.domain_notes)}</td></tr>`);
+    if (d.user_roles) parts.push(`<tr><th>User roles</th><td>${escapeHtml((d.user_roles || []).join(', '))}</td></tr>`);
+    if (d.i18n_languages) parts.push(`<tr><th>Languages</th><td>${escapeHtml((d.i18n_languages || []).join(', '))}${d.rtl_support ? ' (RTL)' : ''}</td></tr>`);
+    if (d.auth_type) parts.push(`<tr><th>Auth</th><td>${escapeHtml(d.auth_type)}</td></tr>`);
+    parts.push('</table>');
+  } else {
+    parts.push('<p style="color:var(--muted);">No domain block in config.json</p>');
+  }
+
+  // Repos
+  parts.push(`<h3>Repos (${data.repos.length})</h3>`);
+  if (data.repos.length) {
+    parts.push('<table><tr><th>Key</th><th>Type</th><th>Role</th><th>Spec</th></tr>');
+    data.repos.forEach(r => {
+      parts.push(`<tr><td>${escapeHtml(r.key)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.role)}</td><td>${escapeHtml(r.spec_file || '—')}</td></tr>`);
+    });
+    parts.push('</table>');
+  }
+
+  // Services (with spec_policy)
+  if (data.services.length) {
+    parts.push(`<h3>Services (${data.services.length})</h3>`);
+    parts.push('<table><tr><th>Key</th><th>Repo</th><th>Policy</th><th>Spec</th></tr>');
+    data.services.forEach(s => {
+      parts.push(`<tr><td>${escapeHtml(s.key)}</td><td>${escapeHtml(s.repo)}</td><td>${escapeHtml(s.spec_policy)}</td><td>${escapeHtml(s.spec_file || '—')}</td></tr>`);
+    });
+    parts.push('</table>');
+  }
+
+  // Audit findings summary
+  if (data.audit_summary) {
+    const a = data.audit_summary;
+    parts.push('<h3>Audit findings</h3>');
+    parts.push('<div>');
+    for (const sev of ['critical', 'high', 'medium', 'low']) {
+      parts.push(`<span class="audit-pill ${sev}">${sev} ${a[sev] || 0}</span>`);
+    }
+    parts.push('</div>');
+    parts.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">See <code>context/audit-findings.md</code> for full list with file:line references.</p>');
+  }
+
+  // Last discover run
+  if (data.last_discover_run) {
+    parts.push('<h3>Last discover run</h3>');
+    parts.push('<table>');
+    parts.push(`<tr><th>Run ID</th><td>${escapeHtml(data.last_discover_run.run_id)}</td></tr>`);
+    parts.push(`<tr><th>Updated</th><td>${escapeHtml(data.last_discover_run.updated_at)}</td></tr>`);
+    parts.push('</table>');
+  }
+
+  // Design systems per frontend
+  if (data.design_systems && data.design_systems.length) {
+    parts.push(`<h3>Design systems (${data.design_systems.length})</h3>`);
+    data.design_systems.forEach(ds => {
+      parts.push(`<div style="margin-bottom:12px;"><b>${escapeHtml(ds.repo)}</b><pre>${escapeHtml(ds.excerpt)}</pre></div>`);
+    });
+  }
+
+  // Platform.md excerpt
+  if (data.platform_md_excerpt) {
+    parts.push('<h3>Platform context (excerpt)</h3>');
+    parts.push(`<pre>${escapeHtml(data.platform_md_excerpt)}</pre>`);
+    if (data.platform_md_truncated) {
+      parts.push(`<p style="color:var(--muted); font-size:10px;">Showing first 150 of ${data.platform_md_total_lines} lines. Full file: <code>context/platform.md</code></p>`);
+    }
+  }
+
+  body.innerHTML = parts.join('\n');
+}
+function openProjectDrawer() {
+  const drawer = document.getElementById('project-drawer');
+  if (!drawer) return;
+  drawer.hidden = false;
+  fetch('/workspace-overview')
+    .then(r => r.json())
+    .then(renderWorkspaceOverview)
+    .catch(e => {
+      const body = document.getElementById('project-drawer-body');
+      if (body) body.textContent = 'Failed to load: ' + e.message;
+    });
+}
+function closeProjectDrawer() {
+  const drawer = document.getElementById('project-drawer');
+  if (drawer) drawer.hidden = true;
+}
+document.getElementById('project-btn')?.addEventListener('click', openProjectDrawer);
+document.getElementById('project-drawer-close')?.addEventListener('click', closeProjectDrawer);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProjectDrawer();
+});
 
 // ── Boot
 if (window.INITIAL_STATE) applyState(window.INITIAL_STATE);

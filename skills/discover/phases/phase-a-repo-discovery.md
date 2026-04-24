@@ -4,9 +4,9 @@ Scan the provided parent directories for repos. A directory is a repo if it cont
 
 ### Step 0: Greenfield check
 
-If the `--greenfield` flag was passed, skip to `phases/phase-greenfield.md` — do not scan.
+If the `--greenfield` flag was passed, skip to `phases/phase-greenfield-brainstorm.md` — do not scan.
 
-Otherwise, if Step 1 finds **zero repos**, stop and load `phases/phase-greenfield.md` to prompt the user. If the user declines greenfield, ask for a different parent_dir and re-run Step 1.
+Otherwise, if Step 1 finds **zero repos**, stop and load `phases/phase-greenfield-brainstorm.md` to prompt the user. If the user declines greenfield, ask for a different parent_dir and re-run Step 1.
 
 If the greenfield phase ran and scaffolded repos, skip Step 1 — the scratchpad's `## Discovered Repos` table already has the paths. Jump to Step 2.
 

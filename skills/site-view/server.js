@@ -132,6 +132,122 @@ function hookErrorPath() {
 
 const GLOBAL_HOOK_ERROR_LOG = path.join(HOME, '.claude', 'logs', 'pipeline-view-hook-errors.log');
 
+// ─── Workspace overview (/discover outputs — static across /deliver runs) ────
+//
+// Reads the workspace-level artifacts produced by /discover so the UI can
+// show a read-only "Project" panel. These files are stable between deliver
+// runs, so we cache and only re-read on mtime change.
+let workspaceOverviewCache = null;  // { data, mtimes }
+function readWorkspaceOverview() {
+  const wsDir = path.join(WORKSPACE_ROOT, workspace);
+  const configPath = path.join(wsDir, 'config.json');
+  const platformPath = path.join(wsDir, 'context', 'platform.md');
+  const auditPath = path.join(wsDir, 'context', 'audit-findings.md');
+  const discoverRunsDir = path.join(wsDir, 'runs', 'discover');
+
+  // Check mtimes — if nothing changed, serve from cache.
+  const mtimes = {};
+  for (const p of [configPath, platformPath, auditPath]) {
+    mtimes[p] = fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0;
+  }
+  if (workspaceOverviewCache &&
+      Object.keys(mtimes).every(k => mtimes[k] === workspaceOverviewCache.mtimes[k])) {
+    return workspaceOverviewCache.data;
+  }
+
+  const data = {
+    workspace_slug: workspace,
+    workspace_name: null,
+    domain: null,
+    repos: [],
+    services: [],
+    platform_md_excerpt: null,
+    audit_summary: null,
+    last_discover_run: null,
+    design_systems: [],
+  };
+
+  // 1. Parse config.json
+  if (fs.existsSync(configPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      data.workspace_name = cfg.workspace?.name || workspace;
+      data.domain = cfg.domain || null;
+      data.repos = Object.entries(cfg.repos || {}).map(([key, r]) => ({
+        key,
+        path: r.path,
+        type: r.type,
+        role: r.role,
+        description: r.description || '',
+        spec_file: r.spec_file || null,
+      }));
+      data.services = Object.entries(cfg.services || {}).map(([key, s]) => ({
+        key,
+        repo: s.repo,
+        spec_policy: s.spec_policy || 'api-first',
+        spec_file: s.spec_file || null,
+        description: s.description || '',
+      }));
+    } catch (e) {
+      data.config_error = e.message;
+    }
+  }
+
+  // 2. Read platform.md (trim to first 150 lines so the drawer doesn't balloon)
+  if (fs.existsSync(platformPath)) {
+    try {
+      const lines = fs.readFileSync(platformPath, 'utf8').split(/\r?\n/);
+      data.platform_md_excerpt = lines.slice(0, 150).join('\n');
+      data.platform_md_truncated = lines.length > 150;
+      data.platform_md_total_lines = lines.length;
+    } catch (_) {}
+  }
+
+  // 3. Parse audit-findings.md summary table
+  if (fs.existsSync(auditPath)) {
+    try {
+      const txt = fs.readFileSync(auditPath, 'utf8');
+      const summary = { critical: 0, high: 0, medium: 0, low: 0 };
+      for (const sev of ['critical', 'high', 'medium', 'low']) {
+        const m = txt.match(new RegExp(`\\|\\s*${sev}\\s*\\|\\s*(\\d+)\\s*\\|`, 'i'));
+        if (m) summary[sev] = parseInt(m[1], 10);
+      }
+      data.audit_summary = summary;
+    } catch (_) {}
+  }
+
+  // 4. Last discover run metadata
+  if (fs.existsSync(discoverRunsDir)) {
+    try {
+      const runs = fs.readdirSync(discoverRunsDir)
+        .filter(d => fs.existsSync(path.join(discoverRunsDir, d, 'scratchpad.md')))
+        .map(d => ({ id: d, mtime: fs.statSync(path.join(discoverRunsDir, d, 'scratchpad.md')).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      if (runs.length > 0) {
+        data.last_discover_run = {
+          run_id: runs[0].id,
+          updated_at: new Date(runs[0].mtime).toISOString(),
+        };
+      }
+    } catch (_) {}
+  }
+
+  // 5. Per-repo design-system.md files (Phase B3 writes these per frontend repo)
+  for (const r of data.repos) {
+    if (r.role !== 'frontend') continue;
+    const ds = path.join(r.path, 'agent-context', 'design-system.md');
+    if (fs.existsSync(ds)) {
+      try {
+        const lines = fs.readFileSync(ds, 'utf8').split(/\r?\n/).slice(0, 40).join('\n');
+        data.design_systems.push({ repo: r.key, excerpt: lines });
+      } catch (_) {}
+    }
+  }
+
+  workspaceOverviewCache = { data, mtimes };
+  return data;
+}
+
 // If `awaiting_input.json` exists in the run dir, the orchestrator is paused
 // waiting for a user answer. The file shape is:
 //   { since: "ISO8601", phase: "3", gate: "approval", question: "...", context_summary?: "..." }
@@ -1035,6 +1151,9 @@ const server = http.createServer((req, res) => {
   } else if (req.url === '/state' || req.url === '/state.json') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(getState(), null, 2));
+  } else if (req.url === '/workspace-overview' || req.url === '/workspace-overview.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(readWorkspaceOverview(), null, 2));
   } else if (req.url === '/hook-errors') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ errors: readHookErrors() || [] }, null, 2));

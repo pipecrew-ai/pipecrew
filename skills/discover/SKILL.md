@@ -131,7 +131,7 @@ If `<usage>` is absent (tool error before usage was reported), emit `agent_end` 
 
 **Validation**: run `node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl` at the end of Phase D. Exit code 1 = schema violation (fix before archival). Exit code 2 = soft warning (record and continue).
 
-**Phase D Step 7** reads this JSONL to produce the execution summary — see `phases/phase-d.md`.
+**Phase D Step 7** reads this JSONL to produce the execution summary — see `phases/phase-d-verification.md`.
 
 **Scratchpad vs checkpoints — two different files, two different jobs**:
 - `scratchpad.md` — human-readable run state, used for `--resume`.
@@ -277,10 +277,10 @@ Each phase lives in its own file. Load only the active phase.
 
 | Phase | File |
 |-------|------|
-| Greenfield (brainstorm + scaffold) | `phases/phase-greenfield.md` |
-| A. Repo Discovery | `phases/phase-a.md` |
-| B. Domain Questions + Architect + Design System Discovery | `phases/phase-b.md` |
-| C. Generation | `phases/phase-c.md` |
-| D. Verification | `phases/phase-d.md` |
+| Greenfield (brainstorm + scaffold) | `phases/phase-greenfield-brainstorm.md` |
+| A. Repo Discovery | `phases/phase-a-repo-discovery.md` |
+| B. Domain Questions + Architect + Design System Discovery | `phases/phase-b-domain-and-architect.md` |
+| C. Generation | `phases/phase-c-generation.md` |
+| D. Verification | `phases/phase-d-verification.md` |
 
 **When entering a phase**: Read the phase file and follow its instructions.

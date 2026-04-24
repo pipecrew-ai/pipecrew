@@ -149,7 +149,7 @@ Token usage monitoring during a run:
 2. Optionally create `agents/{stack}-reviewer.md`
 3. Add `type` to `VALID_TYPES` in `scripts/validate-config.js`
 4. Add type → agent mapping row to `skills/deliver/phases/dispatch-rules.md` (the `TYPE_TO_AGENT` table)
-5. Add sentinel file detection to `/discover` Phase A (`skills/discover/phases/phase-a.md`)
+5. Add sentinel file detection to `/discover` Phase A (`skills/discover/phases/phase-a-repo-discovery.md`)
 6. Add a `docs/pitfalls/{stack}.md` file — Phase 4.5 injects a subset into every task file for that stack, and Phase 5.5 reviewers use it as a checklist
 7. Update the "Supported tech stacks" table in this README
 

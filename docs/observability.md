@@ -26,8 +26,7 @@ This is the **source of truth** for how every skill in the plugin records what i
 ├── config.json                the workspace contract
 ├── context/
 │   ├── platform.md            updated by /discover and /context-refresh
-│   ├── design-system.md
-│   └── audit-findings.md
+│   └── audit-findings.md      design-system.md is per-repo: {repo_path}/agent-context/design-system.md
 ├── agents/                    generated from templates at onboarding, stable
 ├── agent-memory/              per-agent persistent memory across runs
 │   ├── product-owner/

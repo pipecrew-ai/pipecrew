@@ -270,9 +270,11 @@ Review it? (yes / continue)
 
 **Skip if**: no repo in the config has `role: "frontend"`. Proceed directly to Phase C.
 
+**Design-system output location — per-repo, not workspace-wide.** Each frontend repo gets its own `{repo_path}/agent-context/design-system.md` because different frontend repos often use different component libraries (e.g., publisher-frontend on MUI, admin-portal on Ant Design). Storing at the workspace level would overwrite when the second frontend is processed. If a repo already has `agent-context/design-system.md` (hand-written by the team), the discovery agent uses refresh semantics — read + merge, never destroy-and-rewrite.
+
 **Step 1: Detect design system presence**
 
-For each frontend repo, check for signals:
+Run the following for each frontend repo (all signals at once per repo):
 
 ```bash
 cd {frontend.path} && (
@@ -357,7 +359,21 @@ Output format — structured, not narrative:
 - Wrapper directory: {path or "none"}
 ```
 
-**After the agent returns**: save the report to `{workspace_root}/{slug}/context/design-system.md`. This file will be used to fill `{{DESIGN_SYSTEM_CONTEXT}}` in Phase C.
+**After the agent returns**: save the report to `{repo_path}/agent-context/design-system.md`.
+
+**Write semantics:**
+- If `{repo_path}/agent-context/` does not exist yet, create it first (`mkdir -p`).
+- If `{repo_path}/agent-context/design-system.md` does not exist, write the agent's output verbatim.
+- If the file already exists (hand-curated by the team), show a diff and ask:
+  ```
+  {repo-name}/agent-context/design-system.md already exists.
+  (o) Overwrite — replace with what B3 discovered
+  (m) Merge — dispatch a refresh pass that merges new findings into the existing file
+  (s) Skip — keep the existing file untouched
+  ```
+  Default is **(s) Skip** if the user doesn't answer — hand-curated content is load-bearing, never silently clobber it.
+
+**Why repo level**: each frontend uses its own component library / tokens. The UX consultant agent called during `/deliver` Phase 5b receives `repo_path: {frontend.path}` and reads the design system from that repo, so the file must live with the repo it describes.
 
 **Step 3: If NO design system signals found** → ask the user:
 
@@ -374,8 +390,8 @@ Options:
 Choose (a) or (b):
 ```
 
-- **(a)**: set `{{DESIGN_SYSTEM_CONTEXT}}` to: "No design system detected. Recommend components based on what exists in the codebase. Do not assume any component library is available — check before recommending."
-- **(b)**: same as (a), plus append to `{workspace_root}/{slug}/context/platform.md` under `## Known Constraints`: "No established design system in the frontend. Components are ad-hoc. Consider establishing a component library + Storybook before scaling the frontend."
+- **(a)**: write a minimal `{repo_path}/agent-context/design-system.md` stating: "No design system detected. Recommend components based on what exists in the codebase. Do not assume any component library is available — check before recommending." This ensures the UX consultant always has a file to read at `{repo_path}/agent-context/design-system.md`.
+- **(b)**: same as (a), plus append to `{workspace_root}/{slug}/context/platform.md` under `## Known Constraints`: "No established design system in {repo-name}. Components are ad-hoc. Consider establishing a component library + Storybook before scaling the frontend."
 
 **Update scratchpad**: Set Phase B3 status to COMPLETED. Set Current Phase to "C. Generation".
 

@@ -74,7 +74,7 @@ Add your stack to the TYPE_TO_AGENT mapping in `skills/deliver/SKILL.md` rule #9
 
 ### Step 4: Add detection to `/discover`
 
-In `skills/onboard/phases/phase-a.md`, add a sentinel file entry:
+In `skills/discover/phases/phase-a-repo-discovery.md`, add a sentinel file entry:
 
 ```
 | {sentinel file pattern} | `{stack}` |

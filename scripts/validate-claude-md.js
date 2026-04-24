@@ -6,8 +6,8 @@
  * Exit 0 = clean, 1 = hard-fail, 2 = warning only.
  *
  * Zero dependencies — pure Node stdlib. Designed to be called from
- * onboard phase-c.md after context-manager writes the file, and from
- * /discover --resume to detect hand-edits that broke the rules.
+ * discover phase-c-generation.md after context-manager writes the file,
+ * and from /discover --resume to detect hand-edits that broke the rules.
  */
 
 const fs = require('fs');

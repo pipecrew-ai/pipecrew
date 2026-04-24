@@ -263,7 +263,7 @@ Write:
 
 #### Publish to user-level agents directory (B1)
 
-The workspace-local agent files above are the canonical copies — they're version-controlled alongside workspace config and can be hand-edited. But Claude Code's `Agent` tool only resolves `subagent_type` against `~/.claude/agents/` (user-level) and `.claude/agents/` (project-level). So `dal-assessor` (referenced by `phase-6.md`) will not resolve unless we also publish a copy there.
+The workspace-local agent files above are the canonical copies — they're version-controlled alongside workspace config and can be hand-edited. But Claude Code's `Agent` tool only resolves `subagent_type` against `~/.claude/agents/` (user-level) and `.claude/agents/` (project-level). So `dal-assessor` (referenced by `phase-6-assess.md`) will not resolve unless we also publish a copy there.
 
 After writing the three workspace-local files, also publish them to `~/.claude/agents/` with the slug-prefixed names that downstream phase files already use:
 
@@ -391,7 +391,7 @@ Surfaced during /discover on {date}. Each bullet is a real observation from code
 - One H2 section per source repo (deduplicate findings by `file:line + description`).
 - Sort findings within each section by severity descending (critical first).
 - Do NOT editorialize or summarize findings — copy verbatim from the agent response. The agents already committed to the format.
-- If any finding has severity `critical`, the final Phase D summary MUST surface it prominently (see phase-d.md Step 6).
+- If any finding has severity `critical`, the final Phase D summary MUST surface it prominently (see phase-d-verification.md Step 6).
 
 **Cross-reference from platform.md:** append the following paragraph to the **Known Constraints** section of `{workspace_root}/{slug}/context/platform.md` (or create the section if missing):
 

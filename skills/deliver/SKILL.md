@@ -51,8 +51,48 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 
 1. **Read the workspace config first.** Resolve the config path:
    - If `--workspace=<slug>` was passed: use `{workspace_root}/{slug}/config.json`
-   - If not passed: scan `~/.claude/` for files matching `*-config.json`. If exactly one exists, use it. If multiple exist, list them and ask the user to pick. If none exist, report: "No workspace config found. Run `/discover` first."
+   - If not passed: resolve `{workspace_root}` via `node {plugin}/scripts/workspace-root.js --get` and scan `{workspace_root}/*/config.json`. If exactly one exists, use it. If multiple exist, list them and ask the user to pick.
+   - If none exist, print the detailed "missing config" block below and stop — do NOT proceed to Phase 1.
+
    Parse the JSON. Validate with `node {plugin}/scripts/validate-config.js {config-path}`. If validation fails, report errors and stop. All repo paths, service mappings, spec file locations, and domain context come from this config — nothing is hardcoded.
+
+   **Missing-config stop message** (print verbatim, adapted to the user's scan results):
+
+   ```
+   ✗ No workspace config found.
+
+   /deliver requires a workspace configuration file at
+     {workspace_root}/{slug}/config.json
+
+   I scanned {workspace_root}/ and found none. The workspace config is
+   produced by /discover, which also generates several other artifacts
+   that /deliver depends on.
+
+   Recommended: run /discover first
+
+     /discover /path/to/your/repos
+
+   /discover takes about 5-15 minutes and produces:
+     • config.json           — this file (hard requirement)
+     • context/platform.md   — architecture context for Phase 2 (hard requirement)
+     • CLAUDE.md per repo    — implementer orientation (soft; skip → 3-5× token cost per dispatch)
+     • agent-context/ per repo — deep architecture docs (soft; skip → implementer re-reads code each run)
+     • context/audit-findings.md — real bugs spotted during onboarding (soft; skip → Phase 4.5 has fewer pitfalls to inject)
+     • Workspace agents ({slug}-product-owner, assessor, ux-consultant) — tailored to your domain
+
+   You can hand-write config.json + context/platform.md and run /deliver
+   against them directly, but the other artifacts are soft-optional and
+   each one degrades /deliver quality in a specific way:
+
+     - No CLAUDE.md → implementers guess conventions per dispatch; PRs become less consistent
+     - No agent-context → no "similar feature" catalog; implementers re-derive architecture
+     - No audit-findings.md → Phase 4.5 `## Known Pitfalls` uses plugin stack catalog only, not your workspace's observed bugs
+     - No workspace agents → falls back to generic agents with a preamble; product-owner loses domain context
+
+   If your workspace has zero existing repos (greenfield): run
+     /discover --greenfield
+   which brainstorms + scaffolds + discovers in one pass.
+   ```
 2. **Config-driven phase auto-detection.** After loading the config, derive which phases to run based on what repos exist — NOT based on assumptions about the workspace shape. Flags override auto-detection, not the other way around.
 
     | Phase | Auto-runs if | Override flag |

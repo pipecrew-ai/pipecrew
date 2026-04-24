@@ -1022,6 +1022,25 @@
   .audit-pill.high { background: #5a3818; color: #ffb366; }
   .audit-pill.medium { background: #5a5218; color: #ffe066; }
   .audit-pill.low { background: #2a3818; color: #a3d98a; }
+
+  /* Architecture diagram container (rendered with Mermaid.js) */
+  .arch-diagram {
+    background: #0f0b08;
+    border: 1px solid rgba(122, 90, 32, 0.4);
+    padding: 12px;
+    margin-top: 4px;
+    overflow-x: auto;
+    min-height: 180px;
+    max-height: 640px;
+    overflow-y: auto;
+  }
+  .arch-diagram svg { max-width: 100%; height: auto; }
+  .arch-diagram-source {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted, #a88a50);
+  }
+  .arch-diagram-source a { color: var(--accent, #f5a623); }
 </style>
 </head>
 <body>
@@ -2197,12 +2216,66 @@ function escapeHtml(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
+
+// Lazy-load Mermaid.js on first drawer open. Returns a promise that resolves
+// to the mermaid global once the script is ready.
+let mermaidLoadPromise = null;
+function loadMermaid() {
+  if (window.mermaid) return Promise.resolve(window.mermaid);
+  if (mermaidLoadPromise) return mermaidLoadPromise;
+  mermaidLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/mermaid.min.js';
+    s.onload = () => {
+      try {
+        window.mermaid.initialize({
+          startOnLoad: false,
+          theme: 'dark',
+          themeVariables: {
+            background: '#1a1410',
+            primaryColor: '#3a2a1a',
+            primaryBorderColor: '#f5a623',
+            primaryTextColor: '#d9c3a0',
+            lineColor: '#a88a50',
+            secondaryColor: '#2a2a3a',
+            tertiaryColor: '#1a1410',
+          },
+          securityLevel: 'loose',
+          flowchart: { curve: 'basis', htmlLabels: true },
+        });
+        resolve(window.mermaid);
+      } catch (e) { reject(e); }
+    };
+    s.onerror = () => reject(new Error('Failed to load mermaid.min.js'));
+    document.head.appendChild(s);
+  });
+  return mermaidLoadPromise;
+}
+
+// Render a single Mermaid source into an element. Handles Mermaid's async API.
+async function renderMermaidInto(container, source) {
+  try {
+    const mermaid = await loadMermaid();
+    const id = 'mermaid-svg-' + Date.now();
+    const { svg } = await mermaid.render(id, source);
+    container.innerHTML = svg;
+  } catch (e) {
+    container.innerHTML = `<p style="color:#ff9999;">Failed to render diagram: ${escapeHtml(e.message)}</p>`;
+  }
+}
 function renderWorkspaceOverview(data) {
   const body = document.getElementById('project-drawer-body');
   if (!body) return;
   if (!data) { body.textContent = 'No data.'; return; }
 
   const parts = [];
+
+  // Architecture diagram — rendered first for visual impact
+  if (data.architecture_mermaid) {
+    parts.push('<h3>Architecture</h3>');
+    parts.push('<div class="arch-diagram" id="arch-diagram-container">Loading diagram…</div>');
+    parts.push('<div class="arch-diagram-source">Source: <code>context/architecture.mmd</code> — edit the file to update the diagram</div>');
+  }
 
   // Domain block
   parts.push('<h3>Domain</h3>');
@@ -2278,6 +2351,12 @@ function renderWorkspaceOverview(data) {
   }
 
   body.innerHTML = parts.join('\n');
+
+  // After the HTML is in the DOM, render the Mermaid diagram into its container.
+  if (data.architecture_mermaid) {
+    const container = document.getElementById('arch-diagram-container');
+    if (container) renderMermaidInto(container, data.architecture_mermaid);
+  }
 }
 function openProjectDrawer() {
   const drawer = document.getElementById('project-drawer');

@@ -92,6 +92,7 @@ The `## Architect Guidance` section is a STUB — leave it with the exact placeh
 
 TEMPLATE SECTIONS:
 ## Domain
+## Architecture Diagram
 ## Entities & Ownership (table: Entity | Owning Service | Key States)
 ## User Roles & Permissions (table: Role | Description | Key Permissions)
 ## Status Lifecycles
@@ -103,6 +104,68 @@ TEMPLATE SECTIONS:
 ## Known Constraints
 ## Open Questions / Evolving Decisions
 ## Architect Guidance
+
+For the `## Architecture Diagram` section in platform.md, write EXACTLY this pointer content:
+
+    The high-level architecture diagram lives in a sibling file as Mermaid source:
+    [`architecture.mmd`](./architecture.mmd)
+
+    It is rendered live in the site-view "Project" drawer. Edit the `.mmd` file
+    directly to update the diagram — re-running `/discover` will merge rather
+    than overwrite if the file already exists.
+
+The **actual diagram** is written to a SEPARATE file at `{workspace_root}/{slug}/context/architecture.mmd`. Produce a Mermaid `graph LR` (or `graph TB` if the topology is better top-down) that captures:
+
+- **Every service** from the Service Map as a node. Use the service key as the node id; use the service name + type as the label. Group api-services, workers, and infrastructure into `subgraph` blocks.
+- **Every cross-service edge** from Integration Patterns. Use `-->` for sync REST calls (label with the endpoint prefix like `/books/*`), `-.->` for async events (label with the queue/topic name), and `==>` for shared-resource writes (e.g., S3 bucket, database).
+- **External actors** (end-user roles, external third-party services) as nodes outside the service subgraphs, drawn at the top of the diagram.
+- **Infrastructure resources** (queues, buckets, databases) as nodes with a distinct style using `classDef infra fill:#2a3a50,stroke:#5577aa,color:#ccddff;`.
+- Apply `classDef worker fill:#3a2a50,stroke:#8855aa,color:#eeccff;` to workers and `classDef frontend fill:#2a5030,stroke:#55aa66,color:#ccffdd;` to frontend nodes so the types are visually distinguishable.
+
+Example skeleton (do not copy literally — produce the real topology from the workspace):
+
+```mermaid
+graph LR
+    User((End User))
+    Admin((Admin))
+
+    subgraph Frontends
+        pub_fe[publisher-frontend<br/>react]:::frontend
+        admin_fe[admin-portal<br/>nextjs]:::frontend
+    end
+
+    subgraph Services
+        pub[publisher-service<br/>spring-boot]
+        user_mgmt[user-management<br/>spring-boot]
+        backoffice[backoffice-service<br/>spring-boot]
+    end
+
+    subgraph Workers
+        event_worker[order-event-worker<br/>python-worker]:::worker
+    end
+
+    subgraph Infrastructure
+        s3[(S3: book-content)]:::infra
+        sqs[/SQS: order-events/]:::infra
+        db[(Postgres)]:::infra
+    end
+
+    User --> pub_fe
+    Admin --> admin_fe
+    pub_fe -->|REST /v1/books/*| pub
+    admin_fe -->|REST /v1/backoffice/*| backoffice
+    pub -->|JWT validate| user_mgmt
+    pub ==>|uploads| s3
+    s3 -.->|ObjectCreated event| sqs
+    sqs -.->|poll| event_worker
+    event_worker ==>|write history| db
+
+    classDef infra fill:#2a3a50,stroke:#5577aa,color:#ccddff;
+    classDef worker fill:#3a2a50,stroke:#8855aa,color:#eeccff;
+    classDef frontend fill:#2a5030,stroke:#55aa66,color:#ccffdd;
+```
+
+**Keep the diagram honest.** Only draw edges you observed in code. If you're unsure whether service A calls service B synchronously vs via events, say so in the label or leave it out and add a note under `## Open Questions`.
 
 For the `## Architect Guidance` section, write EXACTLY this stub content (replace {workspace.name} with the actual name):
 
@@ -123,7 +186,14 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
     (Empty by default. Fill in during or after onboarding.)
 ```
 
-**After the architect returns**: save the output as `{workspace_root}/{slug}/context/platform.md`. Present a summary to the user:
+**After the architect returns**:
+1. Save the platform.md output (everything except the mermaid block) to `{workspace_root}/{slug}/context/platform.md`.
+2. Extract the ```` ```mermaid ... ``` ```` block the architect produced and save its inner content (without the fence) to `{workspace_root}/{slug}/context/architecture.mmd`.
+3. Verify the `## Architecture Diagram` section in platform.md contains the pointer stub described above, not the full mermaid source.
+
+**If `architecture.mmd` already exists** (re-run or hand-edited): show a diff and ask the user whether to overwrite, merge, or keep. Default is **keep** — a hand-edited diagram is load-bearing and should not be silently clobbered.
+
+Present a summary to the user:
 
 ```
 ## Platform Context Generated

@@ -143,11 +143,12 @@ function readWorkspaceOverview() {
   const configPath = path.join(wsDir, 'config.json');
   const platformPath = path.join(wsDir, 'context', 'platform.md');
   const auditPath = path.join(wsDir, 'context', 'audit-findings.md');
+  const architectureMmdPath = path.join(wsDir, 'context', 'architecture.mmd');
   const discoverRunsDir = path.join(wsDir, 'runs', 'discover');
 
   // Check mtimes — if nothing changed, serve from cache.
   const mtimes = {};
-  for (const p of [configPath, platformPath, auditPath]) {
+  for (const p of [configPath, platformPath, auditPath, architectureMmdPath]) {
     mtimes[p] = fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0;
   }
   if (workspaceOverviewCache &&
@@ -165,6 +166,7 @@ function readWorkspaceOverview() {
     audit_summary: null,
     last_discover_run: null,
     design_systems: [],
+    architecture_mermaid: null,
   };
 
   // 1. Parse config.json
@@ -232,7 +234,14 @@ function readWorkspaceOverview() {
     } catch (_) {}
   }
 
-  // 5. Per-repo design-system.md files (Phase B3 writes these per frontend repo)
+  // 5. Architecture diagram (Mermaid source from /discover Phase B2)
+  if (fs.existsSync(architectureMmdPath)) {
+    try {
+      data.architecture_mermaid = fs.readFileSync(architectureMmdPath, 'utf8').trim();
+    } catch (_) {}
+  }
+
+  // 6. Per-repo design-system.md files (Phase B3 writes these per frontend repo)
   for (const r of data.repos) {
     if (r.role !== 'frontend') continue;
     const ds = path.join(r.path, 'agent-context', 'design-system.md');
@@ -1154,6 +1163,18 @@ const server = http.createServer((req, res) => {
   } else if (req.url === '/workspace-overview' || req.url === '/workspace-overview.json') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(readWorkspaceOverview(), null, 2));
+  } else if (req.url === '/vendor/mermaid.min.js') {
+    try {
+      const js = fs.readFileSync(path.join(PUBLIC_DIR, 'vendor', 'mermaid.min.js'));
+      res.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400',
+      });
+      res.end(js);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('mermaid.min.js not found — re-run the plugin install to vendor it.');
+    }
   } else if (req.url === '/hook-errors') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ errors: readHookErrors() || [] }, null, 2));

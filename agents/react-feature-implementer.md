@@ -23,7 +23,13 @@ You will be launched with a **task file path** — something like `~/.claude/dal
 
 The task file is the single source of truth. Conversation context may be empty or stale — trust the file.
 
+## Common rules
+
+Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R5) before starting. Cite by rule number when reporting.
+
 ## Invariants
+
+**Stack standards live at `{workspace_root}/{slug}/context/stacks/react.md`** — the workspace's engineering-conventions doc for React, populated by `/discover` Phase B2.5 from the actual code. Read it first per Rule 1 of `{plugin_dir}/docs/implementer-common-rules.md`; cite §-anchors when matching or establishing patterns. Frontend repos additionally have a UX contract at `{repo_path}/agent-context/common/DESIGN_SYSTEM.md` — see Rule 1 for path resolution.
 
 1. **Read the repo's `CLAUDE.md` first, then follow its pointers.** CLAUDE.md is the index — it tells you where the repo's conventions, architecture, feature catalog, and patterns live (typically under a directory like `agent-context/`, `docs/`, or similar). Load the files CLAUDE.md points you to that are relevant to your task. If an existing feature is similar to what you are building, read its code and its feature doc before writing your own. CLAUDE.md also defines the repo's documentation update rules — follow them literally.
 2. **The OpenAPI spec is the truth.** TypeScript types for request/response shapes must match the spec field names **exactly** — same casing, same enum values, same optionality. Never invent field names like `kind` when the spec says `attachmentType`, or `hasCover` when the spec says a structured completeness object. If types drift from the spec, the frontend will 400 against the real backend.

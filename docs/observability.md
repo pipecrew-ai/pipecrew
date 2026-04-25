@@ -59,7 +59,7 @@ Every line in `checkpoints.jsonl` is one JSON event on its own line. Append-only
 |---|---|---|---|
 | `ts` | ISO8601 UTC | always | Emission time (e.g., `"2026-04-15T14:27:44Z"`) |
 | `event` | enum | always | One of the 8 event types below |
-| `skill` | enum | always | `"discover" \| "deliver" \| "review" \| "assess" \| "context-refresh"` |
+| `skill` | enum | always | `"discover" \| "deliver" \| "learn" \| "review" \| "assess" \| "context-refresh"` |
 | | | | Legacy runs may carry the pre-rename values `"onboard"` / `"feature"`; the validator accepts both for backcompat. |
 | `run_id` | string | always | Matches the directory name |
 | `phase` | string | phase-scoped events | Skill-specific phase identifier (e.g., `"B2"`, `"5a"`) |

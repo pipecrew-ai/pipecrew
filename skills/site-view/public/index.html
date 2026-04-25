@@ -972,6 +972,44 @@
     line-height: 1.55;
     color: var(--text, #d9c3a0);
   }
+  /* Tabs replace the old "stacked panels" layout. Tabs are only rendered for
+     sections that actually have content (e.g. no Learnings tab if /learn was
+     never run). The first tab with content is active by default. */
+  .drawer-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    border-bottom: 1px solid var(--line-d, #7a5a20);
+    margin: 0 0 14px 0;
+    padding: 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg, #1c1410);
+    z-index: 1;
+  }
+  .drawer-tab {
+    background: transparent;
+    color: var(--muted, #a88a50);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 7px 12px 6px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+  .drawer-tab:hover { color: var(--accent, #f5a623); }
+  .drawer-tab.active {
+    color: var(--accent, #f5a623);
+    border-bottom-color: var(--accent, #f5a623);
+  }
+  .drawer-tab-panel { display: none; }
+  .drawer-tab-panel.active { display: block; }
+  .drawer-tab-panel h3:first-child { margin-top: 0; }
   .project-drawer-body h3 {
     font-size: 11px;
     color: var(--accent, #f5a623);
@@ -1257,6 +1295,18 @@
         </g>
         <circle r="16" fill="#fbbf24" stroke="#f5a623" stroke-width="1.4"/>
       </g>
+      <!-- Live phase label beside the sun. Populated by updatePhaseLabel()
+           with the dedup'd phase chip(s) of every currently-working agent
+           (e.g. "IMPL", "REVIEW", "FIX-R1", or "IMPL · REVIEW" when phases
+           overlap). Hidden — empty textContent — when no agent is working. -->
+      <text id="sun-phase-label"
+            x="150" y="65"
+            fill="#f5a623"
+            font-family="'JetBrains Mono', monospace"
+            font-size="14"
+            font-weight="700"
+            letter-spacing="3"
+            dominant-baseline="middle"></text>
 
       <!-- scaffolding framework (dashed). Polish round 3: hidden along with
            #work-zone-group when the build zone is empty — the empty dashed
@@ -2029,17 +2079,86 @@ function layout(characters) {
   // Queued-only states keep the crane parked (nothing to lift yet).
   const crane = document.querySelector('.crane');
   if (crane) crane.classList.toggle('active', working.length > 0);
+
+  // Live phase label beside the sun. Empties when nobody's working so the
+  // text disappears entirely (queued-only and all-done states).
+  updateSunPhaseLabel(working);
+}
+
+// Phase chip ordering — used to put the "latest" phase first when multiple
+// phases overlap. Matches the pipeline order the orchestrator goes through.
+const PHASE_LABEL_ORDER = [
+  'requirements', 'arch', 'spec', 'sync', 'plan',
+  'impl', 'review', 'security', 'assess', 'report', 'publish',
+];
+function phaseLabelRank(label) {
+  if (!label) return -1;
+  // Fix rounds belong with review (phase 5.5) — keep them grouped.
+  if (label.startsWith('fix-')) return PHASE_LABEL_ORDER.indexOf('review') + 0.5;
+  return PHASE_LABEL_ORDER.indexOf(label);
+}
+function updateSunPhaseLabel(working) {
+  const el = document.getElementById('sun-phase-label');
+  if (!el) return;
+  if (!working || working.length === 0) {
+    el.textContent = '';
+    return;
+  }
+  // Pick each working character's current chip (activePhaseIndex). Fall
+  // back to their seeded `phase` field for chars promoted via Phase Status
+  // alone (no dispatch chip).
+  const labels = [];
+  for (const c of working) {
+    let label = null;
+    if (Array.isArray(c.phases) && c.phases.length > 0 && c.activePhaseIndex >= 0) {
+      label = c.phases[c.activePhaseIndex];
+    } else if (c.phase) {
+      // Map raw phase number to label using the same convention as the server.
+      const p = String(c.phase).toLowerCase();
+      if (/^5[a-z]?$/.test(p)) label = 'impl';
+      else if (p === '5.5') label = 'review';
+      else if (p === '5.75') label = 'security';
+      else if (p === '6') label = 'assess';
+      else if (p === '1') label = 'requirements';
+      else if (p === '2') label = 'arch';
+      else if (p === '3') label = 'spec';
+      else if (p === '4') label = 'sync';
+      else if (p === '4.5') label = 'plan';
+      else if (p === '7') label = 'report';
+      else if (p === '8') label = 'publish';
+    }
+    if (label) labels.push(label);
+  }
+  const unique = [...new Set(labels)];
+  // Sort by pipeline order so the latest phase comes first when multiple
+  // overlap (e.g. fix-r1 and impl both running → "FIX-R1 · IMPL").
+  unique.sort((a, b) => phaseLabelRank(b) - phaseLabelRank(a));
+  el.textContent = unique.join(' · ').toUpperCase();
 }
 
 function updateBuildingProgress(characters) {
   // Map progress to the 10 building blocks proportionally.
   // With 6 characters, each completes ~1.67 blocks. With 15, each completes ~0.67.
-  const total = characters.length || 1;
-  let completed = 0;
-  for (const c of characters) {
-    if (c.status === 'working' || c.status === 'done') completed++;
+  //
+  // Special case: feedback-learner (role='loop') is the run's terminal agent —
+  // it only fires after the user opts in to feedback at Phase 8 Step 8.6. When
+  // Loop is `done`, the run is truly wrapped up, so we close the pyramid (all
+  // 10 blocks visible) regardless of any other characters that intentionally
+  // stayed queued (e.g. shield when security review was skipped, or sage when
+  // --no-context-update was passed). Without this override, those queued cards
+  // would keep the pyramid stuck below 100% even after the run finishes.
+  const loopDone = characters.some(c => c.role === 'loop' && c.status === 'done');
+  let blocksToShow;
+  if (loopDone) {
+    blocksToShow = 10;
+  } else {
+    const total = characters.length || 1;
+    let completed = 0;
+    for (const c of characters) {
+      if (c.status === 'working' || c.status === 'done') completed++;
+    }
+    blocksToShow = Math.round((completed / total) * 10);
   }
-  const blocksToShow = Math.round((completed / total) * 10);
   for (let i = 1; i <= 10; i++) {
     const block = document.getElementById('build-' + i);
     if (block) block.classList.toggle('visible', i <= blocksToShow);
@@ -2384,21 +2503,32 @@ function renderWorkspaceOverview(data) {
   if (!body) return;
   if (!data) { body.textContent = 'No data.'; return; }
 
-  const parts = [];
+  // Per-tab content buckets. Each tab is rendered only if its `parts` array
+  // is non-empty — keeps the tab strip lean for sparse workspaces.
+  const tabs = {
+    overview:     { label: 'Overview',       parts: [] },
+    architecture: { label: 'Architecture',   parts: [] },
+    platform:     { label: 'Domain context', parts: [] },
+    audit:        { label: 'Audit',          parts: [] },
+    discover:     { label: 'Discover',       parts: [] },
+    features:     { label: 'Features',       parts: [] },
+    learnings:    { label: 'Learnings',      parts: [] },
+  };
+  const parts = tabs.overview.parts; // back-compat alias for the legacy flow
 
-  // Architecture diagrams — overview (high-level blocks) first, detailed second
+  // ──────────────── Architecture tab ────────────────
   if (data.architecture_overview_mermaid) {
-    parts.push('<h3>Architecture — high-level blocks</h3>');
-    parts.push('<div class="arch-diagram" id="arch-overview-container">Loading diagram…</div>');
-    parts.push('<div class="arch-diagram-source">Source: <code>context/architecture-overview.mmd</code> — capability-shaped view (5-8 blocks, sync vs async only)</div>');
+    tabs.architecture.parts.push('<h3>Architecture — high-level blocks</h3>');
+    tabs.architecture.parts.push('<div class="arch-diagram" id="arch-overview-container">Loading diagram…</div>');
+    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/architecture-overview.mmd</code> — capability-shaped view (5-8 blocks, sync vs async only)</div>');
   }
   if (data.architecture_mermaid) {
-    parts.push('<h3>Architecture — detailed topology</h3>');
-    parts.push('<div class="arch-diagram" id="arch-diagram-container">Loading diagram…</div>');
-    parts.push('<div class="arch-diagram-source">Source: <code>context/architecture.mmd</code> — every service, DB, queue, Lambda, with specific edge labels</div>');
+    tabs.architecture.parts.push('<h3>Architecture — detailed topology</h3>');
+    tabs.architecture.parts.push('<div class="arch-diagram" id="arch-diagram-container">Loading diagram…</div>');
+    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/architecture.mmd</code> — every service, DB, queue, Lambda, with specific edge labels</div>');
   }
 
-  // Domain block
+  // ──────────────── Overview tab — domain + repos + services ────────────────
   parts.push('<h3>Domain</h3>');
   if (data.domain) {
     const d = data.domain;
@@ -2413,7 +2543,6 @@ function renderWorkspaceOverview(data) {
     parts.push('<p style="color:var(--muted);">No domain block in config.json</p>');
   }
 
-  // Repos
   parts.push(`<h3>Repos (${data.repos.length})</h3>`);
   if (data.repos.length) {
     parts.push('<table><tr><th>Key</th><th>Type</th><th>Role</th><th>Spec</th></tr>');
@@ -2423,7 +2552,6 @@ function renderWorkspaceOverview(data) {
     parts.push('</table>');
   }
 
-  // Services (with spec_policy)
   if (data.services.length) {
     parts.push(`<h3>Services (${data.services.length})</h3>`);
     parts.push('<table><tr><th>Key</th><th>Repo</th><th>Policy</th><th>Spec</th></tr>');
@@ -2433,34 +2561,34 @@ function renderWorkspaceOverview(data) {
     parts.push('</table>');
   }
 
-  // Audit findings summary
+  // ──────────────── Audit tab ────────────────
   if (data.audit_summary) {
     const a = data.audit_summary;
-    parts.push('<h3>Audit findings</h3>');
-    parts.push('<div>');
+    tabs.audit.parts.push('<h3>Audit findings</h3>');
+    tabs.audit.parts.push('<div>');
     for (const sev of ['critical', 'high', 'medium', 'low']) {
-      parts.push(`<span class="audit-pill ${sev}">${sev} ${a[sev] || 0}</span>`);
+      tabs.audit.parts.push(`<span class="audit-pill ${sev}">${sev} ${a[sev] || 0}</span>`);
     }
-    parts.push('</div>');
-    parts.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">See <code>context/audit-findings.md</code> for full list with file:line references.</p>');
+    tabs.audit.parts.push('</div>');
+    tabs.audit.parts.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">See <code>context/audit-findings.md</code> for full list with file:line references.</p>');
   }
 
-  // Last discover run + per-phase token breakdown
+  // ──────────────── Discover tab — last discover run + design systems ────────────────
   if (data.last_discover_run) {
     const run = data.last_discover_run;
-    parts.push('<h3>Last discover run</h3>');
-    parts.push('<table>');
-    parts.push(`<tr><th>Run ID</th><td>${escapeHtml(run.run_id)}</td></tr>`);
-    parts.push(`<tr><th>Updated</th><td>${escapeHtml(run.updated_at)}</td></tr>`);
+    tabs.discover.parts.push('<h3>Last discover run</h3>');
+    tabs.discover.parts.push('<table>');
+    tabs.discover.parts.push(`<tr><th>Run ID</th><td>${escapeHtml(run.run_id)}</td></tr>`);
+    tabs.discover.parts.push(`<tr><th>Updated</th><td>${escapeHtml(run.updated_at)}</td></tr>`);
     if (run.total_tokens) {
       const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
-      parts.push(`<tr><th>Total</th><td>${fmt(run.total_tokens)} tokens across ${run.total_agents} agent dispatches</td></tr>`);
+      tabs.discover.parts.push(`<tr><th>Total</th><td>${fmt(run.total_tokens)} tokens across ${run.total_agents} agent dispatches</td></tr>`);
     }
-    parts.push('</table>');
+    tabs.discover.parts.push('</table>');
 
     if (run.phase_breakdown && run.phase_breakdown.length) {
-      parts.push('<table style="margin-top:8px;">');
-      parts.push('<tr><th>Phase</th><th>Stage</th><th>Agents</th><th>Duration</th><th>Tokens</th></tr>');
+      tabs.discover.parts.push('<table style="margin-top:8px;">');
+      tabs.discover.parts.push('<tr><th>Phase</th><th>Stage</th><th>Agents</th><th>Duration</th><th>Tokens</th></tr>');
       const fmtMs = ms => {
         if (ms < 1000) return ms + 'ms';
         const s = Math.round(ms / 1000);
@@ -2470,29 +2598,137 @@ function renderWorkspaceOverview(data) {
       };
       const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
       run.phase_breakdown.forEach(p => {
-        parts.push(`<tr><td><b>${escapeHtml(p.phase)}</b></td><td>${escapeHtml(p.stage || '—')}</td><td>${p.agent_count}</td><td>${fmtMs(p.duration_ms)}</td><td>${fmtTok(p.tokens)}</td></tr>`);
+        tabs.discover.parts.push(`<tr><td><b>${escapeHtml(p.phase)}</b></td><td>${escapeHtml(p.stage || '—')}</td><td>${p.agent_count}</td><td>${fmtMs(p.duration_ms)}</td><td>${fmtTok(p.tokens)}</td></tr>`);
       });
-      parts.push('</table>');
-      parts.push('<p style="color:var(--muted); font-size:10px; margin-top:4px;">Tokens aggregated from <code>checkpoints.jsonl</code> — sums <code>agent_end.total_tokens</code> per phase. Orchestrator overhead not included.</p>');
+      tabs.discover.parts.push('</table>');
+      tabs.discover.parts.push('<p style="color:var(--muted); font-size:10px; margin-top:4px;">Tokens aggregated from <code>checkpoints.jsonl</code> — sums <code>agent_end.total_tokens</code> per phase. Orchestrator overhead not included.</p>');
     }
   }
 
-  // Design systems per frontend (rendered as markdown)
+  // ──────────────── Features tab — every /deliver run as collapsible row ────────────────
+  if (data.deliver_runs && data.deliver_runs.length) {
+    const fp = tabs.features.parts;
+    fp.push(`<h3>Delivered features (${data.deliver_runs.length})</h3>`);
+    fp.push('<p style="color:var(--muted); font-size:10px; margin:-4px 0 4px;">Click a feature to load its execution report, PRs, and phase breakdown. Sorted newest first.</p>');
+    fp.push('<div style="display:flex; gap:6px; margin:6px 0; align-items:center;">');
+    fp.push('<input type="text" id="deliver-runs-filter" placeholder="Filter by feature / run id…" style="flex:1; padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    fp.push('<select id="deliver-runs-status-filter" style="padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    fp.push('<option value="">All statuses</option>');
+    const allStatuses = Array.from(new Set(data.deliver_runs.map(r => r.status).filter(Boolean))).sort();
+    allStatuses.forEach(s => {
+      fp.push(`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
+    });
+    fp.push('</select>');
+    fp.push('</div>');
+    fp.push('<div id="deliver-runs-list">');
+    data.deliver_runs.forEach((run, idx) => {
+      const headingTitle = run.feature_name || run.run_id;
+      const isLatest = idx === 0;
+      const badge = isLatest
+        ? ' <span style="font-size:10px; padding:1px 6px; border-radius:3px; background:#2da44e; color:white; margin-left:6px;">LATEST</span>'
+        : '';
+      const statusBadge = run.status
+        ? ` <span style="font-size:10px; padding:1px 6px; border-radius:3px; background:rgba(127,127,127,0.2); color:var(--muted); margin-left:6px;">${escapeHtml(run.status)}</span>`
+        : '';
+      const dateStr = run.updated_at ? run.updated_at.slice(0, 10) : '';
+      const filterText = ((run.feature_name || '') + ' ' + run.run_id).toLowerCase();
+      fp.push(`<details class="deliver-run-block" data-run-id="${escapeHtml(run.run_id)}" data-filter-text="${escapeHtml(filterText)}" data-status="${escapeHtml(run.status || '')}" style="margin-top:8px; padding:6px 8px; border:1px solid var(--border, #333); border-radius:4px;">`);
+      fp.push(`<summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px;">`);
+      fp.push(`<span><b>${escapeHtml(headingTitle)}</b>${badge}${statusBadge}</span>`);
+      fp.push(`<span style="font-size:11px; color:var(--muted);">${escapeHtml(dateStr)}</span>`);
+      fp.push(`</summary>`);
+      fp.push(`<div class="deliver-run-detail" id="deliver-run-detail-${idx}" style="margin-top:8px;">`);
+      fp.push(`<p style="color:var(--muted); font-size:11px;">Loading detail…</p>`);
+      fp.push(`</div>`);
+      fp.push(`</details>`);
+    });
+    fp.push('</div>');
+    fp.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">Source: <code>runs/deliver/{run-id}/</code> — phase tokens from <code>checkpoints.jsonl</code>; PR URLs from <code>pr_urls.json</code> (falls back to <code>report.md</code> regex if absent).</p>');
+  }
+
+  // ──────────────── Learnings tab — every /learn run ────────────────
+  if (data.learn_runs && data.learn_runs.length) {
+    const lp = tabs.learnings.parts;
+    lp.push(`<h3>Learnings captured (${data.learn_runs.length})</h3>`);
+    lp.push('<p style="color:var(--muted); font-size:10px; margin:-4px 0 4px;">Each row is one <code>/learn</code> run. Click to load the learner output and finding counts. Sorted newest first.</p>');
+    lp.push('<div style="display:flex; gap:6px; margin:6px 0; align-items:center;">');
+    lp.push('<input type="text" id="learn-runs-filter" placeholder="Filter by source / run id…" style="flex:1; padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    lp.push('<select id="learn-runs-source-filter" style="padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    lp.push('<option value="">All sources</option>');
+    const allSources = Array.from(new Set(data.learn_runs.map(r => r.source_mode).filter(Boolean))).sort();
+    allSources.forEach(s => {
+      lp.push(`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
+    });
+    lp.push('</select>');
+    lp.push('</div>');
+    lp.push('<div id="learn-runs-list">');
+    data.learn_runs.forEach((run, idx) => {
+      const dateStr = run.updated_at ? run.updated_at.slice(0, 10) : '';
+      const filterText = ((run.source_label || '') + ' ' + run.run_id).toLowerCase();
+      const srcBadge = run.source_mode
+        ? ` <span style="font-size:10px; padding:1px 6px; border-radius:3px; background:rgba(100,150,200,0.2); color:var(--muted); margin-left:6px;">${escapeHtml(run.source_mode)}</span>`
+        : '';
+      lp.push(`<details class="learn-run-block" data-run-id="${escapeHtml(run.run_id)}" data-filter-text="${escapeHtml(filterText)}" data-source="${escapeHtml(run.source_mode || '')}" style="margin-top:8px; padding:6px 8px; border:1px solid var(--border, #333); border-radius:4px;">`);
+      lp.push(`<summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px;">`);
+      lp.push(`<span><b>${escapeHtml(run.source_label || run.run_id)}</b>${srcBadge}</span>`);
+      lp.push(`<span style="font-size:11px; color:var(--muted);">${escapeHtml(dateStr)}</span>`);
+      lp.push(`</summary>`);
+      lp.push(`<div class="learn-run-detail" id="learn-run-detail-${idx}" style="margin-top:8px;">`);
+      lp.push(`<p style="color:var(--muted); font-size:11px;">Loading detail…</p>`);
+      lp.push(`</div>`);
+      lp.push(`</details>`);
+    });
+    lp.push('</div>');
+    lp.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">Source: <code>runs/learn/{run-id}/learner-output.md</code> + <code>checkpoints.jsonl</code>.</p>');
+  }
+
+  // ──────────────── Discover tab — design systems also live here ────────────────
   if (data.design_systems && data.design_systems.length) {
-    parts.push(`<h3>Design systems (${data.design_systems.length})</h3>`);
+    tabs.discover.parts.push(`<h3>Design systems (${data.design_systems.length})</h3>`);
     data.design_systems.forEach((ds, i) => {
-      parts.push(`<div style="margin-bottom:12px;"><b>${escapeHtml(ds.repo)}</b><div class="md-rendered" id="ds-md-${i}">Loading…</div></div>`);
+      tabs.discover.parts.push(`<div style="margin-bottom:12px;"><b>${escapeHtml(ds.repo)}</b><div class="md-rendered" id="ds-md-${i}">Loading…</div></div>`);
     });
   }
 
-  // Platform.md (rendered as markdown with GFM tables)
+  // ──────────────── Platform tab ────────────────
   if (data.platform_md_excerpt) {
-    parts.push('<h3>Platform context</h3>');
-    parts.push('<div class="md-rendered" id="platform-md-container">Loading…</div>');
-    parts.push(`<p style="color:var(--muted); font-size:10px; margin-top:4px;">Source: <code>context/platform.md</code> (${data.platform_md_total_lines} lines) — rendered with GFM tables</p>`);
+    tabs.platform.parts.push('<h3>Platform context</h3>');
+    tabs.platform.parts.push('<div class="md-rendered" id="platform-md-container">Loading…</div>');
+    tabs.platform.parts.push(`<p style="color:var(--muted); font-size:10px; margin-top:4px;">Source: <code>context/platform.md</code> (${data.platform_md_total_lines} lines) — rendered with GFM tables</p>`);
   }
 
-  body.innerHTML = parts.join('\n');
+  // ─── Assemble tab strip + panels ───
+  const tabOrder = ['overview', 'architecture', 'platform', 'discover', 'audit', 'features', 'learnings'];
+  const visible = tabOrder.filter(k => tabs[k].parts.length > 0);
+  let firstActive = true;
+  const out = [];
+  out.push('<div class="drawer-tabs" role="tablist">');
+  visible.forEach(k => {
+    const cls = firstActive ? 'drawer-tab active' : 'drawer-tab';
+    out.push(`<button type="button" class="${cls}" data-tab="${k}" role="tab">${escapeHtml(tabs[k].label)}</button>`);
+    firstActive = false;
+  });
+  out.push('</div>');
+  firstActive = true;
+  visible.forEach(k => {
+    const cls = firstActive ? 'drawer-tab-panel active' : 'drawer-tab-panel';
+    out.push(`<section class="${cls}" data-tab-panel="${k}" role="tabpanel">`);
+    out.push(tabs[k].parts.join('\n'));
+    out.push('</section>');
+    firstActive = false;
+  });
+  body.innerHTML = out.join('\n');
+
+  // Tab click handler — toggle active class on buttons + panels.
+  body.querySelectorAll('.drawer-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-tab');
+      body.querySelectorAll('.drawer-tab').forEach(b => b.classList.toggle('active', b === btn));
+      body.querySelectorAll('.drawer-tab-panel').forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-tab-panel') === target);
+      });
+    });
+  });
 
   // After the HTML is in the DOM, render each Mermaid diagram + markdown block.
   if (data.architecture_overview_mermaid) {
@@ -2507,6 +2743,157 @@ function renderWorkspaceOverview(data) {
     const c = document.getElementById('platform-md-container');
     if (c) renderMarkdownInto(c, data.platform_md_excerpt);
   }
+  // Filter wiring for deliver_runs list.
+  const wireListFilter = (textInputId, dropdownId, listSelector, dropdownAttr) => {
+    const input = document.getElementById(textInputId);
+    const sel = document.getElementById(dropdownId);
+    if (!input && !sel) return;
+    const apply = () => {
+      const q = (input?.value || '').toLowerCase().trim();
+      const sval = sel?.value || '';
+      document.querySelectorAll(listSelector).forEach(row => {
+        const ftext = row.getAttribute('data-filter-text') || '';
+        const sattr = row.getAttribute(dropdownAttr) || '';
+        const matchText = !q || ftext.includes(q);
+        const matchSel = !sval || sattr === sval;
+        row.style.display = (matchText && matchSel) ? '' : 'none';
+      });
+    };
+    input?.addEventListener('input', apply);
+    sel?.addEventListener('change', apply);
+  };
+  wireListFilter('deliver-runs-filter', 'deliver-runs-status-filter', 'details.deliver-run-block', 'data-status');
+  wireListFilter('learn-runs-filter', 'learn-runs-source-filter', 'details.learn-run-block', 'data-source');
+
+  if (data.deliver_runs && data.deliver_runs.length) {
+    // Lazy-fetch each run's detail (report.md, PRs, phase breakdown) only when
+    // its <details> block is expanded. The server sends only metadata up front;
+    // detail comes from /deliver-run-detail?run_id=… and is cached per-run so
+    // re-collapsing/re-expanding doesn't re-fetch.
+    const detailCache = new Map();  // run_id → rendered HTML string
+    const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    const fmtMs = ms => {
+      if (ms < 1000) return ms + 'ms';
+      const s = Math.round(ms / 1000);
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60); const rs = s % 60;
+      return m + 'm' + (rs ? ' ' + rs + 's' : '');
+    };
+    const renderRunDetail = (detail) => {
+      const out = [];
+      out.push('<table>');
+      out.push(`<tr><th>Run ID</th><td>${escapeHtml(detail.run_id)}</td></tr>`);
+      if (detail.status) out.push(`<tr><th>Status</th><td>${escapeHtml(detail.status)}</td></tr>`);
+      if (detail.updated_at) out.push(`<tr><th>Updated</th><td>${escapeHtml(detail.updated_at)}</td></tr>`);
+      if (detail.total_tokens) {
+        out.push(`<tr><th>Total</th><td>${fmtTok(detail.total_tokens)} tokens across ${detail.total_agents} agent dispatches</td></tr>`);
+      }
+      out.push('</table>');
+      if (detail.pr_urls && detail.pr_urls.length) {
+        out.push('<table style="margin-top:6px;"><tr><th>Repo</th><th>PR</th></tr>');
+        detail.pr_urls.forEach(p => {
+          out.push(`<tr><td>${escapeHtml(p.repo || '—')}</td><td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">#${escapeHtml(p.pr_number)}</a></td></tr>`);
+        });
+        out.push('</table>');
+      }
+      if (detail.phase_breakdown && detail.phase_breakdown.length) {
+        out.push('<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:11px; color:var(--muted);">Phase breakdown</summary><table>');
+        out.push('<tr><th>Phase</th><th>Stage</th><th>Agents</th><th>Duration</th><th>Tokens</th></tr>');
+        detail.phase_breakdown.forEach(p => {
+          out.push(`<tr><td><b>${escapeHtml(p.phase)}</b></td><td>${escapeHtml(p.stage || '—')}</td><td>${p.agent_count}</td><td>${fmtMs(p.duration_ms)}</td><td>${fmtTok(p.tokens)}</td></tr>`);
+        });
+        out.push('</table></details>');
+      }
+      if (detail.report_md) {
+        out.push(`<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:11px; color:var(--muted);">Full execution report</summary><div class="md-rendered" data-md-source="report">Loading…</div></details>`);
+      }
+      return out.join('\n');
+    };
+    data.deliver_runs.forEach((run, idx) => {
+      const detailsEl = document.querySelector(`details.deliver-run-block[data-run-id="${run.run_id}"]`);
+      const targetEl = document.getElementById('deliver-run-detail-' + idx);
+      if (!detailsEl || !targetEl) return;
+      detailsEl.addEventListener('toggle', () => {
+        if (!detailsEl.open) return;
+        if (detailCache.has(run.run_id)) return;  // already loaded
+        fetch('/deliver-run-detail?run_id=' + encodeURIComponent(run.run_id))
+          .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+          .then(detail => {
+            detailCache.set(run.run_id, true);
+            targetEl.innerHTML = renderRunDetail(detail);
+            // Lazy-render the report.md inner block only when its inner
+            // <details> is opened (markdown parse cost stays per-click).
+            const reportEl = targetEl.querySelector('[data-md-source="report"]');
+            if (reportEl && detail.report_md) {
+              const reportDetails = reportEl.closest('details');
+              const renderReport = () => renderMarkdownInto(reportEl, detail.report_md);
+              if (reportDetails) {
+                reportDetails.addEventListener('toggle', () => { if (reportDetails.open) renderReport(); }, { once: true });
+              } else {
+                renderReport();
+              }
+            }
+          })
+          .catch(err => {
+            targetEl.innerHTML = `<p style="color:var(--err, #c33); font-size:11px;">Failed to load: ${escapeHtml(String(err))}</p>`;
+          });
+      });
+    });
+  }
+
+  // /learn run lazy-fetch — same pattern as deliver_runs.
+  if (data.learn_runs && data.learn_runs.length) {
+    const learnCache = new Map();
+    const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    const renderLearnDetail = (detail) => {
+      const out = [];
+      out.push('<table>');
+      out.push(`<tr><th>Run ID</th><td>${escapeHtml(detail.run_id)}</td></tr>`);
+      if (detail.source_label) out.push(`<tr><th>Source</th><td>${escapeHtml(detail.source_label)} (${escapeHtml(detail.source_mode)})</td></tr>`);
+      if (detail.updated_at) out.push(`<tr><th>Updated</th><td>${escapeHtml(detail.updated_at)}</td></tr>`);
+      if (detail.total_tokens) {
+        out.push(`<tr><th>Tokens</th><td>${fmtTok(detail.total_tokens)} across ${detail.total_agents} agent dispatches</td></tr>`);
+      }
+      if (detail.counts) {
+        const c = detail.counts;
+        out.push(`<tr><th>Findings</th><td>${c.applied} actionable · ${c.flagged} plugin-flagged · ${c.run_local} run-local</td></tr>`);
+      }
+      out.push('</table>');
+      if (detail.learner_output_md) {
+        out.push(`<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:11px; color:var(--muted);">Full learner output</summary><div class="md-rendered" data-md-source="learner">Loading…</div></details>`);
+      }
+      return out.join('\n');
+    };
+    data.learn_runs.forEach((run, idx) => {
+      const detailsEl = document.querySelector(`details.learn-run-block[data-run-id="${run.run_id}"]`);
+      const targetEl = document.getElementById('learn-run-detail-' + idx);
+      if (!detailsEl || !targetEl) return;
+      detailsEl.addEventListener('toggle', () => {
+        if (!detailsEl.open) return;
+        if (learnCache.has(run.run_id)) return;
+        fetch('/learn-run-detail?run_id=' + encodeURIComponent(run.run_id))
+          .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+          .then(detail => {
+            learnCache.set(run.run_id, true);
+            targetEl.innerHTML = renderLearnDetail(detail);
+            const reportEl = targetEl.querySelector('[data-md-source="learner"]');
+            if (reportEl && detail.learner_output_md) {
+              const reportDetails = reportEl.closest('details');
+              const renderReport = () => renderMarkdownInto(reportEl, detail.learner_output_md);
+              if (reportDetails) {
+                reportDetails.addEventListener('toggle', () => { if (reportDetails.open) renderReport(); }, { once: true });
+              } else {
+                renderReport();
+              }
+            }
+          })
+          .catch(err => {
+            targetEl.innerHTML = `<p style="color:var(--err, #c33); font-size:11px;">Failed to load: ${escapeHtml(String(err))}</p>`;
+          });
+      });
+    });
+  }
+
   if (data.design_systems && data.design_systems.length) {
     data.design_systems.forEach((ds, i) => {
       const c = document.getElementById('ds-md-' + i);

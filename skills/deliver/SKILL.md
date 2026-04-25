@@ -32,7 +32,9 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 | `--force-security-review` | Force security review |
 | `--no-security` | Skip security review |
 | `--no-context-update` | Skip Phase 7 agent-context refresh |
-| `--with-pr` | Phase 7 creates PRs via `gh pr create` |
+| `--with-pr` | Phase 8 publishes draft PRs (one per repo) with cross-repo linking; without it Phase 8 only runs the feedback offering |
+| `--publish-despite-blockers` | Phase 8 PR publish ignores Phase 6 blocker gate (use only after manually reviewing blockers) |
+| `--no-feedback-prompt` | Phase 8 skips the end-of-run feedback prompt (CI-friendly) |
 | `--resume` | Resume interrupted pipeline (asks which if multiple) |
 | `--no-worktrees` | Skip worktree creation for Phase 3 + Phase 5. Work in-place on the current branch of each repo. Use only for small interactive fixes where isolation is not needed. Default is to create one worktree per repo touched. |
 
@@ -108,6 +110,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
     | 5.75 (Security) | keyword trigger or `--force-security-review` | `--no-security` skips |
     | 6 (Assess) | **2+ repos were modified** during Phase 5. If only 1 repo changed, the reviewer already covers it — skip Phase 6 and note "single-repo pipeline, Phase 6 skipped". | — |
     | 7 (Report) | always | — |
+    | 8 (Publish + Wrap-up) | always (Step 8.6 feedback offering); PR publish steps within Phase 8 only if `--with-pr` AND no Phase 6 blockers | `--with-pr` enables PR publish; `--publish-despite-blockers` overrides blocker gate; `--no-feedback-prompt` skips Step 8.6 |
 
     Store the derived phase plan in the scratchpad's Architecture Flags section. Log: "Auto-detected phases: {list}. Skipped: {list with reasons}."
 
@@ -186,8 +189,9 @@ Phase 5.75: Security code review (security-consultant, if triggered)
 Phase 6: Assessment (assessor) ──────────────────── cross-repo spec + requirements verification
 Phase 7: Summary ──┬── Reporter agent (execution report with insights)
                    ├── Context-manager refresh (unless --no-context-update)
-                   ├── PR creation (if --with-pr)
-                   └── Archive scratchpad + history
+                   └── Archive scratchpad
+Phase 8: Publish ──┬── PR publish (if --with-pr): user gate → push → draft PRs → cross-repo linking → append PR URLs to report.md
+                   └── Run wrap-up + feedback offering (always): /learn --run + disclaimer about /learn --pr later
 ```
 
 ---
@@ -215,6 +219,7 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | 5.75. Security Review | `phases/phase-5.75-security-review.md` | 78 |
 | 6. Assessment | `phases/phase-6-assess.md` | 101 |
 | 7. Summary + Archive | `phases/phase-7-report.md` | 216 |
+| 8. PR Publish + Feedback Offering | `phases/phase-8-pr-publish.md` | 220 |
 
 **When entering a phase**: `Read {plugin_dir}/skills/deliver/phases/{phase-file}` — follow the instructions in that file for the phase.
 
@@ -242,7 +247,9 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | `--with-infra` | — | Forces Phase 5d even if architect didn't flag it |
 | `--no-mock` | Phase 5c | — |
 | `--no-review` | Phase 5.5 | Phase 5 → 6 directly |
-| `--with-pr` | — | Phase 7 creates one PR per worktree |
+| `--with-pr` | — | Phase 8 publishes one draft PR per repo with cross-repo linking |
+| `--publish-despite-blockers` | — | Phase 8 PR publish ignores Phase 6 blocker gate |
+| `--no-feedback-prompt` | Phase 8 Step 8.6 | Phase 8 skips end-of-run feedback prompt |
 | `--resume` | Completed phases | Reads scratchpad, continues from current phase |
 
 **Architect auto-detection** (when no conflicting flag is set):

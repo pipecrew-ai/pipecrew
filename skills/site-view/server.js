@@ -27,7 +27,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const { resolveRoot: resolveWorkspaceRoot } = require('../../scripts/workspace-root');
 
 const HOME = os.homedir();
@@ -132,6 +132,246 @@ function hookErrorPath() {
 
 const GLOBAL_HOOK_ERROR_LOG = path.join(HOME, '.claude', 'logs', 'pipeline-view-hook-errors.log');
 
+// ─── Latest-run-mtime helper for cache invalidation ─────────────────────────
+//
+// Returns the most recent mtime across scratchpad.md / checkpoints.jsonl /
+// report.md / learner-output.md inside any direct child dir of `runsDir`.
+// Used as a synthetic cache key: any new run or any update to a known
+// per-run file invalidates the workspace-overview cache.
+function latestRunMtime(runsDir) {
+  if (!fs.existsSync(runsDir)) return 0;
+  let latest = 0;
+  let entries;
+  try { entries = fs.readdirSync(runsDir); } catch (_) { return 0; }
+  for (const sub of entries) {
+    const subDir = path.join(runsDir, sub);
+    try {
+      const dirStat = fs.statSync(subDir);
+      if (!dirStat.isDirectory()) continue;
+      latest = Math.max(latest, dirStat.mtimeMs);
+      for (const fname of ['scratchpad.md', 'checkpoints.jsonl', 'report.md', 'learner-output.md']) {
+        const fp = path.join(subDir, fname);
+        if (fs.existsSync(fp)) {
+          latest = Math.max(latest, fs.statSync(fp).mtimeMs);
+        }
+      }
+    } catch (_) {}
+  }
+  return latest;
+}
+
+// ─── Deliver run helpers (cheap metadata + lazy detail) ─────────────────────
+//
+// readDeliverRunMeta(runsDir, runId, mtime) — fast: only parses scratchpad
+// header. Returned for every /deliver run when the project drawer opens.
+//
+// readDeliverRunDetail(runsDir, runId) — slow: reads report.md fully, parses
+// PR URLs, and aggregates per-phase tokens/durations from checkpoints.jsonl.
+// Called per-run when the user expands that row.
+//
+// Both are unsanitized-input-safe: callers must validate runId against the
+// known run directory listing before passing it in.
+function readDeliverRunMeta(runsDir, runId, mtimeMs) {
+  const runDir = path.join(runsDir, runId);
+  const meta = {
+    run_id: runId,
+    updated_at: new Date(mtimeMs).toISOString(),
+    feature_name: null,
+    status: null,
+  };
+  const scratchPath = path.join(runDir, 'scratchpad.md');
+  if (fs.existsSync(scratchPath)) {
+    try {
+      const sp = fs.readFileSync(scratchPath, 'utf8');
+      const fm = sp.match(/^- \*\*Feature\*\*:\s*(.+)$/m) || sp.match(/^# Feature Pipeline Run.*?\n.*?Feature[:\s]+(.+?)$/im);
+      if (fm) meta.feature_name = fm[1].trim();
+      const sm = sp.match(/^- \*\*Status\*\*:\s*(\w+)/m);
+      if (sm) meta.status = sm[1].trim();
+    } catch (_) {}
+  }
+  return meta;
+}
+
+function readDeliverRunDetail(runsDir, runId) {
+  const runDir = path.join(runsDir, runId);
+  if (!fs.existsSync(runDir)) return null;
+  const stat = fs.statSync(path.join(runDir, 'scratchpad.md'));
+  const detail = {
+    ...readDeliverRunMeta(runsDir, runId, stat.mtimeMs),
+    report_md: null,
+    pr_urls: [],
+    phase_breakdown: [],
+    total_tokens: 0,
+    total_agents: 0,
+  };
+
+  // Read report.md (Phase 7 output, with Phase 8 PR table appended if --with-pr)
+  const reportPath = path.join(runDir, 'report.md');
+  if (fs.existsSync(reportPath)) {
+    try {
+      detail.report_md = fs.readFileSync(reportPath, 'utf8');
+    } catch (_) {}
+  }
+
+  // PR URLs — prefer the structured JSON file written by Phase 8 Step 8.5b
+  // (stable contract). Fall back to regex-parsing the report.md "## Pull
+  // Requests" table only if pr_urls.json is missing — the markdown format
+  // may evolve over time but the JSON shape is guaranteed.
+  const prUrlsJsonPath = path.join(runDir, 'pr_urls.json');
+  if (fs.existsSync(prUrlsJsonPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(prUrlsJsonPath, 'utf8'));
+      if (Array.isArray(data.prs)) {
+        detail.pr_urls = data.prs.map(p => ({
+          pr_number: String(p.pr_number ?? ''),
+          url: p.url || '',
+          repo: p.repo || null,
+        }));
+      }
+      if (Array.isArray(data.failed) && data.failed.length) {
+        detail.pr_failures = data.failed;
+      }
+    } catch (_) {}
+  } else if (detail.report_md) {
+    const prSection = detail.report_md.match(/##\s*Pull Requests\s*\n+([\s\S]*?)(?=\n##\s|\n---\s*\n|$)/i);
+    if (prSection) {
+      const urlRe = /\[#?(\d+)\]\((https?:\/\/[^\s)]+)\)/g;
+      let m;
+      while ((m = urlRe.exec(prSection[1])) !== null) {
+        const repoMatch = prSection[1].slice(0, m.index).match(/\|\s*([^|]+?)\s*\|[^|]*$/);
+        detail.pr_urls.push({
+          pr_number: m[1],
+          url: m[2],
+          repo: repoMatch ? repoMatch[1].trim() : null,
+        });
+      }
+    }
+  }
+
+  // Parse checkpoints.jsonl for per-phase breakdown
+  const cpPath = path.join(runDir, 'checkpoints.jsonl');
+  if (fs.existsSync(cpPath)) {
+    try {
+      const byPhase = new Map();
+      const phaseOrder = [];
+      const raw = fs.readFileSync(cpPath, 'utf8');
+      for (const line of raw.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        let ev;
+        try { ev = JSON.parse(line); } catch (_) { continue; }
+        if (ev.event !== 'agent_end') continue;
+        if (ev.status && ev.status !== 'ok') continue;
+        const phase = ev.phase || 'unknown';
+        if (!byPhase.has(phase)) {
+          byPhase.set(phase, { tokens: 0, duration_ms: 0, agent_count: 0, stage: ev.stage || null });
+          phaseOrder.push(phase);
+        }
+        const row = byPhase.get(phase);
+        row.tokens += ev.total_tokens || 0;
+        row.duration_ms += ev.duration_ms || 0;
+        row.agent_count += 1;
+      }
+      detail.phase_breakdown = phaseOrder.map(p => ({
+        phase: p,
+        stage: byPhase.get(p).stage,
+        tokens: byPhase.get(p).tokens,
+        duration_ms: byPhase.get(p).duration_ms,
+        agent_count: byPhase.get(p).agent_count,
+      }));
+      detail.total_tokens = detail.phase_breakdown.reduce((a, r) => a + r.tokens, 0);
+      detail.total_agents = detail.phase_breakdown.reduce((a, r) => a + r.agent_count, 0);
+    } catch (_) {}
+  }
+
+  return detail;
+}
+
+// ─── Learn run helpers (cheap metadata + lazy detail) ───────────────────────
+//
+// Mirrors the deliver-run helpers but for /learn skill runs. Each /learn
+// invocation produces a run dir under runs/learn/{run_id}/ with:
+//   - checkpoints.jsonl  (always)
+//   - learner-output.md  (the feedback-learner agent's full output)
+// run_id format: {YYYY-MM-DD-HHMMSS}-{source-slug} where source-slug is
+// pr-N / run-X / branch-Y / text — encodes which signal source was used.
+function parseLearnRunSource(runId) {
+  const m = runId.match(/^\d{4}-\d{2}-\d{2}-\d{6}-(.+)$/);
+  if (!m) return { source_mode: 'unknown', source_label: runId };
+  const slug = m[1];
+  if (slug.startsWith('pr-')) return { source_mode: 'pr', source_label: 'PR ' + slug.slice(3) };
+  if (slug.startsWith('run-')) return { source_mode: 'run', source_label: 'Run ' + slug.slice(4) };
+  if (slug.startsWith('branch-')) return { source_mode: 'branch', source_label: 'Branch ' + slug.slice(7) };
+  if (slug === 'text' || slug.startsWith('text-')) return { source_mode: 'text', source_label: 'Free-form text' };
+  return { source_mode: 'unknown', source_label: slug };
+}
+
+function readLearnRunMeta(runsDir, runId, mtimeMs) {
+  const src = parseLearnRunSource(runId);
+  return {
+    run_id: runId,
+    updated_at: new Date(mtimeMs).toISOString(),
+    source_mode: src.source_mode,
+    source_label: src.source_label,
+  };
+}
+
+function readLearnRunDetail(runsDir, runId) {
+  const runDir = path.join(runsDir, runId);
+  if (!fs.existsSync(runDir)) return null;
+  // Find the freshest mtime among known per-run files for the meta lookup.
+  let mtime = 0;
+  for (const fname of ['learner-output.md', 'checkpoints.jsonl']) {
+    const fp = path.join(runDir, fname);
+    if (fs.existsSync(fp)) mtime = Math.max(mtime, fs.statSync(fp).mtimeMs);
+  }
+  const detail = {
+    ...readLearnRunMeta(runsDir, runId, mtime),
+    learner_output_md: null,
+    counts: { applied: 0, rejected: 0, flagged: 0, run_local: 0 },
+    total_tokens: 0,
+    total_agents: 0,
+  };
+
+  // Read learner-output.md fully (renders as markdown in the drawer).
+  const outPath = path.join(runDir, 'learner-output.md');
+  if (fs.existsSync(outPath)) {
+    try {
+      detail.learner_output_md = fs.readFileSync(outPath, 'utf8');
+      // Cheap counts — count occurrences of "Tier:" lines in each category.
+      // The agent emits "Tier: workspace-durable" / "Tier: repo-durable" /
+      // "Tier: plugin-level" / "Tier: run-local" per finding.
+      const tierLines = detail.learner_output_md.match(/\*\*Tier\*\*:\s*`?([a-z-]+)`?/gi) || [];
+      for (const t of tierLines) {
+        const m = t.match(/`?([a-z-]+)`?\s*$/i);
+        if (!m) continue;
+        const tier = m[1].toLowerCase();
+        if (tier === 'workspace-durable' || tier === 'repo-durable') detail.counts.applied += 1;
+        else if (tier === 'plugin-level') detail.counts.flagged += 1;
+        else if (tier === 'run-local') detail.counts.run_local += 1;
+      }
+    } catch (_) {}
+  }
+
+  // Token totals from checkpoints.jsonl
+  const cpPath = path.join(runDir, 'checkpoints.jsonl');
+  if (fs.existsSync(cpPath)) {
+    try {
+      const raw = fs.readFileSync(cpPath, 'utf8');
+      for (const line of raw.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        let ev;
+        try { ev = JSON.parse(line); } catch (_) { continue; }
+        if (ev.event !== 'agent_end') continue;
+        if (ev.status && ev.status !== 'ok') continue;
+        detail.total_tokens += ev.total_tokens || 0;
+        detail.total_agents += 1;
+      }
+    } catch (_) {}
+  }
+
+  return detail;
+}
+
 // ─── Workspace overview (/discover outputs — static across /deliver runs) ────
 //
 // Reads the workspace-level artifacts produced by /discover so the UI can
@@ -146,12 +386,19 @@ function readWorkspaceOverview() {
   const architectureMmdPath = path.join(wsDir, 'context', 'architecture.mmd');
   const architectureOverviewMmdPath = path.join(wsDir, 'context', 'architecture-overview.mmd');
   const discoverRunsDir = path.join(wsDir, 'runs', 'discover');
+  const deliverRunsDir = path.join(wsDir, 'runs', 'deliver');
+  const learnRunsDir = path.join(wsDir, 'runs', 'learn');
 
   // Check mtimes — if nothing changed, serve from cache.
   const mtimes = {};
   for (const p of [configPath, platformPath, auditPath, architectureMmdPath, architectureOverviewMmdPath]) {
     mtimes[p] = fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0;
   }
+  // Also include the most recent activity under deliver/learn run dirs as a
+  // synthetic key so new runs (and updates to existing report/scratchpad files)
+  // invalidate the cache without needing a workspace-stable file to change.
+  mtimes[':deliver-runs-latest:'] = latestRunMtime(deliverRunsDir);
+  mtimes[':learn-runs-latest:'] = latestRunMtime(learnRunsDir);
   if (workspaceOverviewCache &&
       Object.keys(mtimes).every(k => mtimes[k] === workspaceOverviewCache.mtimes[k])) {
     return workspaceOverviewCache.data;
@@ -166,6 +413,8 @@ function readWorkspaceOverview() {
     platform_md_excerpt: null,
     audit_summary: null,
     last_discover_run: null,
+    deliver_runs: [],
+    learn_runs: [],
     design_systems: [],
     architecture_mermaid: null,
     architecture_overview_mermaid: null,
@@ -273,6 +522,49 @@ function readWorkspaceOverview() {
     } catch (_) {}
   }
 
+  // 4b. All /deliver runs — CHEAP metadata only (run_id, feature_name, status,
+  // updated_at). Heavy data (report.md content, PR URLs, checkpoints parse) is
+  // lazy-loaded per run via /deliver-run-detail when the user expands a row.
+  if (fs.existsSync(deliverRunsDir)) {
+    try {
+      const runs = fs.readdirSync(deliverRunsDir)
+        .filter(d => fs.existsSync(path.join(deliverRunsDir, d, 'scratchpad.md')))
+        .map(d => ({ id: d, mtime: fs.statSync(path.join(deliverRunsDir, d, 'scratchpad.md')).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      for (const r of runs) {
+        data.deliver_runs.push(readDeliverRunMeta(deliverRunsDir, r.id, r.mtime));
+      }
+    } catch (_) {}
+  }
+
+  // 4c. All /learn runs — CHEAP metadata only (run_id, source_mode, updated_at).
+  // Heavy data (learner-output.md content, counts, tokens) is lazy-loaded via
+  // /learn-run-detail when the user expands a row.
+  if (fs.existsSync(learnRunsDir)) {
+    try {
+      const runs = fs.readdirSync(learnRunsDir)
+        .map(d => {
+          const dirPath = path.join(learnRunsDir, d);
+          // Filter: must be a directory with at least checkpoints.jsonl or learner-output.md
+          try {
+            if (!fs.statSync(dirPath).isDirectory()) return null;
+            for (const fname of ['checkpoints.jsonl', 'learner-output.md']) {
+              const fp = path.join(dirPath, fname);
+              if (fs.existsSync(fp)) return { id: d, mtime: fs.statSync(fp).mtimeMs };
+            }
+          } catch (_) {}
+          return null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.mtime - a.mtime);
+
+      for (const r of runs) {
+        data.learn_runs.push(readLearnRunMeta(learnRunsDir, r.id, r.mtime));
+      }
+    } catch (_) {}
+  }
+
   // 5. Architecture diagrams (Mermaid source from /discover Phase B2)
   //    - architecture-overview.mmd: C4-style high-level block diagram (5-8 capability blocks)
   //    - architecture.mmd: detailed topology (every service, DB, queue, Lambda)
@@ -376,16 +668,21 @@ function readHookErrors() {
 const ROLE_PATTERNS = [
   { role: 'pip',     patterns: ['product-owner', 'product-brainstormer'] },
   { role: 'archie',  patterns: ['solution-architect'] },
-  { role: 'yara',    patterns: ['openapi-spec-editor', 'spec-editor'] },
+  { role: 'yara',    patterns: ['openapi-spec-editor', 'spec-editor', 'schema-implementer'] },
   { role: 'shield',  patterns: ['security-consultant', 'security-reviewer', 'security-auditor'] },
   { role: 'mira',    patterns: ['ux-consultant', 'ux-reviewer', 'ux-designer'] },
-  { role: 'bruno',   patterns: ['spring-boot-api-implementer', 'spring-boot-implementer', 'backend-implementer', 'nestjs-implementer', 'fastapi-implementer'] },
+  { role: 'bruno',   patterns: ['spring-boot-api-implementer', 'spring-boot-implementer', 'backend-implementer', 'nestjs-implementer', 'fastapi-implementer', 'django-implementer', 'flask-implementer', 'python-worker-implementer'] },
   { role: 'pixel',   patterns: ['react-feature-implementer', 'react-implementer', 'nextjs-implementer', 'frontend-implementer', 'feature-implementer'] },
   { role: 'echo',    patterns: ['mock-endpoint-implementer', 'node-mock-implementer', 'mock-implementer'] },
-  { role: 'stratos', patterns: ['cdk-stack-implementer', 'cdk-implementer', 'infra-implementer', 'ops-implementer'] },
+  { role: 'stratos', patterns: ['cdk-stack-implementer', 'cdk-implementer', 'infra-implementer', 'ops-implementer', 'terraform-implementer'] },
   { role: 'crit',    patterns: ['spring-boot-code-reviewer', 'react-code-reviewer', 'nestjs-reviewer', 'nextjs-reviewer', 'code-reviewer', 'reviewer'] },
   { role: 'judge',   patterns: ['assessor'] },
   { role: 'scribe',  patterns: ['reporter'] },
+  // Loop must come BEFORE sage — the literal `feedback-learner` is more
+  // specific than the substring fallback that `context-manager` ends up
+  // taking, and we want feedback-learner to resolve to its own character
+  // (closes the pyramid at end of run) instead of merging into sage.
+  { role: 'loop',    patterns: ['feedback-learner'] },
   { role: 'sage',    patterns: ['context-manager'] },
 ];
 
@@ -429,6 +726,7 @@ const DEFAULT_AGENT_NAME = {
   judge:   'assessor',
   scribe:  'reporter',
   sage:    'context-manager',
+  loop:    'feedback-learner',
 };
 
 // ─── Utility helpers ─────────────────────────────────────────
@@ -572,6 +870,9 @@ function mapPhaseToLabel(phase) {
   if (p === '4')   return { label: 'sync',         category: 'neutral' };
   if (p === '4.5') return { label: 'plan',         category: 'neutral' };
   if (p === '7')   return { label: 'report',       category: 'neutral' };
+  if (p === '8')   return { label: 'publish',      category: 'neutral' };
+  // Phase 3 sub-phases (3a contract, 3b spec) — both spec-editing work.
+  if (p === '3a' || p === '3b') return { label: 'spec', category: 'neutral' };
   // Unknown — pass through trimmed value for visibility.
   return { label: p, category: 'neutral' };
 }
@@ -837,6 +1138,16 @@ function parseScratchpad(content) {
     id: 'sage', role: 'sage', phase: '7',
     agent: DEFAULT_AGENT_NAME.sage, repo: null, status: 'queued',
   });
+  // Phase 8 — feedback-learner (loop). Only fires if the user opts in to
+  // feedback at Step 8.6, so it commonly stays queued. When it DOES finish
+  // (dispatch-log entry with outcome=success), the front-end treats that as
+  // the run's true terminal event and closes the pyramid (all 10 blocks
+  // visible). Without this preseed, /learn-driven runs would have no card
+  // to promote.
+  preseed.push({
+    id: 'loop', role: 'loop', phase: '8',
+    agent: DEFAULT_AGENT_NAME.loop, repo: null, status: 'queued',
+  });
   // Merge preseeded chars: skip any whose id / role is already present
   // from Phase Status (don't stomp a working/done pip, archie, etc.).
   for (const p of preseed) {
@@ -1021,9 +1332,11 @@ function parseScratchpad(content) {
   // Singleton roles — one dispatch per phase by design. Retries or multi-
   // round prompts within a single phase (e.g. product-owner Q&A + final doc,
   // or an architect re-plan) must NOT spawn pip-2 / archie-2 ghost cards.
-  // Shield is phase-managed too but legitimately runs per-repo, so it can
-  // grow — not listed here.
-  const SINGLETON_ROLES = new Set(['pip', 'archie', 'yara', 'crit', 'judge']);
+  // Shield (security) and crit (code review) are phase-managed too but
+  // legitimately run per-repo (one reviewer per affected service + one for
+  // the frontend per phase-5.5-code-review.md), so they can grow — they
+  // are NOT listed here.
+  const SINGLETON_ROLES = new Set(['pip', 'archie', 'yara', 'judge']);
   for (const [role, info] of Object.entries(dispatchByRole)) {
     const existing = characters.filter(c => c.role === role);
     const wantCount = SINGLETON_ROLES.has(role) ? Math.min(info.count, Math.max(existing.length, 1)) : info.count;
@@ -1049,11 +1362,22 @@ function parseScratchpad(content) {
     else if (outcomes.every(o => o === 'done')) rolled = 'done';
     else rolled = 'working'; // mixed / unknown — treat as in-flight
     // Flip each queued character of this role up to one status level.
-    // We don't downgrade done → working here — task rows / phase status
-    // remain authoritative for characters they populated.
+    // Two cases:
+    //   1. queued → rolled — first promotion from preseed / fresh spawn.
+    //   2. done → working — re-dispatch (fix round). When the dispatch log
+    //      has a current in_progress entry alongside completed ones, the
+    //      character is actively running again (e.g. Phase 5.5-fix re-runs
+    //      the implementer that already shipped Phase 5). The fix-round
+    //      phase chip already disambiguates which dispatch is current; we
+    //      mirror that in the character status so it shows up in the
+    //      Currently Building zone again.
     for (const c of characters) {
       if (c.role !== role) continue;
-      if (c.status === 'queued') c.status = rolled;
+      if (c.status === 'queued') {
+        c.status = rolled;
+      } else if (c.status === 'done' && (rolled === 'working' || rolled === 'failed')) {
+        c.status = rolled;
+      }
     }
   }
 
@@ -1209,6 +1533,64 @@ const server = http.createServer((req, res) => {
   } else if (req.url === '/workspace-overview' || req.url === '/workspace-overview.json') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(readWorkspaceOverview(), null, 2));
+  } else if (req.url.startsWith('/learn-run-detail')) {
+    // Lazy-loaded full detail for one /learn run. Query: ?run_id=<id>
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const runId = url.searchParams.get('run_id');
+      if (!runId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'missing run_id query parameter' }));
+        return;
+      }
+      const learnRunsDir = path.join(WORKSPACE_ROOT, workspace, 'runs', 'learn');
+      const validIds = fs.existsSync(learnRunsDir)
+        ? fs.readdirSync(learnRunsDir).filter(d => {
+            const dirPath = path.join(learnRunsDir, d);
+            try { return fs.statSync(dirPath).isDirectory(); } catch (_) { return false; }
+          })
+        : [];
+      if (!validIds.includes(runId)) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'run_id not found', run_id: runId }));
+        return;
+      }
+      const detail = readLearnRunDetail(learnRunsDir, runId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(detail, null, 2));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  } else if (req.url.startsWith('/deliver-run-detail')) {
+    // Lazy-loaded full detail for one /deliver run. Query: ?run_id=<id>
+    // Validates the run_id against the actual directory listing — no
+    // path traversal possible.
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const runId = url.searchParams.get('run_id');
+      if (!runId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'missing run_id query parameter' }));
+        return;
+      }
+      const deliverRunsDir = path.join(WORKSPACE_ROOT, workspace, 'runs', 'deliver');
+      // Whitelist check: run_id must be a real directory under runs/deliver/
+      const validIds = fs.existsSync(deliverRunsDir)
+        ? fs.readdirSync(deliverRunsDir).filter(d => fs.existsSync(path.join(deliverRunsDir, d, 'scratchpad.md')))
+        : [];
+      if (!validIds.includes(runId)) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'run_id not found', run_id: runId }));
+        return;
+      }
+      const detail = readDeliverRunDetail(deliverRunsDir, runId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(detail, null, 2));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
   } else if (req.url === '/vendor/mermaid.min.js' || req.url === '/vendor/marked.min.js') {
     const fname = req.url.slice('/vendor/'.length);
     try {
@@ -1320,7 +1702,131 @@ function tryListen(p, retries) {
   });
 }
 
-tryListen(port, 10);
+// ─── Auto-kill existing site-view for the same (workspace, run_id) ────────
+//
+// Before listening, scan the well-known port range for any other site-view
+// process serving the SAME workspace + run_id and kill it. This makes
+// re-running /deliver, /site-view, or pre-flight idempotent — a stale
+// server from a prior session won't sit around showing outdated state.
+//
+// Servers for OTHER (workspace, run_id) combos are left alone — they
+// represent legitimate parallel runs.
+//
+// Mirrors the probe + kill logic of skills/siteview-cleanup/cleanup.js.
+function probePortForSiteview(p) {
+  return new Promise((resolve) => {
+    const req = http.get(
+      { host: '127.0.0.1', port: p, path: '/state', timeout: 600 },
+      (res) => {
+        if (res.statusCode !== 200) { res.resume(); return resolve(null); }
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => {
+          try {
+            const s = JSON.parse(data);
+            if (s && Object.prototype.hasOwnProperty.call(s, 'runId') && Array.isArray(s.characters)) {
+              resolve({ port: p, runId: s.runId || '', workspace: s.workspace || '' });
+            } else {
+              resolve(null);
+            }
+          } catch (_) { resolve(null); }
+        });
+      }
+    );
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+function getPidOnPort(p) {
+  try {
+    if (os.platform() === 'win32') {
+      const out = execSync('netstat -ano', { encoding: 'utf8' });
+      const re = new RegExp(`127\\.0\\.0\\.1:${p}\\s.*LISTENING\\s+(\\d+)`, 'i');
+      const m = out.match(re);
+      return m ? m[1] : null;
+    } else {
+      try {
+        const out = execSync(`lsof -iTCP:${p} -sTCP:LISTEN -t`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        return out || null;
+      } catch (_) {
+        const out = execSync(`ss -ltnp 2>/dev/null | awk '$4 ~ /:${p}$/ {print $7}'`, { encoding: 'utf8' }).trim();
+        const m = out.match(/pid=(\d+)/);
+        return m ? m[1] : null;
+      }
+    }
+  } catch (_) { return null; }
+}
+
+function killPid(pid) {
+  try {
+    if (os.platform() === 'win32') {
+      execSync(`powershell -Command "Stop-Process -Id ${pid} -Force -ErrorAction Stop"`, { stdio: 'pipe' });
+    } else {
+      execSync(`kill -9 ${pid}`, { stdio: 'pipe' });
+    }
+    return true;
+  } catch (_) { return false; }
+}
+
+async function killExistingSameRun() {
+  const targetWorkspace = workspace;
+  const targetRunId = resolveRunId();  // may be null if no run dir yet
+  if (!targetWorkspace) return 0;
+
+  const ports = [];
+  for (let p = 5173; p <= 5195; p++) ports.push(p);
+
+  let probes;
+  try {
+    probes = await Promise.all(ports.map(probePortForSiteview));
+  } catch (_) {
+    return 0;  // probe failure shouldn't block startup
+  }
+
+  // Match policy: same workspace AND (same run_id OR our run_id is unknown).
+  // We refuse to kill cross-workspace servers, and we refuse to kill across
+  // different run_ids when both sides have one.
+  const matches = probes.filter(r => {
+    if (!r) return false;
+    if (r.workspace !== targetWorkspace) return false;
+    if (targetRunId && r.runId && r.runId !== targetRunId) return false;
+    return true;
+  });
+
+  if (matches.length === 0) return 0;
+
+  let killed = 0;
+  for (const m of matches) {
+    const pid = getPidOnPort(m.port);
+    if (!pid) {
+      console.log(`[startup] Found stale site-view at :${m.port} (run=${m.runId || 'unknown'}) but couldn't resolve PID — skipping.`);
+      continue;
+    }
+    if (killPid(pid)) {
+      console.log(`[startup] Killed existing site-view at :${m.port} (pid=${pid}, run=${m.runId || 'unknown'}).`);
+      killed++;
+    } else {
+      console.log(`[startup] Tried to kill site-view at :${m.port} (pid=${pid}) but the kill failed — proceeding anyway.`);
+    }
+  }
+  if (killed > 0) {
+    // Give the OS a moment to release the listening socket before we bind.
+    await new Promise(r => setTimeout(r, 250));
+  }
+  return killed;
+}
+
+(async () => {
+  try {
+    await killExistingSameRun();
+  } catch (e) {
+    // Non-fatal — log and continue. Worst case, tryListen's existing
+    // EADDRINUSE handler hops to the next port.
+    console.log(`[startup] Pre-bind cleanup hit an error (continuing): ${e.message}`);
+  }
+  tryListen(port, 10);
+})();
 
 process.on('SIGINT', () => {
   console.log('\n  Pipeline View stopped.');

@@ -9,7 +9,7 @@ Every skill in the plugin uses the same conventions for command-line flags. The 
 Use when the user wants to omit a named phase entirely (because it's already done outside the pipeline, or genuinely not wanted).
 
 Examples:
-- `--skip-divergence-harvest` — `/discover` skips Phase B2.5.
+- `--skip-divergences` — `/discover` skips Phase B2.5.
 - `--skip-requirements` — `/deliver` skips Phase 1 (caller passes pre-built requirements).
 - `--skip-assessment` — `/deliver` skips Phase 6.
 - `--skip-spec-edit` — `/deliver` skips Phase 3 (spec already updated).
@@ -82,7 +82,7 @@ Old names are not aliased — the rename is breaking (which is free since the pl
 ## Per-skill flag inventory (current state)
 
 ### `/discover`
-`--workspace=<slug>`, `--resume`, `--greenfield`, `--skip-divergence-harvest`.
+`--workspace=<slug>`, `--resume`, `--greenfield`, `--skip-divergences`.
 
 ### `/deliver`
 `--workspace=<slug>`, `--resume`, `--feature=<slug>`, `--skip-requirements`, `--skip-assessment`, `--skip-spec-edit`, `--skip-backend`, `--frontend-only`, `--backend-only`, `--no-review`, `--no-security`, `--force-security-review`, `--no-context-update`, `--with-pr`.

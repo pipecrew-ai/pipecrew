@@ -5,7 +5,7 @@
 ## Agent guidelines
 
 - Before planning any change, read `{{AGENT_CONTEXT_DIR}}/AGENT_INDEX.md` — it maps tasks to the relevant feature, service, and convention files.
-- When you add, change, or restructure a feature, integration, or module, update the matching file under `{{AGENT_CONTEXT_DIR}}/` in the same change. Docs must not drift behind the code.
+- **HARD RULE — agent-context updates.** When your change is a new feature, a refactor that touches architecture / conventions / file layout, an enhancement to a documented pattern, a new integration / entity / status / role / permission, a new exception or error mapping, or a removal of any of the above — you MUST update the matching files under `{{AGENT_CONTEXT_DIR}}/` in the same change (start from `AGENT_INDEX.md` and follow its pointers). This is part of done definition; reviewers will flag missing updates as Critical. Defer only with an explicit `AGENT-CONTEXT-DEFERRED: <what> (<why>)` line in your report so `/context-refresh` can pick it up. This `CLAUDE.md` is a stable index — touch it only when adding a new top-level topic, a new must-know, or a new Deep-context table row.
 - Write or update tests for every change; all tests must pass before a change is considered done.
 {{REPO_SPECIFIC_ABSOLUTES}}
 
@@ -33,7 +33,3 @@
 {{DEEP_CONTEXT_ROWS}}
 
 For feature-specific deep-dives and churning topics (per-feature docs, per-service endpoint inventories), start from `AGENT_INDEX.md` — it points to the right file per task.
-
-## Agent workflow pointers
-
-{{WORKFLOW_POINTERS}}

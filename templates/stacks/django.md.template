@@ -1,0 +1,159 @@
+# Django standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for every Django (Python) repo in this workspace. Naming, auth, persistence, migrations, tests, settings structure — **how we write Django here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+This document is populated by reading the actual code in the workspace's Django repos. Every convention below names what already exists — not what the plugin thinks Django "should" do.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Auth / permissions
+
+**Detected pattern**: {{AUTH_PATTERN}}
+
+<!-- One of:
+- DRF SessionAuthentication + IsAuthenticated permission
+- DRF TokenAuthentication / SimpleJWT
+- Custom JWT middleware + DRF auth class
+- django-allauth / dj-rest-auth
+- OAuth2 via django-oauth-toolkit
+- Delegated to upstream gateway (no in-app auth)
+-->
+
+**Rules:**
+- {{AUTH_RULES}}
+
+**Reference files:**
+{{AUTH_REFERENCES}}
+
+---
+
+## §2 ORM / persistence
+
+**Detected pattern**: {{ORM_PATTERN}}
+
+<!-- e.g., custom QuerySet methods on managers, select_related/prefetch_related discipline, transaction.atomic boundaries, soft-delete vs hard-delete convention. -->
+
+**Rules:**
+- {{ORM_RULES}}
+
+**Reference files:**
+{{ORM_REFERENCES}}
+
+---
+
+## §3 Pagination
+
+**Detected pattern**: {{PAGINATION_PATTERN}}
+
+<!-- e.g., DRF PageNumberPagination, LimitOffsetPagination, custom CursorPagination, DEFAULT_PAGINATION_CLASS in settings, page_size convention. -->
+
+**Rules:**
+- {{PAGINATION_RULES}}
+
+**Reference files:**
+{{PAGINATION_REFERENCES}}
+
+---
+
+## §4 Migrations
+
+**Detected pattern**: {{MIGRATIONS_PATTERN}}
+
+<!-- e.g., Django migrations only, RunPython for data migrations, never edit historical migrations, naming convention {NNNN}_{verb}_{noun}.py, deployment policy (auto-migrate vs manual). -->
+
+**Rules:**
+- {{MIGRATIONS_RULES}}
+
+**Reference files:**
+{{MIGRATIONS_REFERENCES}}
+
+---
+
+## §5 Views
+
+**Detected pattern**: {{VIEWS_PATTERN}}
+
+<!-- One of:
+- DRF ViewSets + Routers
+- DRF generic views (ListAPIView, etc.)
+- DRF APIView (manual)
+- Class-based views (Django CBV)
+- Function-based views with @api_view
+- Mix — describe split
+-->
+
+**Rules:**
+- {{VIEWS_RULES}}
+
+**Reference files:**
+{{VIEWS_REFERENCES}}
+
+---
+
+## §6 Error handling
+
+**Detected pattern**: {{ERROR_PATTERN}}
+
+<!-- e.g., custom DRF exception handler, exception class hierarchy, error response shape (JSON envelope), validation-error format, Sentry integration. -->
+
+**Rules:**
+- {{ERROR_RULES}}
+
+**Reference files:**
+{{ERROR_REFERENCES}}
+
+---
+
+## §7 Tests
+
+**Detected pattern**: {{TESTS_PATTERN}}
+
+<!-- e.g., pytest-django vs django.test.TestCase, factory_boy vs fixtures, APIClient usage, test database (sqlite vs postgres), test naming convention. -->
+
+**Security-test harness** (per implementer-common-rules.md R4):
+- Allowed-role: {{SEC_TEST_ALLOWED}}
+- Denied-role: {{SEC_TEST_DENIED}}
+- Unauthenticated: {{SEC_TEST_UNAUTH}}
+
+**Reference files:**
+{{TESTS_REFERENCES}}
+
+---
+
+## §8 Logging
+
+**Detected pattern**: {{LOGGING_PATTERN}}
+
+<!-- e.g., Django LOGGING dict in settings, structured logging via python-json-logger, request_id propagation, log levels per environment. -->
+
+**Rules:**
+- {{LOGGING_RULES}}
+
+**Reference files:**
+{{LOGGING_REFERENCES}}
+
+---
+
+## §9 Settings / config
+
+**Detected pattern**: {{CONFIG_PATTERN}}
+
+<!-- e.g., split settings (base/dev/prod) under settings/, django-environ for env vars, secrets in AWS Secrets Manager / SSM, .env.example committed but .env ignored. -->
+
+**Rules:**
+- {{CONFIG_RULES}}
+
+**Reference files:**
+{{CONFIG_REFERENCES}}
+
+---
+
+## DON'T (anti-patterns observed in this workspace)
+
+{{DONT_BLOCK}}
+
+<!-- Only populate when an anti-pattern was actually observed in code. Each entry: file:line + why it's wrong + the correct pattern from a §-section. Omit this section entirely if the codebase is clean. -->

@@ -1,0 +1,149 @@
+# Terraform standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for Terraform / HCL repos in this workspace. Module layout, naming, state management, resource patterns — **how we write Terraform here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+Terraform repos manage infrastructure-as-code. The implementer never runs `terraform apply` — only `terraform fmt` + `terraform validate` + `terraform plan` (the plan output is the artifact for human review). This document captures the workspace's conventions for the parts the implementer DOES author.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Module layout
+
+**Detected pattern**: {{LAYOUT_PATTERN}}
+
+<!-- e.g., root module + reusable modules under modules/, environments under environments/{dev,staging,prod}/, terragrunt vs raw tf, monorepo vs per-stack repos. -->
+
+**Rules:**
+- {{LAYOUT_RULES}}
+
+**Reference files:**
+{{LAYOUT_REFERENCES}}
+
+---
+
+## §2 Variable definitions
+
+**Detected pattern**: {{VARIABLES_PATTERN}}
+
+<!-- e.g., variables.tf at module root, type constraints (object({...})), default values, validation blocks, sensitive=true for secrets, .tfvars convention per environment. -->
+
+**Rules:**
+- {{VARIABLES_RULES}}
+
+**Reference files:**
+{{VARIABLES_REFERENCES}}
+
+---
+
+## §3 Naming & tagging
+
+**Detected pattern**: {{NAMING_PATTERN}}
+
+<!-- e.g., resource name pattern ({project}-{stack}-{env}), mandatory tags (Environment, Owner, CostCenter, ManagedBy=Terraform), default_tags via provider config. -->
+
+**Rules:**
+- {{NAMING_RULES}}
+
+**Reference files:**
+{{NAMING_REFERENCES}}
+
+---
+
+## §4 State management
+
+**Detected pattern**: {{STATE_PATTERN}}
+
+<!-- e.g., remote backend (S3 + DynamoDB lock, Terraform Cloud, GCS), state file naming, workspace per environment vs separate state files, state encryption. -->
+
+**Rules:**
+- {{STATE_RULES}}
+
+**Reference files:**
+{{STATE_REFERENCES}}
+
+---
+
+## §5 Provider configuration
+
+**Detected pattern**: {{PROVIDER_PATTERN}}
+
+<!-- e.g., terraform required_providers block, version constraints (~>), provider aliases (multi-region, multi-account), assume_role config, default_tags. -->
+
+**Rules:**
+- {{PROVIDER_RULES}}
+
+**Reference files:**
+{{PROVIDER_REFERENCES}}
+
+---
+
+## §6 Resource patterns
+
+**Detected pattern**: {{RESOURCE_PATTERN}}
+
+<!-- Per-resource-type idioms in this workspace. Examples:
+- S3: versioning enabled, public access blocked, server-side encryption
+- RDS: multi-AZ in prod, parameter group conventions, snapshot retention
+- IAM: principle-of-least-privilege module, managed-policy attachment vs inline
+- EKS / ECS / Lambda: deployment patterns, IAM role per service, log group conventions -->
+
+**Rules:**
+- {{RESOURCE_RULES}}
+
+**Reference files:**
+{{RESOURCE_REFERENCES}}
+
+---
+
+## §7 Tests & validation
+
+**Detected pattern**: {{TESTS_PATTERN}}
+
+<!-- e.g., terraform fmt -recursive in CI, terraform validate, tflint with custom rules, terratest for module-level unit tests, checkov / tfsec for security scanning. -->
+
+**Mandatory completion checks** (every implementer dispatch):
+- `terraform fmt -recursive` clean
+- `terraform validate` passes
+- `terraform plan` runs and is captured for review (never `apply`)
+
+**Reference files:**
+{{TESTS_REFERENCES}}
+
+---
+
+## §8 Plan output review
+
+**Detected pattern**: {{PLAN_REVIEW_PATTERN}}
+
+<!-- What to look for in `terraform plan` output: any "destroy" actions on stateful resources (RDS, S3 with content) → flag immediately; "replace" on resources with attached data → flag; resource count delta vs expected; sensitive value leak in plan output. -->
+
+**Rules:**
+- {{PLAN_REVIEW_RULES}}
+
+**Reference files:**
+{{PLAN_REVIEW_REFERENCES}}
+
+---
+
+## §9 Cross-stack references
+
+**Detected pattern**: {{CROSS_STACK_PATTERN}}
+
+<!-- e.g., terraform_remote_state data source vs SSM/parameter store lookup vs hardcoded ARN. Naming convention for outputs that other stacks consume. Cross-account / cross-region patterns. -->
+
+**Rules:**
+- {{CROSS_STACK_RULES}}
+
+**Reference files:**
+{{CROSS_STACK_REFERENCES}}
+
+---
+
+## DON'T (anti-patterns observed in this workspace)
+
+{{DONT_BLOCK}}
+
+<!-- Only populate when an anti-pattern was actually observed in code. Each entry: file:line + why it's wrong + the correct pattern from a §-section. Omit this section entirely if the codebase is clean. -->

@@ -129,7 +129,7 @@ Your recommendations must use actual tokens, primitives, and patterns from what 
 Then use the lean task-ID dispatch template from Phase 4.5:
 
 **Tool**: `Agent`
-**subagent_type**: `react-feature-implementer`
+**subagent_type**: looked up by the frontend repo's `type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md` (`react` → `react-feature-implementer`, `nextjs` → `nextjs-implementer`). Resolve via `config.repos` where `role === "frontend"`. Do **NOT** hardcode `react-feature-implementer` — workspaces with a Next.js frontend must dispatch `nextjs-implementer`.
 **description**: `"Frontend implement — {feature-slug}"`
 **prompt**: the canonical task-ID dispatch template (see Phase 4.5) with the frontend task file path and worktree path substituted. Do **NOT** inline requirements, frontend architecture, endpoints, or the IMPLEMENTATION_SPEC — all of it is in the task file the agent will read first.
 

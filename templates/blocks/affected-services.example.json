@@ -1,0 +1,28 @@
+{
+  "_comment": "Canonical example for the AFFECTED_SERVICES block emitted by the solution-architect inside outputs/phase-2-architecture.md. Field reference and consumer list live in docs/file-formats.md. Producers must match this structure; consumers extract via scripts/extract-block.js. The _comment field is illustrative only — strip it from real output.",
+  "services": [
+    {
+      "name": "publisher-service",
+      "spec_policy": "api-first",
+      "endpoints_added": [
+        { "method": "POST", "path": "/books/{id}/upload" }
+      ],
+      "endpoints_modified": [],
+      "handlers_added": [],
+      "fr_ids": ["FR-1", "FR-2"],
+      "ec_ids": ["EC-1"]
+    },
+    {
+      "name": "notification-worker",
+      "spec_policy": "no-api",
+      "endpoints_added": [],
+      "endpoints_modified": [],
+      "handlers_added": ["handle_book_uploaded"],
+      "fr_ids": ["FR-5"],
+      "ec_ids": []
+    }
+  ],
+  "spec_edit_order": ["publisher-service"],
+  "frontend_required": true,
+  "mock_required": true
+}

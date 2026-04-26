@@ -204,6 +204,20 @@ Phase 8: Publish ──┬── PR publish (if --with-pr): user gate → push �
 
 The scratchpad template and directory structure are in `phases/pre-flight.md` (loaded only during Pre-flight and Resume — not during implementation phases). The scratchpad itself lives at `{pipeline_dir}/active.md`.
 
+### Utility scripts
+
+Always prefer these scripts over LLM parsing or hand-rolled bash. Run via the Bash tool. They are zero-dependency Node — no install step.
+
+| Script | When to use |
+|--------|-------------|
+| `node {plugin_dir}/scripts/extract-block.js <file> <BLOCK_NAME>` | Extract structured JSON from a `<!-- BEGIN BLOCK_NAME -->` block in a phase output. Returns parsed JSON to stdout. Defined block names are listed in `docs/file-formats.md`. |
+| `node {plugin_dir}/scripts/gate.js {open\|close} ...` | Open/close approval gates. Drives the pipeline-view UI's waiting banner. Always close a gate after the user answers, even on `no`/`cancel`. |
+| `node {plugin_dir}/scripts/validate-config.js <path>` | Validate a workspace `config.json`. |
+| `node {plugin_dir}/scripts/validate-claude-md.js <path>` | Validate a `CLAUDE.md` against the guardrails. Run after any context-manager dispatch that wrote one. |
+| `node {plugin_dir}/scripts/validate-checkpoints.js <path>` | Validate `checkpoints.jsonl` event format. |
+
+Phase files reference specific scripts at the point of use. This inventory makes them discoverable for new use cases too — if you find yourself about to LLM-parse a structured block, check whether the extractor handles it first.
+
 ## Phase Files
 
 Each pipeline phase lives in its own file under `phases/`. The orchestrator loads **only the active phase file** — not all of them. This keeps context lean mid-run.

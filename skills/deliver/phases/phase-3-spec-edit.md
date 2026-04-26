@@ -15,13 +15,17 @@ Skip the whole phase if `--skip-spec-edit` was passed. Skip 3a if `AFFECTED_CONT
 
 #### Step 0: Extract the design inputs once
 
-Read `outputs/phase-2-architecture.md`. Extract three sections:
+Read `outputs/phase-2-architecture.md`. Extract:
 
 1. `<!-- BEGIN AFFECTED_CONTRACTS -->` … `<!-- END AFFECTED_CONTRACTS -->` — gives the ordered list of `(repo_key, [file_targets])` for contracts.
-2. `<!-- BEGIN AFFECTED_SERVICES -->` … `<!-- END AFFECTED_SERVICES -->` — gives the ordered list of service keys.
+2. `<!-- BEGIN AFFECTED_SERVICES -->` — pull the structured index with the extractor script:
+   ```bash
+   node {plugin_dir}/scripts/extract-block.js outputs/phase-2-architecture.md AFFECTED_SERVICES
+   ```
+   This emits the canonical JSON `{services: [{name, spec_policy, endpoints_added, ...}], spec_edit_order, frontend_required, mock_required}`. Use this output as the source of truth — do NOT re-parse the prose `## Notes` section under it.
 3. `<!-- BEGIN CONTRACT_DESIGN -->` … `<!-- END CONTRACT_DESIGN -->` and `<!-- BEGIN API_DESIGN -->` … `<!-- END API_DESIGN -->` — the design bodies the two agents need.
 
-Filter `AFFECTED_SERVICES` against the workspace config: keep only services where `config.services[svc].spec_policy` is `api-first` (or omitted, which defaults to `api-first` for backward compat). Record the filtered list as `services_to_edit`. Services filtered out are flagged in the scratchpad: `"Phase 3b skipped {svc} — spec_policy is {policy}"`.
+From the JSON in step 2, `services_to_edit = services.filter(s => s.spec_policy === "api-first")`. Services filtered out are flagged in the scratchpad: `"Phase 3b skipped {svc} — spec_policy is {policy}"`. The `spec_edit_order` array tells you which service spec to edit first when multiple `api-first` services are affected.
 
 ---
 

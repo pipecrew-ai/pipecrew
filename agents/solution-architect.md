@@ -170,18 +170,21 @@ If only one repo: list it. If none: `N/A`.]
 <!-- END AFFECTED_CONTRACTS -->
 
 <!-- BEGIN AFFECTED_SERVICES -->
-## Affected Services
-List every backend service this feature touches and why.
-- **{service-key}**: [reason] | omit if not affected
+**Read `{plugin_dir}/templates/blocks/affected-services.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the source of truth — downstream phases extract it with `node {plugin_dir}/scripts/extract-block.js {this-file} AFFECTED_SERVICES`. Schema reference: `{plugin_dir}/docs/file-formats.md` § AFFECTED_SERVICES.
 
-## Spec Edit Order
-[If multiple services, which spec to edit first and why. If only one: list it. If none: `N/A`.]
+```json
+{ ... matches templates/blocks/affected-services.example.json ... }
+```
 
-## Frontend Changes Required
-**Yes** | **No** — [reason]
+## Notes
+One line per service explaining why it's involved. The JSON above carries the data; this section is for human context only.
+- **{service-key}**: [why this service is touched]
 
-## Mock Server Update Required
-**Yes** | **No** — [reason]
+## Spec Edit Order — rationale
+[1–2 lines explaining `spec_edit_order` only if non-trivial. Otherwise `N/A`.]
+
+## Frontend / Mock notes
+[Any context the `frontend_required` / `mock_required` booleans don't capture. Otherwise `N/A`.]
 <!-- END AFFECTED_SERVICES -->
 
 <!-- BEGIN ARCHITECTURE_DECISION -->

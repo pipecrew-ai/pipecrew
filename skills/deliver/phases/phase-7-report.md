@@ -173,6 +173,28 @@ No move, no copy — archival is implicit.
 
 That's the archival step. Cleanup (e.g., deleting old runs after N months) is a separate user-initiated maintenance action — not this skill's job.
 
+#### Step 7.5: Mark deferred follow-up file as consumed (only if this run was a deferred resume)
+
+If pre-flight Step 1.7 loaded a deferred follow-up file as the feature input (the scratchpad's Run Info section will have a `deferred_source_file: {path}` field — set by pre-flight when `--from-deferred` was used or the interactive picker chose one), flip that file's frontmatter from `status: pending` to `status: consumed`.
+
+Read the path from the scratchpad. Open the file. Edit only the `status` line in the frontmatter:
+
+```yaml
+# before
+status: pending
+
+# after
+status: consumed
+```
+
+Also append a `consumed_at: {UTC ISO-8601 timestamp}` and `consumed_by_run_id: {this run's run_id}` line to the frontmatter — useful when the user later wants to know which run actually shipped the deferred work.
+
+If the scratchpad has no `deferred_source_file` field, this step is a no-op — skip silently.
+
+If the file is missing on disk (someone deleted it mid-run), log a warning and continue: `"⚠ Deferred source file {path} not found at consume time. Continuing — the slice was already implemented in this run."`
+
+`consumed` files are NOT surfaced by pre-flight Step 1.7 on future runs — the user can delete them by hand for cleanup, or keep them as audit trail.
+
 ---
 
 ### INTERRUPTION HANDLING

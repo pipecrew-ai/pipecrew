@@ -36,7 +36,7 @@ fi
 
 Skip worktrees for repos whose phases are all skipped. If a worktree already exists (from Phase 3 or from resume), leave it alone.
 
-Verify each worktree was created before dispatching agents against it. Record worktree paths in the scratchpad Implementation Tasks table so Phase 5.5 reviewers and Phase 6 assessor can locate them.
+Verify each worktree was created before dispatching agents against it: run `git -C {worktree_path} status` and confirm it exits cleanly. If a worktree is missing, stop and report — do not dispatch an agent to a missing path. Record all confirmed worktree paths in the scratchpad Implementation Tasks table so Phase 5.5 reviewers and Phase 6 assessor can locate them.
 
 #### Phase 5a: Backend + Workers (skip if --frontend-only)
 
@@ -166,6 +166,6 @@ If the feature touches multiple infra repos of different types (e.g., one CDK st
 
 #### After all Phase 5 agents complete
 
-Wait for every dispatched agent to return. For any task that returned FAILED, capture the reason in the scratchpad but continue — Phase 6 assessor will flag it as a blocker. **Update scratchpad**: Set Current Phase to "Phase 5.5: Code Review".
+**Phase 5 is complete when every task file shows `status: done` or `status: failed` (none remain `todo` or `in_progress`).** For any task that returned FAILED, capture the reason in the scratchpad but continue — Phase 6 assessor will flag it as a blocker. **Update scratchpad**: Set Current Phase to "Phase 5.5: Code Review".
 
 ---

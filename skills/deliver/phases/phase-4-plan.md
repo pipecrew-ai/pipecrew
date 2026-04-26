@@ -33,44 +33,51 @@ CLI flag combinations:
 
 **Update scratchpad**: Populate the Implementation Tasks table with all tasks that will run (status: PENDING). Set any skipped tasks to SKIPPED with reason. Record context budget estimates.
 
-**Create sub-task breakdown for EACH implementation task** — not just frontend. Break down based on the architecture output:
+**Create sub-task breakdown for EACH implementation task** — not just frontend. Break down based on the architecture output.
+
+**Mark each sub-task `M` (Minimum) or `D` (Deferrable):**
+
+- **`M` — Minimum** — needed to ship the feature in its smallest useful form. The user can validate the feature's value with just the M slice running.
+- **`D` — Deferrable** — extras the feature could ship without. Source of truth: the architect's `## Risks & Trade-offs` section. Any sub-bullet labelled "deferred" / "out of scope" / "follow-up" / "v2" / "enhancement" goes here. Bullets the requirements doc tagged as nice-to-haves (not core FRs) also go here.
+
+If the architect's design has no `## Risks & Trade-offs` section or it lists no deferrables, mark every sub-task `M` — the entire plan is the minimum, and the gate below collapses to its 2-option form.
 
 #### Backend sub-task breakdown template (per service):
 ```
 Backend: {service}
-  1. DTOs/Models — Create request/response DTOs matching spec schemas
-  2. Repository — New/modified repository methods
-  3. Service layer — Business logic for each endpoint group
-  4. Controller — REST endpoints matching spec paths
-  5. Tests — Unit tests (service) + integration tests (controller)
-  6. Run tests — mvn test
+  [M] 1. DTOs / Models — request/response DTOs matching spec schemas
+  [M] 2. Repository — new/modified repository methods
+  [M] 3. Service layer — business logic for each M endpoint
+  [M] 4. Controller — REST endpoints matching spec paths (read endpoints first; only the writes the M slice needs)
+  [M] 5. Tests — unit (service) + integration (controller)
+  [M] 6. Run tests — mvn test (or repo equivalent)
+  [D] 7. {Optional write endpoint flagged by architect} — cite RISKS sub-bullet
+  [D] 8. {Optional async / event-side enhancement} — cite RISKS sub-bullet
 ```
 
 #### Frontend sub-task breakdown template:
 ```
 Frontend:
-  1. API layer — Types, endpoint constants, service methods, error classes
-  2. Hooks — React Query hooks (queries + mutations)
-  3. Core components — Status badges, table columns, shared UI
-  4. Page + routing — Dashboard page, tabs, route, role guard
-  5. Detail view — Detail dialog with read-only data display
-  6. Actions — {group 1} — {e.g., Claim/unclaim}
-  7. Actions — {group 2} — {e.g., Document approve/reject with rejection modal}
-  8. Actions — {group 3} — {e.g., Contract approve/reject with confirmation}
-  9. i18n — EN + AR translation keys
-  10. Tests — Unit + integration tests
-  11. Agent context — Update agent-context-v2 docs
+  [M] 1. API layer — types, endpoint constants, service methods, error classes for M endpoints
+  [M] 2. Hooks — React Query hooks for M endpoints
+  [M] 3. Core components — badges, table columns, shared UI for M flows
+  [M] 4. Page + routing — page, route, role guard
+  [M] 5. i18n — translation keys in every language the workspace configures (per stacks/{type}.md)
+  [M] 6. Tests — unit + integration for the M slice
+  [D] 7. Detail view — {rich detail dialog, if architect flagged}
+  [D] 8. Action buttons — {claim/reject/approve, if architect flagged}
+  [D] 9. Agent context update — only if a new pattern was introduced (per R5)
 ```
 
 #### Mock sub-task breakdown template:
 ```
 Mock:
-  1. Mock data — Generate realistic mock data arrays
-  2. Endpoints — {N} route handlers matching spec
-  3. Filters/pagination — Query param support
+  [M] 1. Mock data — realistic mock data for M endpoints
+  [M] 2. Endpoint handlers — route handlers for M endpoints
+  [D] 3. Filters / pagination — only if a D endpoint needs them
 ```
 
-Present the plan to the user with sub-tasks visible:
+Present the plan to the user as **two slices per repo** — Minimum, then (if any) Deferrable:
 
 ```
 ## Implementation Plan
@@ -78,50 +85,131 @@ Present the plan to the user with sub-tasks visible:
 ### Feature: {feature name}
 ### Service(s): {list}
 
-### Backend: {service} (abvi-{service}-service)
+### Backend: {service} ({service.repo}) — Minimum slice
 | # | Sub-Task | Status |
 |---|----------|--------|
-| 1.1 | DTOs/Models — {N} DTOs matching spec | PENDING |
-| 1.2 | Repository — {summary} | PENDING |
-| 1.3 | Service layer — {summary} | PENDING |
-| 1.4 | Controller — {N} endpoints | PENDING |
-| 1.5 | Tests — unit + integration | PENDING |
+| 1.M.1 | DTOs / Models — {N} DTOs | PENDING |
+| 1.M.2 | Repository — {summary} | PENDING |
+| 1.M.3 | Service layer — {summary} | PENDING |
+| 1.M.4 | Controller — {N} endpoints | PENDING |
+| 1.M.5 | Tests | PENDING |
 
-### Frontend (abvi-pms-frontend)
-| # | Sub-Task | Status |
-|---|----------|--------|
-| 2.1 | API layer — types, services, config, errors | PENDING |
-| 2.2 | Hooks — {N} query + mutation hooks | PENDING |
-| 2.3 | Core components — badges, columns | PENDING |
-| 2.4 | Page + routing + tabs | PENDING |
-| 2.5 | Detail view — {dialog/panel} | PENDING |
-| 2.6 | Actions — {group 1} | PENDING |
-| 2.7 | Actions — {group 2} | PENDING |
-| 2.8 | i18n — EN + AR | PENDING |
-| 2.9 | Tests | PENDING |
-| 2.10 | Agent context update | PENDING |
+### Backend: {service} ({service.repo}) — Deferrable
+(Skip this table if the repo has no deferrables.)
+| # | Sub-Task | Why deferrable |
+|---|----------|----------------|
+| 1.D.1 | {bulk-update endpoint} | architect RISKS bullet — "low v1 usage" |
+| 1.D.2 | {audit-log integration} | architect RISKS bullet — "follow-up after compliance review" |
 
-### Mock (abvi-backends-mock)
+### Frontend ({frontend.repo}) — Minimum slice
 | # | Sub-Task | Status |
 |---|----------|--------|
-| 3.1 | Mock data generation | PENDING |
-| 3.2 | {N} endpoint handlers | PENDING |
+| 2.M.1 | API layer | PENDING |
+| 2.M.2 | Hooks | PENDING |
+| 2.M.3 | Core components | PENDING |
+| 2.M.4 | Page + routing | PENDING |
+| 2.M.5 | i18n ({languages from workspace stacks/{type}.md}) | PENDING |
+| 2.M.6 | Tests | PENDING |
+
+### Frontend ({frontend.repo}) — Deferrable
+(Skip if no deferrables.)
+| # | Sub-Task | Why deferrable |
+|---|----------|----------------|
+| 2.D.1 | {detail view} | architect RISKS bullet — "v2 enhancement" |
+
+### Mock ({mock.repo}) — Minimum slice
+| # | Sub-Task | Status |
+|---|----------|--------|
+| 3.M.1 | Mock data | PENDING |
+| 3.M.2 | Endpoint handlers | PENDING |
+
+### Mock ({mock.repo}) — Deferrable
+(Skip if no deferrables.)
 
 ### Context Budget
 - Requirements on disk: ~{N} tokens | Architecture on disk: ~{N} tokens
 - Avg task file: ~{N} tokens | Max task file: ~{N} tokens (task {id})
-- Total tasks this run: {N}
-- Each dispatch loads only the task file it's given, not requirements/architecture in full — so per-dispatch input is roughly (task file size + 2K boilerplate)
+- Total Minimum tasks: {N_M} | Total Deferrable tasks: {N_D}
+- Each dispatch loads only the task file it's given — per-dispatch input ≈ (task file size + 2K boilerplate)
 
 ### Skipped
 - {Phase}: {reason}
 
-Approve this plan to start implementation, or adjust?
+How do you want to proceed?
+  1. Approve all   — run Minimum + Deferrable in this pipeline
+  2. Minimum only  — run Minimum now; write Deferrable to a follow-up file the next /deliver can pick up
+  3. Adjust        — push back on specific sub-tasks before approving
 ```
 
-**Include sub-task lists in each agent's prompt** so the agent knows the full scope and can work through items systematically. After each agent completes, cross-check its output against the sub-task list and update statuses in the scratchpad.
+If the run has zero `D` sub-tasks (architect flagged nothing), collapse the gate to the 2-option form ("Approve / Adjust") and skip the deferred-file step below.
+
+**If the user picks "Adjust"**: ask which sub-tasks they want to change (natural language is fine — e.g., "move item 1.D.1 to minimum", "drop 2.D.2 entirely", "split 1.M.3 into two steps"). Apply the changes, re-present the updated plan with the same table format, and repeat the gate prompt. Do NOT re-run Phase 1 or Phase 2.
+
+**Include only the slice the user approved** in each agent's prompt — the implementer never sees deferred sub-tasks for its repo.
 
 **Wait for user approval.**
+
+#### When user picks "Minimum only": write the deferred follow-up file
+
+If the user answer was "Minimum only" (option 2), do this BEFORE creating any task files for Phase 5:
+
+1. Make sure the directory exists: `mkdir -p {workspace_root}/{slug}/deferred`.
+2. Compute the file path: `{workspace_root}/{slug}/deferred/{feature-slug}.md`.
+3. If the file already exists, overwrite it AND log a warning: `"⚠ Overwriting existing deferred file at {path} — previous deferred slice for this feature is being replaced by this run's deferred slice."`
+4. Write the file with this format:
+
+```markdown
+---
+feature: {feature-slug}
+source_run_id: {this run's run_id}
+source_feature_description: "{original /deliver feature description string}"
+created_at: {UTC ISO-8601 timestamp from `date -u +"%Y-%m-%dT%H:%M:%SZ"`}
+status: pending      # flips to "consumed" by Phase 7 after a successful resume run
+---
+
+# Deferred follow-up: {feature name}
+
+## Original feature description
+{original feature description from `/deliver "..."`}
+
+## Why these sub-tasks were deferred
+The user approved only the Minimum slice at the Phase 4.5 gate of run `{source_run_id}`. The sub-tasks below were marked Deferrable by the architect (see `{source_run_id}/outputs/phase-2-architecture.md` `<!-- BEGIN RISKS -->`) and were not implemented in that run.
+
+## Deferred sub-tasks (by repo)
+
+### {repo-1.name} ({repo-1.type})
+- {deferrable sub-task 1.D.1 — verbatim from the plan, including its "why deferrable" reason}
+- {deferrable sub-task 1.D.2}
+
+### {repo-2.name} ({repo-2.type})
+- {deferrable sub-task 2.D.1}
+
+## Functional requirements still relevant
+(Filtered to FR/EC bullets the deferred sub-tasks were going to enforce. The product-owner refines on resume — some may have become moot, others may have grown.)
+
+- FR-7: {original wording, copied from outputs/phase-1-requirements.md}
+- FR-9: {original wording}
+- EC-3: {original wording}
+
+## Architecture context (pointers, not copies)
+- Data model: `{workspace_root}/{slug}/runs/deliver/{source_run_id}/outputs/phase-2-architecture.md` `<!-- BEGIN DATA_MODEL -->`
+- API design: same file, `<!-- BEGIN API_DESIGN -->`
+- Risks / Trade-offs (where the deferred items are flagged): same file, `<!-- BEGIN RISKS -->`
+
+## How to resume
+
+```
+/deliver --from-deferred={feature-slug}
+```
+
+Or just run any `/deliver` — pre-flight will list pending deferred items and offer to resume this one.
+
+After a successful resume, this file's `status` flips to `consumed`. Consumed files are not surfaced by pre-flight; delete them manually to clean up.
+```
+
+5. After writing, log: `"Deferred slice written to {workspace_root}/{slug}/deferred/{feature-slug}.md — {N_D} sub-tasks across {repo_count} repos. Resume with /deliver --from-deferred={feature-slug}."`
+
+Then proceed to Step 4 (create task files), but only for the **Minimum slice**. The deferred sub-tasks do NOT become Phase 5 task files — they live entirely in the follow-up file until a resume run picks them up.
 
 ---
 
@@ -174,6 +262,7 @@ The body (free-form markdown after the closing `---`) should contain everything 
 - **A `## Contract Reference` section** — see the `spec_policy` switch below. This is what replaces the old "endpoint list with exact spec field names" bullet and is where the service task files really diverge by policy.
 - Worktree path the implementer will work in
 - **A `## Known Pitfalls` section (D1 / D3)** — see below
+- **A `## Out of Scope` section** — see below. Lists items deferred or rejected at the Phase 2 / 4.5 gates. The implementer treats it as an explicit "do NOT touch" list (per common-rules R6); the reviewer cross-checks the diff against it.
 - The expected report format (files created/modified, FR/EC coverage map, test results, commands run)
 
 #### Building the `## Contract Reference` section (spec_policy switch)
@@ -275,6 +364,36 @@ Stack-specific traps to actively avoid in this repo. These are the predictable f
 The implementer treats this section as active checklist — not prose context.
 
 The downstream reviewer (Phase 5.5) is instructed to verify that each pitfall was addressed, so the section doubles as an implementation guide and a review lens.
+
+#### Building the `## Out of Scope` section
+
+Every task body MUST include an `## Out of Scope` section right above `## Report format`. Build it by collecting items the user, product-owner, or architect explicitly deferred or rejected before this task ran:
+
+1. **From `outputs/phase-1-requirements.md`** — search for an `## Out of Scope` or `## Non-goals` section in the product-owner's output (if the workspace's product-owner emits one). Copy bullets verbatim, filtered to ones relevant to this task's repo.
+2. **From `outputs/phase-2-architecture.md`** — extract the `<!-- BEGIN RISKS -->` section. Any sub-bullet labelled "deferred" / "out of scope" / "follow-up" goes here, filtered to this task's repo.
+3. **From captured user gate rejections** (if `outputs/gate-rejections.md` exists) — copy bullets that touch this task's repo.
+
+Format the section as:
+
+```markdown
+## Out of Scope
+
+Items deferred or rejected at the Phase 2 / 4.5 gates. Do NOT touch these — if a "natural" enhancement would fall under one of these bullets, stop and ask the orchestrator (per common-rules R6).
+
+- {bullet 1, verbatim from source} ({source: requirements / architecture / gate-rejection})
+- {bullet 2} ({source})
+- ...
+```
+
+If no items survive filtering, write the single line:
+
+```markdown
+## Out of Scope
+
+_(none — task scope is fully described by the FR/EC list and sub-task checklist above)_
+```
+
+The downstream reviewer (Phase 5.5) is instructed to flag any diff hunk that matches an Out-of-Scope bullet as a Critical scope violation.
 
 After the body, append an empty `## Work Log` section as the last section of the file (see critical rule #13 for the line format the orchestrator will append to it on each dispatch):
 

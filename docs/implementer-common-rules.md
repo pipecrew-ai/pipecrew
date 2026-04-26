@@ -4,25 +4,18 @@
 
 These rules compose on top of each agent's stack-specific invariants. Where a shared rule conflicts with a repo-specific convention, the repo convention wins — but in practice they should agree.
 
+> **Notation used throughout this document and the pipeline:**
+> `FR-X` = a **functional requirement** ID (e.g. FR-1, FR-2) assigned by the product-owner in Phase 1. It names something the feature must do.
+> `EC-X` = an **edge case** ID (e.g. EC-1, EC-2) from the same Phase 1 output. It names a boundary condition or failure mode the feature must handle.
+> Both IDs appear in task files, implementation reports, and review findings — they are the shared thread that links a requirement all the way to a line of code.
+
 ---
 
 ## Rule 0 — Task file is your source of truth (HARD RULE)
 
-You are dispatched by an orchestrator that creates a task file at a known path and passes that path in your launching message. **Your FIRST action is always: read that task file.** Its body contains everything you need to do the work:
+Read your task file first. It contains everything: feature summary, requirements, sub-tasks, data model, API design, endpoint list, worktree path, and cumulative metrics. **Trust it over conversation context**, which may be stale on `/deliver --resume`. Do not ask the caller to repeat anything in it; if a section seems absent, re-read before reporting it missing.
 
-- Feature summary + linked requirements (FR-X / EC-X)
-- Sub-task checklist
-- Data model + API design from the architect
-- Endpoint list with exact spec field names
-- IMPLEMENTATION_SPEC from the ux-consultant (frontend) or equivalent design block
-- Worktree path you must work in
-- YAML frontmatter with cumulative metrics
-
-**Do not ask the caller to repeat anything that's in the task file.** If a section seems missing, re-read the file — sections are clearly delimited. If genuinely absent, stop and report which section is missing rather than guessing.
-
-**The task file — not the chat — is the single source of truth.** Conversation context may be empty or stale (especially on `/deliver --resume`). Trust the file.
-
-**On completion, update the task file** per the rules in `{plugin_dir}/skills/deliver/phases/dispatch-rules.md`: append your Work Log entry and bump the YAML frontmatter metrics.
+On completion, update the task file per `{plugin_dir}/skills/deliver/phases/dispatch-rules.md`: append your Work Log entry and bump the YAML metrics.
 
 ---
 
@@ -74,21 +67,7 @@ Any structural change that wasn't requested is a **Critical** regression. Uninte
 
 ## Rule 3 — `git status` hygiene before reporting done
 
-Run `git status --short` in your working directory. Every file listed must be something you deliberately wrote, modified, or staged. If you see:
-
-- JVM / language-runtime crash artefacts: `hs_err_pid*.log`, `replay_*.log`, `*.hprof`, `core`, `core.*`
-- Editor / IDE artefacts: `.idea/`, `.vscode/`, `*.iml`, `*.swp`
-- Harness artefacts: `.claude/settings*.json`, `.claude/worktrees/`, `.claude/agent-memory/`
-- Build artefacts that shouldn't be tracked: `target/`, `build/`, `dist/`, `node_modules/`
-- Local environment files: `.env.local`, `.env.*.local`
-
-…do NOT stage them. Either:
-
-1. The repo's `.gitignore` should cover them. If it does, they won't appear in `git status` — investigate why they're showing up.
-2. The `.gitignore` is missing the pattern. Append the missing pattern to `.gitignore` (never overwrite existing entries), commit the `.gitignore` change alongside your real change, and re-run `git status` to confirm the noise is gone.
-3. If the harness is running inside a worktree and the IDE dropped crash logs there (common with VS Code / IntelliJ JDT-LS), add the pattern to `.gitignore` at the repo root — the logs are never the repo's concern.
-
-Only files you intentionally changed should be present in the working tree when you report done.
+Run `git status --short`. Stage only what you intentionally changed. If noise appears (IDE files, crash logs, build artifacts, harness files), fix `.gitignore` — append the missing pattern, never overwrite entries, then re-run `git status` to confirm it's clean. Only files you deliberately wrote or modified should appear in the working tree when you report done.
 
 ---
 
@@ -131,6 +110,91 @@ If your change crosses workspace-level patterns, also update `{workspace_root}/{
 > AGENT-CONTEXT-DEFERRED: {what wasn't updated} ({why}) — `/context-refresh` follow-up needed.
 
 The repo's `CLAUDE.md` itself typically specifies its own documentation-update rules — re-read them before reporting done. Where the repo's rules are stricter than this rule, the repo wins.
+
+---
+
+## Rule 6 — Scope discipline (HARD RULE)
+
+Touch only what the task names. Every line you add, modify, or delete should trace to an `FR-X`, `EC-X`, or sub-task line in the task file. If a line in your diff has no such trace, you should not have written it.
+
+**Common scope traps to avoid:**
+
+- New abstractions (base classes, mixins, helper modules) when one concrete site is enough
+- Config flags, feature toggles, or "knobs" the task does not name
+- Extensibility hooks for features that may never ship
+- Defensive layers (try/catch, retries, fallbacks) for failures that cannot happen given the requirements
+- Refactoring adjacent code the task does not ask you to touch
+- Renaming variables or files for "consistency" when the task is about behavior
+
+When you find yourself adding something the task doesn't name, **stop and ask the orchestrator**. Do not silently grow the scope.
+
+**Read the task file's `## Out of Scope` section** if present — it lists what the user or architect already decided to defer. If a feature you'd "naturally" add appears there, don't add it.
+
+**Pre-existing dead code is not yours to fix.** If you spot unused imports, dead functions, or commented-out code that you didn't introduce, report it in your output, do not delete it. The exception: orphaned code created by your own change (e.g., a function whose only caller you removed) — clean up your own mess.
+
+The downstream code reviewer will flag any diff hunk that has no FR/EC trace as a Scope finding. Saving them that work means writing less code, not more.
+
+---
+
+## Rule 7 — State assumptions before coding (HARD RULE)
+
+Ambiguity in the task file is a stop signal, not a guess invitation.
+
+**Before writing code**, scan the task file for unresolved questions:
+
+- Field names, types, or enum values not present in the spec / inline contract
+- Sub-task lines that could be read two ways (e.g., *"add audit logging"* — to which events? at what level?)
+- FR / EC lines that depend on behavior the task file doesn't specify
+- Cross-cutting choices not pinned down (e.g., reuse an existing utility vs. write new)
+
+Classify each ambiguity:
+
+- **Stylistic** — same observable behavior either way (e.g., *"method on the service or the controller?"*). You decide; mention it once in your report.
+- **Load-bearing** — different choices produce different behavior, different contracts, or different test outcomes (e.g., *"is this field required or optional?"*). **Stop. Do not guess.** Return to the orchestrator with an `## Assumptions` block listing what's ambiguous and what you'd need to proceed.
+
+**`## Assumptions` block format** — emit at the **top** of your report, before any "Files created" section:
+
+```markdown
+## Assumptions
+- {ambiguity 1}: {what you'd assume if forced to proceed} — {why this needs confirmation}
+- {ambiguity 2}: ...
+```
+
+If the orchestrator already answered the question in the dispatch prompt or in the task file body, do not list it as an assumption — read more carefully first.
+
+**For `code-first` services**, the inline contract IS the spec. Ambiguity in the inline contract is load-bearing by definition — never guess field names, status codes, or error shapes. Stop and report.
+
+---
+
+## Rule 8 — Stay in your launched worktree (HARD RULE)
+
+The orchestrator launches you with a specific worktree path in your task file. **All your file edits MUST land inside that worktree.** Do not:
+
+- Run `git checkout <other-branch>` or `git switch <other-branch>` — you'll desync from the orchestrator's parallel dispatch model and overwrite work in other worktrees.
+- Run `git worktree add` — the orchestrator owns worktree creation; a second worktree on the same branch breaks Phase 5.5 + Phase 6 path resolution.
+- Edit files in the main repo checkout (the path the worktree was created from).
+- Edit files in any other repo's worktree, even if they look related — cross-repo changes are different tasks dispatched to different agents.
+
+**If you need to read code from another branch** (e.g., to see how an existing feature is implemented on `main`), use `git show <branch>:<path>` or `git diff <branch>..HEAD` — read-only operations that don't move you off your branch.
+
+**If your task genuinely requires touching another repo**, stop and report — the orchestrator will dispatch a separate task there. Cross-repo writes from one agent are a parallelism hazard.
+
+---
+
+## Rule 9 — Verify requirement coverage before reporting done (HARD RULE)
+
+Before you write your final report, walk every functional requirement (FR-X) and edge case (EC-X) listed in your task file and identify the `file:line` that enforces each one. Include this as a `## Requirement coverage` table in your report:
+
+```markdown
+## Requirement coverage
+| ID   | Enforcement point           |
+|------|-----------------------------|
+| FR-1 | BookService.java:84         |
+| FR-2 | BookController.java:42      |
+| EC-1 | BookService.java:91 + BookServiceTest.java:120 |
+```
+
+If any FR or EC has no enforcement point you can name, **fix it before reporting done** — do not leave a gap for the reviewer to discover. A reviewer finding an unenforced requirement costs a full fix round; catching it yourself costs nothing.
 
 ---
 

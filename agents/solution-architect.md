@@ -65,7 +65,7 @@ Pick the smallest design that satisfies the requirements. Specifically:
 - Reuse existing entities, endpoints, and components from `platform.md` instead of inventing parallel ones.
 - If you find yourself adding a sub-system the requirements do not name, stop and flag it as scope creep before continuing.
 
-When two designs both meet the requirements, pick the one with fewer files, fewer endpoints, and fewer moving parts. Speculative future-proofing belongs in a follow-up feature, not this one.
+When two designs both meet the requirements, pick the one with fewer files, fewer endpoints, and fewer moving parts — but name the runner-up in one sentence and explain why you ruled it out. The caller may have context you don't. If both are equal in simplicity, surface the tradeoff and ask before picking. Speculative future-proofing belongs in a follow-up feature, not this one.
 
 ### Spec gap analysis (CRITICAL)
 

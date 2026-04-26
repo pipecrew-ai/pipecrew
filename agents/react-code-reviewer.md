@@ -114,7 +114,22 @@ For each EC-X:
 - Did the implementer update `agent-context*/features/` per CLAUDE.md's documentation rules? If not, **Non-critical** finding.
 - Did they update the API architecture doc if they added new endpoints? **Non-critical**.
 
-### 12. Produce the report
+### 12. Scope-drift check
+
+Walk every non-trivial diff hunk (skip whitespace-only, import reorder, generated-code regen). For each hunk, find the FR-X / EC-X it enforces. Hunks with no FR/EC trace go in a `## Scope findings` section placed above `## Suggestions`. Check each hunk against the task file's `## Out of Scope` section: any hunk matching an Out-of-Scope bullet is a **Critical** scope violation — cite the file:line and the matching bullet. Add a `scope | {title} | {file}:{line} | {one-line-problem}` row to the FINDINGS block for every scope finding.
+
+### 13. Classify every Critical finding
+
+Tag each Critical as `mechanical` or `architectural`.
+
+- **`mechanical`** — fix is "change X to Y" with no design judgment. Examples: rename a field to match the spec, add a missing i18n key, fix `mr-*` to `me-*` for RTL, add a missing query-key invalidation, add a missing role guard that already exists in the repo.
+- **`architectural`** — fix needs a design decision or crosses several files. Examples: missing FR requiring a new component tree, wrong state-management approach, type drift cascading to codegen pipeline, missing design-system primitive.
+
+**When in doubt, mark `architectural`.**
+
+Add the `**Classification**:` line to each Critical's prose entry AND a 5th pipe field on every `critical` row in the FINDINGS block.
+
+### 14. Produce the report
 
 Use the Output Format below. Every finding must have file:line and a citation. Group findings into Critical, Non-critical, and Suggestions. If there are no findings in a category, explicitly write "None".
 
@@ -155,6 +170,7 @@ Use the Output Format below. Every finding must have file:line and a citation. G
 - **File**: src/api/types/publisher.types.ts:169-246
 - **Spec**: publisher-api-specs.yaml BookAttachmentResponse schema
 - **Requirement**: FR-12, FR-14
+- **Classification**: `mechanical` | `architectural` (per the rules in your dispatch prompt — required for every critical finding)
 - **Problem**: [what is wrong, in one or two sentences]
 - **Evidence**: [list the specific drifts — field names, missing fields, wrong nullability]
 - **Suggested fix direction**: [not a code snippet, just "rewrite the type block to match the spec field-by-field"]
@@ -193,17 +209,19 @@ If fixes are needed, the downstream implementer should:
 
 ```
 <!-- BEGIN FINDINGS -->
-critical | {short-title} | {file}:{line} | {one-line-problem}
-critical | {short-title} | {file}:{line} | {one-line-problem}
+critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
+critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
 non-critical | {short-title} | {file}:{line} | {one-line-problem}
+scope | {short-title} | {file}:{line} | {one-line-problem}
 <!-- END FINDINGS -->
 ```
 
 Rules:
-- Severity is exactly `critical` or `non-critical` — no other values
+- Severity is exactly `critical`, `non-critical`, or `scope` — no other values
 - Fields are pipe-separated with single spaces around each pipe
 - File:line is an absolute or repo-relative path with a line number
 - One-line-problem is a single sentence, no embedded pipes or newlines
+- **For `critical` rows, a 5th field with `mechanical` or `architectural` is REQUIRED** — the orchestrator uses it to decide whether the fix-round can run without a user gate (see your dispatch prompt for the classification rules). Non-critical and scope rows omit the 5th field.
 - Omit `suggestions` from this block — only actionable findings
 - If there are zero findings, still emit the delimiter comments with no rows between them
 ```

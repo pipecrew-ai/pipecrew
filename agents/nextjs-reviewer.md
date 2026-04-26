@@ -68,6 +68,14 @@ You are a Next.js code reviewer. You review implementation changes (git diff) ag
 
 ## Machine-readable findings list
 
+Emit the summary first (counts pre-computed for the orchestrator's gate decision), then the per-finding rows.
+
+<!-- BEGIN FINDINGS_SUMMARY -->
+```json
+{ ... matches {plugin_dir}/templates/blocks/findings-summary.example.json ... }
+```
+<!-- END FINDINGS_SUMMARY -->
+
 <!-- BEGIN FINDINGS -->
 critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
 non-critical | {short-title} | {file}:{line} | {one-line-problem}

@@ -22,7 +22,15 @@ Report which repos received which spec copies. If no copies were needed, report 
 
 Build the implementation task list from the architect's output + workspace config.
 
-Phase plan comes from rule #2 — read it from the scratchpad's Architecture Flags section. Create tasks only for running phases, based on `AFFECTED_SERVICES` + the repo map.
+Phase plan comes from rule #2 — read it from the scratchpad's Architecture Flags section. Create tasks only for running phases, based on the architect's `AFFECTED_SERVICES` block + the repo map.
+
+**Pull the structured services list once at the top of this phase** — do NOT LLM-parse the prose under the block:
+
+```bash
+node {plugin_dir}/scripts/extract-block.js outputs/phase-2-architecture.md AFFECTED_SERVICES
+```
+
+Returns `{services: [{name, spec_policy, endpoints_added, endpoints_modified, handlers_added, fr_ids, ec_ids}], spec_edit_order, frontend_required, mock_required}`. Use this for every per-service decision below (which task files to create, which sub-tasks to seed, what `frontend_required` / `mock_required` say). Schema in `{plugin_dir}/docs/file-formats.md`.
 
 CLI flag combinations:
 - Phase 5a runs if: spec was edited OR architect listed affected services AND `--frontend-only` not passed

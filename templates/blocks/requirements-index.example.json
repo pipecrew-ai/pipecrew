@@ -1,0 +1,25 @@
+{
+  "_comment": "Canonical example for the REQUIREMENTS_INDEX block emitted by the workspace product-owner inside outputs/phase-1-requirements.md. Field reference and consumer list live in docs/file-formats.md. The _comment field is illustrative only — strip it from real output.",
+  "requirements": [
+    {
+      "id": "FR-1",
+      "summary": "Publisher can upload a PDF file up to 50MB"
+    },
+    {
+      "id": "FR-2",
+      "summary": "Upload is only allowed when the book status is APPROVED"
+    }
+  ],
+  "edge_cases": [
+    {
+      "id": "EC-1",
+      "summary": "Reject files larger than 50MB with HTTP 400",
+      "applies_to": ["FR-1"]
+    },
+    {
+      "id": "EC-2",
+      "summary": "Reject upload if book is not found (HTTP 404)",
+      "applies_to": ["FR-2"]
+    }
+  ]
+}

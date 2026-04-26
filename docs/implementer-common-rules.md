@@ -183,7 +183,9 @@ The orchestrator launches you with a specific worktree path in your task file. *
 
 ## Rule 9 — Verify requirement coverage before reporting done (HARD RULE)
 
-Before you write your final report, walk every functional requirement (FR-X) and edge case (EC-X) listed in your task file and identify the `file:line` that enforces each one. Include this as a `## Requirement coverage` table in your report:
+Before you write your final report, walk every functional requirement (FR-X) and edge case (EC-X) listed in your task file and identify the `file:line` that enforces each one. Emit this in **two forms** in your report:
+
+**1. A human-readable `## Requirement coverage` table:**
 
 ```markdown
 ## Requirement coverage
@@ -194,7 +196,17 @@ Before you write your final report, walk every functional requirement (FR-X) and
 | EC-1 | BookService.java:91 + BookServiceTest.java:120 |
 ```
 
-If any FR or EC has no enforcement point you can name, **fix it before reporting done** — do not leave a gap for the reviewer to discover. A reviewer finding an unenforced requirement costs a full fix round; catching it yourself costs nothing.
+**2. A structured `<!-- BEGIN COVERAGE -->` JSON block** (so the reviewer extracts it programmatically via `extract-block.js` instead of re-parsing the table):
+
+```markdown
+<!-- BEGIN COVERAGE -->
+```json
+{ ... matches {plugin_dir}/templates/blocks/coverage.example.json ... }
+```
+<!-- END COVERAGE -->
+```
+
+Both must list the same IDs. If any FR or EC has no enforcement point you can name, **fix it before reporting done** — do not leave a gap for the reviewer to discover. A reviewer finding an unenforced requirement costs a full fix round; catching it yourself costs nothing.
 
 ---
 

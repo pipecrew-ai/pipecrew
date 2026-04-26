@@ -1,0 +1,8 @@
+{
+  "_comment": "Canonical example for the FINDINGS_SUMMARY block emitted by every reviewer agent at the top of its FINDINGS section. Pre-counts what the orchestrator's Phase 5.5 gate decision needs, so the orchestrator does not have to count rows. The detailed pipe-separated rows still follow inside the existing FINDINGS block. The _comment field is illustrative only — strip it from real output.",
+  "critical_total": 3,
+  "critical_mechanical": 1,
+  "critical_architectural": 2,
+  "non_critical_total": 5,
+  "scope_total": 1
+}

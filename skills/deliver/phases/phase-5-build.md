@@ -42,7 +42,13 @@ Verify each worktree was created before dispatching agents against it: run `git 
 
 **Use the lean task-ID dispatch template from Phase 4.5.** The backend task file created in Phase 4.5 already contains the full feature summary, sub-task checklist, FR/EC list, data model, API design (or inline endpoint contract for code-first services), event schemas (for no-api worker services), endpoint list, and worktree path. The implementer reads the task file once and operates from it — nothing needs to be forwarded from the orchestrator's context.
 
-For each service in the architect's `AFFECTED_SERVICES` list, pick the implementer dynamically from the repo's `type` via the `TYPE_TO_AGENT` mapping in `phases/dispatch-rules.md`. Do **NOT** hardcode `spring-boot-api-implementer` — services may be any of spring-boot / fastapi / nestjs / flask / django / python-worker (or future additions).
+Pull the structured services list from the architect's output (do NOT LLM-parse the prose Notes):
+
+```bash
+node {plugin_dir}/scripts/extract-block.js outputs/phase-2-architecture.md AFFECTED_SERVICES
+```
+
+For each entry in `services[]`, pick the implementer dynamically from the repo's `type` via the `TYPE_TO_AGENT` mapping in `phases/dispatch-rules.md`. Do **NOT** hardcode `spring-boot-api-implementer` — services may be any of spring-boot / fastapi / nestjs / flask / django / python-worker (or future additions).
 
 Lookup rule, per service:
 1. Resolve `config.repos[config.services[svc].repo].type`

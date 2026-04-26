@@ -24,9 +24,15 @@ All applicable reviewers go in a single assistant message so they run concurrent
 
 **Backend / Worker reviewer — one per affected service (spec_policy-aware)**
 
-For each service in `AFFECTED_SERVICES`:
+Pull the structured services list from the architect's output (do NOT LLM-parse the prose Notes):
 
-1. Resolve `type = config.repos[config.services[svc].repo].type` and `policy = config.services[svc].spec_policy` (default `api-first`).
+```bash
+node {plugin_dir}/scripts/extract-block.js outputs/phase-2-architecture.md AFFECTED_SERVICES
+```
+
+For each entry in `services[]` (the `spec_policy` field is already there — no config lookup needed for that):
+
+1. Resolve `type = config.repos[config.services[svc.name].repo].type`. The `policy` is `svc.spec_policy` from the JSON above.
 2. Look up the reviewer `subagent_type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md`. If the reviewer column is `—` for this type (no reviewer ships today), SKIP this service with the reason logged in the scratchpad and move on — do NOT dispatch spring-boot-code-reviewer as a fallback (it misreads non-Spring code).
 3. Dispatch using the template below, but substitute the `## Contract inputs` block per the service's `spec_policy`.
 
@@ -178,13 +184,22 @@ If a `critical` row arrives without a 5th field, treat the missing classificatio
 
 #### Step 2: Gate decision
 
-Once Step 1.5 has persisted every finding as a task file, count across all reviewer reports:
+Once Step 1.5 has persisted every finding as a task file, pull the pre-computed counts from each reviewer's FINDINGS_SUMMARY block — do NOT re-count rows in the FINDINGS block:
 
-- `critical_total` — every `critical` row in every reviewer's FINDINGS block
-- `critical_mechanical` — subset where the 5th field is `mechanical` (or the task file's frontmatter `classification: "mechanical"`)
+```bash
+# For each reviewer report saved at outputs/phase-5-5-code-review.md (or per-repo file):
+node {plugin_dir}/scripts/extract-block.js {report_path} FINDINGS_SUMMARY
+```
+
+This returns `{critical_total, critical_mechanical, critical_architectural, non_critical_total, scope_total}` per report. Sum them across reports to get the totals:
+
+- `critical_total` — sum of every report's `critical_total`
+- `critical_mechanical` — sum of every report's `critical_mechanical`
 - `critical_architectural` — `critical_total - critical_mechanical`
-- `non_critical_total` — every `non-critical` row
-- `scope_total` — every `scope` row
+- `non_critical_total` — sum of `non_critical_total`
+- `scope_total` — sum of `scope_total`
+
+If a reviewer's report is missing the FINDINGS_SUMMARY block (e.g., older agent), fall back to counting rows in its FINDINGS block and log a warning so the agent can be tightened later. Schema in `{plugin_dir}/docs/file-formats.md`.
 
 Branch on the counts:
 

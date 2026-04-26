@@ -44,6 +44,66 @@ The orchestrator (an LLM) can read the script's stdout as-is — JSON is its nat
 
 ---
 
+### `REQUIREMENTS_INDEX`
+
+**Producer**: workspace product-owner agent (Phase 1 dispatch instructs it)
+**Consumers**: Phase 4 (task generation), Phase 5.5 (reviewers walking FR/EC), Phase 6 (assessor)
+**File**: `{run_dir}/outputs/phase-1-requirements.md`
+**Canonical example**: [`templates/blocks/requirements-index.example.json`](../templates/blocks/requirements-index.example.json)
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `requirements[].id` | string | Functional requirement ID, format `FR-{N}`. |
+| `requirements[].summary` | string | One-line description of the requirement. |
+| `edge_cases[].id` | string | Edge case ID, format `EC-{N}`. |
+| `edge_cases[].summary` | string | One-line description of the boundary condition. |
+| `edge_cases[].applies_to` | array of strings | FR IDs this edge case modifies (optional). |
+
+The `services` mapping (which service owns which FR/EC) lives in `AFFECTED_SERVICES`, not here — single source of truth, no duplication.
+
+---
+
+### `COVERAGE`
+
+**Producer**: every implementer agent (per common-rules R9, in its final report)
+**Consumers**: code reviewers (Phase 5.5) — verify the implementer's claim against actual diff
+**File**: each implementer's report (in-context, then archived to `{run_dir}/outputs/phase-5-implementer-{repo}.md`)
+**Canonical example**: [`templates/blocks/coverage.example.json`](../templates/blocks/coverage.example.json)
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `coverage[].id` | string | An FR-X or EC-X from the implementer's task file. Every ID in the task file MUST appear here. |
+| `coverage[].file` | string | Repo-relative path to the file enforcing this requirement. |
+| `coverage[].line` | number | Line number of the enforcement point. |
+| `coverage[].test` | string | Optional: `path:line` of the test that exercises this requirement. Strongly preferred for EC-X entries. |
+
+---
+
+### `FINDINGS_SUMMARY`
+
+**Producer**: every code reviewer (spring-boot, react, nestjs, nextjs)
+**Consumers**: Phase 5.5 Step 2 (gate decision logic)
+**File**: each reviewer's report (in-context, then archived to `{run_dir}/outputs/phase-5-5-code-review.md`)
+**Canonical example**: [`templates/blocks/findings-summary.example.json`](../templates/blocks/findings-summary.example.json)
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `critical_total` | number | Count of `critical` rows in the FINDINGS block. |
+| `critical_mechanical` | number | Subset where the 5th pipe field is `mechanical`. |
+| `critical_architectural` | number | Subset where the 5th pipe field is `architectural`. |
+| `non_critical_total` | number | Count of `non-critical` rows. |
+| `scope_total` | number | Count of `scope` rows. |
+
+The summary is pre-computed by the reviewer so the orchestrator's gate decision in Phase 5.5 Step 2 is one extract call instead of a row-counting LLM pass per report. Detail rows still live in the FINDINGS block — both are emitted side-by-side.
+
+---
+
 ## Adding a new structured block
 
 1. Define the schema here under "Defined block schemas".

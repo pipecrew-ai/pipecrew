@@ -1,0 +1,23 @@
+{
+  "_comment": "Canonical example for the COVERAGE block emitted by every implementer agent in its final report (R9 — Verify requirement coverage before reporting done). Field reference and consumer list live in docs/file-formats.md. The _comment field is illustrative only — strip it from real output.",
+  "coverage": [
+    {
+      "id": "FR-1",
+      "file": "src/main/java/com/example/BookService.java",
+      "line": 84,
+      "test": "src/test/java/com/example/BookServiceTest.java:42"
+    },
+    {
+      "id": "FR-2",
+      "file": "src/main/java/com/example/BookController.java",
+      "line": 42,
+      "test": "src/test/java/com/example/BookControllerIT.java:78"
+    },
+    {
+      "id": "EC-1",
+      "file": "src/main/java/com/example/BookService.java",
+      "line": 91,
+      "test": "src/test/java/com/example/BookServiceTest.java:120"
+    }
+  ]
+}

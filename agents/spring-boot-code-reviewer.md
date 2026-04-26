@@ -189,7 +189,19 @@ If fixes are needed, the downstream implementer should:
 
 ## Machine-readable findings list
 
-**The orchestrator parses this section to create task files.** One line per finding. Format:
+**The orchestrator parses these two blocks: a summary used for the gate decision, and the per-finding rows used to create task files.**
+
+Emit the summary first (counts pre-computed so the orchestrator doesn't re-count rows):
+
+```
+<!-- BEGIN FINDINGS_SUMMARY -->
+```json
+{ ... matches {plugin_dir}/templates/blocks/findings-summary.example.json ... }
+```
+<!-- END FINDINGS_SUMMARY -->
+```
+
+Then the per-finding rows. One line per finding. Format:
 
 ```
 <!-- BEGIN FINDINGS -->

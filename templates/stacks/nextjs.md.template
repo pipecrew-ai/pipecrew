@@ -1,0 +1,330 @@
+# Next.js engineering standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for Next.js repos in this workspace. Rendering model, data fetching, routing, auth, API layer, i18n wiring, tests, file layout — **how we write Next.js here**, not UX (that's each repo's `DESIGN_SYSTEM.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+**Scope boundary**: this document is about code patterns. For component structural shape (tab shells, row actions, detail modals, forms, tokens, RTL vocabulary), see the per-repo `DESIGN_SYSTEM.md` — that's the UX contract, this is the engineering contract. The two are orthogonal and intentionally separate.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Router model & app structure
+
+**Router**: {{ROUTER_MODEL}}
+
+<!-- One of:
+- App Router (Next.js 13+, dominant for new code) — files in `app/`
+- Pages Router (legacy) — files in `pages/`
+- Mixed (in a migration) — flag as "migration in progress from Pages to App"
+-->
+
+**Directory layout**: {{DIRECTORY_LAYOUT}}
+
+<!-- e.g.:
+- app/
+  - (marketing)/  — route group for public pages
+  - (dashboard)/  — authenticated pages
+    - [feature]/
+      - page.tsx
+      - layout.tsx
+      - loading.tsx
+      - error.tsx
+-->
+
+**Rules:**
+- {{ROUTER_RULES}}
+
+<!-- Example for App Router:
+- Each route segment has page.tsx (required) + optional layout.tsx, loading.tsx, error.tsx, not-found.tsx.
+- Dynamic routes use [slug]/ or [...catch-all]/ naming.
+- Route groups `(name)/` organize without affecting URL — use to separate marketing/dashboard/admin trees.
+- Middleware at middleware.ts runs on every request; keep it lightweight.
+-->
+
+**Reference files:**
+{{ROUTER_REFERENCES}}
+
+---
+
+## §2 Server vs Client component boundary
+
+**Default**: {{DEFAULT_COMPONENT_TYPE}}
+
+<!-- Server components (App Router default) — no 'use client' unless needed. -->
+
+**When to use `"use client"`**: {{USE_CLIENT_CRITERIA}}
+
+<!-- e.g.:
+- Component uses React hooks (useState, useEffect, useRouter from next/navigation, etc.)
+- Component uses browser-only APIs (window, localStorage, document)
+- Component uses event handlers (onClick, onChange, onSubmit)
+- Component uses third-party client-only libraries
+-->
+
+**Rules:**
+- {{BOUNDARY_RULES}}
+
+<!-- Example:
+- Keep components on the server by default. Add `"use client"` at the leaf, not the root — push the boundary as deep as possible.
+- Never import a server-only module (e.g., `import { cookies } from 'next/headers'`) into a client component — build fails.
+- Interactive wrappers (forms, modals) are client; the data + static content they wrap should stay server.
+-->
+
+**Reference files:**
+{{BOUNDARY_REFERENCES}}
+
+---
+
+## §3 Data fetching
+
+**Server-side fetching pattern**: {{SERVER_FETCH_PATTERN}}
+
+<!-- e.g.:
+- Direct `fetch()` in server components (App Router) with Next.js auto-caching
+- getServerSideProps / getStaticProps (Pages Router)
+- A typed API client layer (createApiClient factory similar to React stack) called from server components
+- tRPC with server-side procedures
+-->
+
+**Client-side fetching pattern**: {{CLIENT_FETCH_PATTERN}}
+
+<!-- e.g.:
+- TanStack React Query v5 — hooks per resource, query keys centralized
+- SWR
+- Plain `useEffect + fetch` (flag if used — usually a smell)
+- Server actions (for mutations)
+-->
+
+**Caching / revalidation**: {{CACHE_STRATEGY}}
+
+<!-- e.g.:
+- `revalidate` export per page / `next: { revalidate: N }` in fetch calls — ISR-style
+- On-demand revalidation via `revalidateTag` / `revalidatePath` from server actions
+- `cache: 'no-store'` for user-specific data
+-->
+
+**Rules:**
+- {{DATA_FETCH_RULES}}
+
+<!-- Example:
+- Prefer server-side fetching in server components; pass data as props to client components.
+- Never `fetch()` inside a client component when the data could have been fetched on the server.
+- React Query is reserved for client-owned state (mutations, optimistic updates, polling).
+- Mutations via server actions where possible; fall back to route handlers for webhook-style endpoints.
+-->
+
+**Reference files:**
+{{DATA_FETCH_REFERENCES}}
+
+---
+
+## §4 API layer
+
+**API client**: {{API_CLIENT_PATTERN}}
+
+<!-- e.g.:
+- A createApiClient() factory at src/api/clients/api-client-factory.ts — returns a typed fetch wrapper or Axios instance per service
+- Generated client from OpenAPI spec (openapi-typescript / orval / kubb)
+- tRPC client for internal APIs + typed fetch for external
+-->
+
+**Route handlers (if any)**: {{ROUTE_HANDLERS}}
+
+<!-- e.g.:
+- `app/api/{feature}/route.ts` — for webhook receivers, proxy endpoints, auth callbacks
+- Pages Router API routes under `pages/api/`
+- No route handlers — Next.js is frontend-only, all APIs are external
+-->
+
+**Types from OpenAPI**: {{TYPES_PATTERN}}
+
+<!-- Handwritten under src/api/types/ / generated via codegen pipeline / copied from backend -->
+
+**Rules:**
+- {{API_RULES}}
+
+<!-- Example:
+- External HTTP calls go through the factory. Never instantiate fetch / Axios directly in a component.
+- Base URLs come from `process.env.NEXT_PUBLIC_*` (client-visible) or `process.env.*` (server-only).
+- TypeScript types match the OpenAPI spec field names character-for-character — no "friendlier" renames.
+- Route handlers follow `async function GET/POST/PUT/DELETE(request: NextRequest)` — no default export.
+-->
+
+**Reference files:**
+{{API_REFERENCES}}
+
+---
+
+## §5 Auth & role guards
+
+**Auth pattern**: {{AUTH_PATTERN}}
+
+<!-- e.g.:
+- NextAuth.js / Auth.js (v4 or v5) with credentials / OAuth providers
+- Clerk / Auth0 / Keycloak SDK
+- Custom JWT in httpOnly cookies; middleware.ts enforces session
+- Delegated to external identity provider; front-end carries a token
+-->
+
+**Role guard pattern**: {{ROLE_GUARD}}
+
+<!-- e.g.:
+- useRoles() hook reading session.user.roles
+- Middleware.ts does path-based role gating before the component renders
+- Server-component-level `getSession()` + redirect if unauthorized
+- ProtectedRoute wrapper (rare in App Router)
+-->
+
+**Cookie / session storage**: {{SESSION_STORAGE}}
+
+<!-- httpOnly cookies via NextAuth, or a custom cookie + server-validation pattern -->
+
+**Rules:**
+- {{AUTH_RULES}}
+
+<!-- Example:
+- Gated pages check session in their layout.tsx or page.tsx server component; redirect() unauthorized users.
+- Middleware.ts handles coarse-grained path-based gating (e.g., /admin/**); component-level logic handles fine-grained.
+- Tokens live in httpOnly cookies — never in localStorage.
+- `NEXT_PUBLIC_*` env vars are reserved for non-sensitive client-visible values; everything else stays server-side.
+-->
+
+**Reference files:**
+{{AUTH_REFERENCES}}
+
+---
+
+## §6 State management
+
+**Server state**: {{SERVER_STATE}}
+
+<!-- Handled by server components + fetch caching; React Query only for client-owned portions -->
+
+**Client state**: {{CLIENT_STATE}}
+
+<!-- e.g.:
+- React Context for theme / language / user preferences
+- Zustand / Jotai / Redux for complex client state
+- useReducer for feature-local state
+- URL state via useSearchParams (App Router) for filters / pagination
+-->
+
+**Rules:**
+- {{STATE_RULES}}
+
+<!-- Example:
+- Don't replicate server state in a client store. React Query's cache IS the client representation of server state.
+- Filter / pagination / sort state belongs in the URL (shareable links), not client store.
+- Auth state flows through the session; never duplicate into a client store.
+-->
+
+**Reference files:**
+{{STATE_REFERENCES}}
+
+---
+
+## §7 i18n wiring
+
+**Library**: {{I18N_LIBRARY}}
+
+<!-- next-intl / next-i18next / react-i18next (with Next.js adapter) / paraglide-js -->
+
+**Routing**: {{I18N_ROUTING}}
+
+<!-- e.g.:
+- Sub-path routing: /en/..., /ar/... — rewrites in next.config.js
+- Domain routing: en.example.com, ar.example.com
+- Accept-Language detection + cookie
+- Single-locale build (no i18n routing)
+-->
+
+**Locale file layout**: {{LOCALE_FILE_LAYOUT}}
+
+<!-- messages/en.json + messages/ar.json / locales/{lang}/common.json / etc. -->
+
+**Rules:**
+- {{I18N_RULES}}
+
+<!-- Example:
+- No hardcoded user-visible strings. Every string is `t('namespace.key')` via the chosen i18n hook/function.
+- New keys exist in every configured locale file; CI / pre-commit hook catches missing translations.
+- RTL mechanics (logical-property spacing, icon-direction flipping) are documented in DESIGN_SYSTEM.md §4 — this section just says WHERE i18n wiring lives.
+-->
+
+**Reference files:**
+{{I18N_REFERENCES}}
+
+---
+
+## §8 Tests
+
+**Unit / component test harness**: {{COMPONENT_TEST_PATTERN}}
+
+<!-- Vitest + React Testing Library / Jest + RTL / Playwright component tests -->
+
+**E2E harness**: {{E2E_PATTERN}}
+
+<!-- Playwright / Cypress / none -->
+
+**API mocking**: {{API_MOCK_PATTERN}}
+
+<!-- MSW (handlers per service) / nock / custom fetch mock -->
+
+**Rules:**
+- {{TEST_RULES}}
+
+<!-- Example:
+- Unit tests for hooks + utility functions; component tests for interactive pieces; e2e for critical user flows.
+- Server components don't need React rendering tests — cover their logic in a unit test of the data fetcher.
+- Mock data matches the OpenAPI spec wire shape; no "simplified" fixtures.
+-->
+
+**Reference files:**
+{{TEST_REFERENCES}}
+
+---
+
+## §9 File layout, naming, TypeScript, env vars
+
+**File naming**: {{FILE_NAMING}}
+
+<!-- e.g.:
+- Components: PascalCase.tsx
+- Hooks: useCamelCase.ts
+- Pages: page.tsx / layout.tsx / loading.tsx (App Router reserves these names)
+- Types: kebab-case.types.ts
+- Utilities: kebab-case.ts
+-->
+
+**TypeScript rules**: {{TS_RULES}}
+
+<!-- strictNullChecks: {true|false}, path aliases (`@/*` → `src/*`), any-usage policy -->
+
+**Environment variables**: {{ENV_VAR_RULES}}
+
+<!-- e.g.:
+- NEXT_PUBLIC_* prefix for client-visible values (API base URLs, feature flags, analytics IDs)
+- Non-prefixed vars are server-only — NEVER expose accidentally
+- Local .env.local is gitignored; .env.development committed for defaults
+-->
+
+**Build-time vs runtime config**: {{BUILD_RUNTIME_CONFIG}}
+
+<!-- e.g.:
+- Static values baked at build time: NEXT_PUBLIC_* read at build
+- Runtime values: app/config.ts reads process.env on server; propagated to client via server component props
+-->
+
+**Rules:**
+- {{STRUCTURE_RULES}}
+
+**Reference files:**
+{{STRUCTURE_REFERENCES}}
+
+---
+
+## §10+ (Workspace-specific additions)
+
+Add sections here as new cross-cutting concerns emerge (analytics wiring, error tracking, feature flags, CMS integration, payment providers, etc.).

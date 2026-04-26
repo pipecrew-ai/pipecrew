@@ -1,0 +1,153 @@
+# Python worker standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for event-driven Python workers in this workspace — Lambda handlers, SQS / SNS / Kinesis consumers, Celery tasks, Kafka consumers, scheduled jobs, batch ETL. **How we write workers here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+Workers differ from API services: there's no HTTP contract, the input is an event schema (JSON Schema / Avro / Protobuf), and the success criterion is "handled-or-DLQ'd, never lost". This document captures the workspace's conventions for those concerns.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Handler entry points
+
+**Detected pattern**: {{HANDLER_PATTERN}}
+
+<!-- One of:
+- AWS Lambda + SAM (lambda_handler(event, context) signature)
+- AWS Lambda + Serverless Framework
+- AWS Lambda + raw boto3 deploy
+- Celery tasks (@app.task decorator)
+- Kafka consumer loop (consumer.poll())
+- Scheduled jobs (cron, EventBridge schedule)
+-->
+
+**Rules:**
+- {{HANDLER_RULES}}
+
+**Reference files:**
+{{HANDLER_REFERENCES}}
+
+---
+
+## §2 Event validation
+
+**Detected pattern**: {{VALIDATION_PATTERN}}
+
+<!-- e.g., Pydantic models per event type, JSON Schema validation via jsonschema lib, Avro deserialization via fastavro, Protobuf via protoc-generated classes. Where event schemas live (contract repo path), how they're imported. -->
+
+**Rules:**
+- {{VALIDATION_RULES}}
+
+**Reference files:**
+{{VALIDATION_REFERENCES}}
+
+---
+
+## §3 Idempotency
+
+**Detected pattern**: {{IDEMPOTENCY_PATTERN}}
+
+<!-- Critical for at-least-once delivery (SQS, Kafka). e.g., idempotency key extraction (from event body, message attributes), dedup table (DynamoDB conditional write), aws-lambda-powertools idempotency utility, Redis SETNX. -->
+
+**Rules:**
+- {{IDEMPOTENCY_RULES}}
+
+**Reference files:**
+{{IDEMPOTENCY_REFERENCES}}
+
+---
+
+## §4 Retry & DLQ
+
+**Detected pattern**: {{RETRY_PATTERN}}
+
+<!-- e.g., SQS visibility timeout + maxReceiveCount + redrive to DLQ, Lambda retry config (event source mapping retries, async retries=2), Celery autoretry_for, exponential backoff library. Distinguish transient from permanent failures (raise vs return). -->
+
+**Rules:**
+- {{RETRY_RULES}}
+
+**Reference files:**
+{{RETRY_REFERENCES}}
+
+---
+
+## §5 Partial failure handling
+
+**Detected pattern**: {{PARTIAL_FAILURE_PATTERN}}
+
+<!-- For batch consumers: SQS batch_item_failures response shape, Kafka commit semantics (per-message vs batch), Kinesis CheckpointFailure, Celery task chord/group failure modes. -->
+
+**Rules:**
+- {{PARTIAL_FAILURE_RULES}}
+
+**Reference files:**
+{{PARTIAL_FAILURE_REFERENCES}}
+
+---
+
+## §6 Structured logging
+
+**Detected pattern**: {{LOGGING_PATTERN}}
+
+<!-- e.g., aws-lambda-powertools Logger, structlog, python-json-logger. Required context fields (correlation_id, event_id, source). CloudWatch / centralized log shipping. -->
+
+**Rules:**
+- {{LOGGING_RULES}}
+
+**Reference files:**
+{{LOGGING_REFERENCES}}
+
+---
+
+## §7 Tests
+
+**Detected pattern**: {{TESTS_PATTERN}}
+
+<!-- e.g., pytest + handler unit tests with synthetic events, event fixtures under tests/fixtures/{event-type}/, mocked AWS clients (moto, boto3.Stubber), Localstack for integration. -->
+
+**Required test coverage** (per implementer-common-rules.md):
+- Happy path: valid event → handler returns expected result
+- Validation failure: malformed event → returns `Records[*].itemIdentifier` for SQS or raises for permanent-failure
+- Idempotency: same event ID processed twice → second call is no-op
+- Retry: transient failure (e.g., DB timeout) → handler raises so platform retries; permanent failure → handler does NOT raise
+
+**Reference files:**
+{{TESTS_REFERENCES}}
+
+---
+
+## §8 Config & secrets
+
+**Detected pattern**: {{CONFIG_PATTERN}}
+
+<!-- e.g., env vars for non-secret config, AWS Secrets Manager / SSM Parameter Store for secrets, aws-lambda-powertools Parameters utility, caching strategy (lambda container reuse). -->
+
+**Rules:**
+- {{CONFIG_RULES}}
+
+**Reference files:**
+{{CONFIG_REFERENCES}}
+
+---
+
+## §9 Local invocation & observability
+
+**Detected pattern**: {{LOCAL_PATTERN}}
+
+<!-- e.g., sam local invoke + event JSON, docker-compose for Kafka, Celery worker --loglevel=DEBUG, structured tracing (AWS X-Ray, OpenTelemetry). -->
+
+**Rules:**
+- {{LOCAL_RULES}}
+
+**Reference files:**
+{{LOCAL_REFERENCES}}
+
+---
+
+## DON'T (anti-patterns observed in this workspace)
+
+{{DONT_BLOCK}}
+
+<!-- Only populate when an anti-pattern was actually observed in code. Each entry: file:line + why it's wrong + the correct pattern from a §-section. Omit this section entirely if the codebase is clean. -->

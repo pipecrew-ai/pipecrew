@@ -146,6 +146,7 @@ One character per pipeline role. The agent's reported name (from scratchpad's Ag
 | Judge | Assessor | `assessor`, `dal-assessor`, `acme-assessor` |
 | Scribe | Reporter | `reporter` (Phase 7 summary author) |
 | Sage | Context Manager | `context-manager` (Phase 7 history distiller) |
+| Loop | Feedback Learner | `feedback-learner` (Phase 8 — only fires if the user opts in to feedback at Step 8.6; closing the pyramid is keyed on Loop reaching `done`) |
 
 **Note**: `Shield` and `Mira` are listed before the implementers in `ROLE_PATTERNS` so the more-specific `*-consultant` suffix wins over a hypothetical fuzzier substring match. Order matters in `agentToRole()` — first match wins.
 

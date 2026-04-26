@@ -1,0 +1,273 @@
+# FastAPI standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for every FastAPI (Python) repo in this workspace. Naming, auth, persistence, migrations, tests, app structure — **how we write FastAPI here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+This document is populated by reading the actual code in the workspace's FastAPI repos. Every convention below names what already exists — not what the plugin thinks FastAPI "should" do. A repo on Tortoise ORM doesn't get SQLAlchemy rules; an app on Poetry doesn't get pip-tools advice.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Auth / role enforcement
+
+**Detected pattern**: {{AUTH_PATTERN}}
+
+<!-- One of:
+- OAuth2PasswordBearer + JWT decode in a get_current_user dependency
+- OAuth2 with an external provider (Auth0 / Keycloak / Clerk) via a validate dependency
+- API key in header (X-API-Key) for internal services
+- Delegated to API gateway (no in-service auth)
+- No auth (internal / worker)
+-->
+
+**Rules:**
+- {{AUTH_RULES}}
+
+<!-- Example:
+- Protected routes use `Depends(get_current_user)` + `Depends(require_role("ADMIN"))` — composable dependencies.
+- Role checks happen in a dedicated dependency, NOT inline in the route handler.
+- Public routes are explicitly declared (no dependency attached); do not rely on absence as an opt-out signal.
+-->
+
+**Reference files:**
+{{AUTH_REFERENCES}}
+
+<!-- e.g.:
+- `app/auth/dependencies.py` — get_current_user + require_role
+- `app/users/routes.py:34` — example usage
+-->
+
+---
+
+## §2 Persistence / ORM
+
+**Detected pattern**: {{PERSISTENCE_PATTERN}}
+
+<!-- One of:
+- SQLAlchemy 2.x (async) with Session dependency injection via Depends
+- SQLAlchemy 2.x (sync) — flag explicitly; async is dominant for FastAPI
+- Tortoise ORM
+- Prisma via prisma-client-py
+- Raw asyncpg with a repository pattern
+-->
+
+**Query style**: {{QUERY_STYLE}}
+
+<!-- e.g.:
+- SQLAlchemy 2.x `select()` style with `.filter()` for simple queries + query builder for dynamic
+- Repository class per aggregate root; no direct session usage in routes
+- Service-layer DTOs ≠ SQLAlchemy models; explicit mapping
+-->
+
+**Rules:**
+- {{PERSISTENCE_RULES}}
+
+<!-- Example:
+- Async sessions are injected via Depends(get_session); never create sessions inside handlers.
+- Every service method that mutates data is async def; DO NOT mix sync and async sessions.
+- `select()` returns a Result; use `.scalar_one()` / `.scalars().all()` — not `.first()` which silently returns None.
+-->
+
+**Reference files:**
+{{PERSISTENCE_REFERENCES}}
+
+---
+
+## §3 Pagination
+
+**Detected pattern**: {{PAGINATION_PATTERN}}
+
+<!-- One of:
+- fastapi-pagination library (Page[T] response model)
+- Manual skip/limit query params → custom PaginatedResponse schema
+- Cursor-based (for large datasets)
+- None established yet
+-->
+
+**Rules:**
+- {{PAGINATION_RULES}}
+
+**Reference files:**
+{{PAGINATION_REFERENCES}}
+
+---
+
+## §4 Database migrations
+
+**Tool**: {{MIGRATION_TOOL}}
+
+<!-- Alembic (standard) / Prisma Migrate (if Prisma) / manual SQL (flag as unmanaged) -->
+
+**Format**: {{MIGRATION_FORMAT}}
+
+<!-- Python files auto-generated under alembic/versions/ with down_revision chain -->
+
+**Alembic config**: {{ALEMBIC_CONFIG}}
+
+<!-- alembic.ini location, env.py customizations (e.g., target_metadata from models) -->
+
+**Rules:**
+- {{MIGRATION_RULES}}
+
+<!-- Example for Alembic:
+- Generate via `alembic revision --autogenerate -m "describe change"`; NEVER handwrite from scratch unless a refactor.
+- After generate, inspect and fix: autogenerate misses things (index renames, enum adds, constraint name changes).
+- `down_revision` chain must be linear — `alembic heads` should always return exactly one head. If it returns more than one, a merge revision is needed.
+- Database name constraints: Alembic defaults may conflict with CI test-DB naming — check env.py.
+-->
+
+**Reference files:**
+{{MIGRATION_REFERENCES}}
+
+---
+
+## §5 App layout & routers
+
+**App structure**: {{APP_STRUCTURE}}
+
+<!-- e.g.:
+- One APIRouter per domain (users, books, contracts, ...) mounted under /api/v1
+- Routers live in app/{feature}/routes.py; services in app/{feature}/services.py; models in app/{feature}/models.py
+- Main app in app/main.py instantiates FastAPI, includes routers, registers middleware
+-->
+
+**Router registration**: {{ROUTER_REGISTRATION}}
+
+<!-- app.include_router(users_router, prefix="/users", tags=["users"]) -->
+
+**Rules:**
+- {{APP_RULES}}
+
+<!-- Example:
+- Every new feature creates a new APIRouter; main.py's `include_router` list is the registry.
+- Prefix + tags are set at include time, not in the router file — makes multi-version routing (v1/v2) possible.
+- A router without middleware, error handlers, or event hooks lives in its own file; no magic at module import time.
+-->
+
+**Reference files:**
+{{APP_REFERENCES}}
+
+---
+
+## §6 Pydantic & error handling
+
+**Pydantic version**: {{PYDANTIC_VERSION}}
+
+<!-- v2 is dominant; v1 is legacy. V2 differs significantly (ConfigDict, model_validator, field_validator). Flag the version to avoid confusion. -->
+
+**Schema style**: {{SCHEMA_STYLE}}
+
+<!-- e.g.:
+- Three schemas per resource: {Resource}Base (shared), {Resource}Create (POST), {Resource}Read (response)
+- model_config = ConfigDict(from_attributes=True) for ORM conversion
+- Field() for validation constraints; model_validator for cross-field rules
+-->
+
+**Global exception handlers**: {{ERROR_HANDLERS}}
+
+<!-- @app.exception_handler(CustomException) mapped to JSON envelope; one handler per exception category -->
+
+**Rules:**
+- {{ERROR_RULES}}
+
+<!-- Example:
+- Never raise HTTPException from a service — raise a domain-specific exception (UserNotFoundError) and let the global handler map it.
+- Response envelope for errors is consistent across the app: {error: {code, message, details}}.
+- 404s come from a shared NotFoundError base, not ad-hoc HTTPException(404) calls.
+-->
+
+**Reference files:**
+{{ERROR_REFERENCES}}
+
+---
+
+## §7 Tests
+
+**Test framework**: {{TEST_FRAMEWORK}}
+
+<!-- pytest + pytest-asyncio (for async), TestClient or AsyncClient from httpx -->
+
+**Fixture style**: {{FIXTURE_STYLE}}
+
+<!-- e.g.:
+- conftest.py at the package root provides app, client, db_session, authenticated_client fixtures
+- DB setup: testcontainers / in-memory SQLite / dedicated test DB per CI run
+-->
+
+**Security test pattern** (if auth is enforced): {{SECURITY_TEST_PATTERN}}
+
+<!-- e.g.:
+- dependency_overrides[get_current_user] = lambda: MockUser(roles=[...])
+- Or: JWT fixture that generates valid tokens for each role
+- "Not established yet" — first feature adding auth establishes it
+-->
+
+**Rules:**
+- {{TEST_RULES}}
+
+<!-- Example:
+- Every new route has an endpoint test (via TestClient) + a service-layer test (via pytest fixtures).
+- Security tests use dependency_overrides to inject mock users; don't mock JWT decoding.
+- Mock data in tests matches the production wire shape (no "simplified" shortcuts).
+-->
+
+**Reference files:**
+{{TEST_REFERENCES}}
+
+---
+
+## §8 Logging & observability
+
+**Logger**: {{LOGGING_PATTERN}}
+
+<!-- e.g.:
+- structlog with JSON renderer in production, console renderer in dev
+- loguru with custom format
+- stdlib logging with a custom formatter
+-->
+
+**Request / correlation IDs**: {{REQUEST_ID_PATTERN}}
+
+<!-- starlette middleware + contextvars, or asgi-correlation-id, or not established -->
+
+**Rules:**
+- {{LOGGING_RULES}}
+
+**Reference files:**
+{{LOGGING_REFERENCES}}
+
+---
+
+## §9 Config & environment
+
+**Pattern**: {{CONFIG_PATTERN}}
+
+<!-- e.g.:
+- pydantic-settings BaseSettings with env_file loading (.env + env_prefix)
+- python-dotenv + direct os.environ
+- dynaconf
+-->
+
+**Env file layout**: {{ENV_FILE_LAYOUT}}
+
+<!-- .env, .env.dev, .env.test, .env.prod; or a single .env with profile-aware logic -->
+
+**Rules:**
+- {{CONFIG_RULES}}
+
+<!-- Example:
+- Settings is a singleton imported from app.config; never read os.environ directly.
+- Missing required env vars fail at startup (pydantic-settings validates on instantiation).
+- Secrets come from the environment or a secret manager, never checked into .env.
+-->
+
+**Reference files:**
+{{CONFIG_REFERENCES}}
+
+---
+
+## §10+ (Workspace-specific additions)
+
+Add sections here as new cross-cutting concerns emerge (background tasks via Celery / arq / dramatiq, message queues, caching, feature flags).

@@ -15,7 +15,8 @@
       "enum": ["run_start", "run_end", "phase_start", "phase_end", "agent_end", "orch_checkpoint", "bash_slow", "retry"]
     },
     "skill": {
-      "enum": ["onboard", "feature", "review", "assess", "context-refresh"]
+      "enum": ["discover", "deliver", "learn", "review", "assess", "context-refresh", "onboard", "feature"],
+      "description": "Skill that owns the run. `onboard` / `feature` are legacy aliases kept for pre-rename checkpoints (renamed to `discover` / `deliver` respectively)."
     },
     "run_id": {
       "type": "string",

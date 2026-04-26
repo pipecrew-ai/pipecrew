@@ -69,9 +69,6 @@ const validBody = [
   '| Topic | File |',
   '|---|---|',
   '| Testing | `agent-context/common/TESTING.md` |',
-  '',
-  '## Agent workflow pointers',
-  '- tests → `agent-context/common/TESTING.md`',
   ''
 ].join('\n');
 

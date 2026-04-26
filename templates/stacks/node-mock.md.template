@@ -1,0 +1,138 @@
+# Node mock-server engineering standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for the mock-server repo(s) in this workspace. Route structure, spec-driven response shapes, seed data, ergonomics — **how we write mock endpoints here**.
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+The mock server mirrors one or more real backend services so frontend developers can run the UI without the full backend stack. Every mock response must match the live OpenAPI spec shape exactly — shape drift here produces UI bugs that look like frontend bugs.
+
+**Stable section anchors (§1–§6) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §7+.
+
+---
+
+## §1 Server framework & topology
+
+**Framework**: {{FRAMEWORK}}
+
+<!-- Express / Fastify / Hono / json-server / etc. -->
+
+**Topology**: {{TOPOLOGY}}
+
+<!-- e.g.:
+- One sub-server per mocked real service (publisher-service, backoffice-service, ...) under its own directory
+- One merged server with path prefixes
+-->
+
+**Rules:**
+- {{TOPOLOGY_RULES}}
+
+**Reference files:**
+{{TOPOLOGY_REFERENCES}}
+
+---
+
+## §2 Spec sources
+
+**Spec copies**: {{SPEC_COPIES_PATTERN}}
+
+<!-- e.g. the mock repo carries a copy of each real service's OpenAPI spec; lists paths -->
+
+**Rules:**
+- {{SPEC_RULES}}
+
+<!-- Example:
+- Mock response shapes match the spec field-for-field. No renames, no shortcuts.
+- When the real spec changes, Phase 4 (spec sync) re-copies it here — the mock author then fixes any shape drift.
+-->
+
+**Reference files:**
+{{SPEC_REFERENCES}}
+
+---
+
+## §3 Route handlers
+
+**Pattern**: {{ROUTE_PATTERN}}
+
+<!-- e.g.:
+- One route file per endpoint group, exporting register(app) functions
+- Path parameters via `req.params`; query via `req.query`
+- Response via `res.json()` / `res.status(x).json()`
+-->
+
+**Rules:**
+- {{ROUTE_RULES}}
+
+<!-- Example:
+- Every route returns a realistic HTTP status — 201 for create, 204 for delete, 404 for missing, 400 for invalid body.
+- The shape of a 200 body matches the spec's `responses['200'].content['application/json'].schema` exactly.
+- Error responses match the spec's error envelope (e.g., `{code, message, details}`) — do not invent a simpler shape.
+-->
+
+**Reference files:**
+{{ROUTE_REFERENCES}}
+
+---
+
+## §4 Seed data
+
+**Pattern**: {{SEED_DATA_PATTERN}}
+
+<!-- e.g.:
+- In-memory arrays keyed by UUID, reset on server restart
+- JSON seed files under seeds/
+- faker.js for dynamic data
+-->
+
+**Rules:**
+- {{SEED_RULES}}
+
+<!-- Example:
+- Identifiers use realistic formats (UUIDs, ISBN-13, valid date ranges).
+- Localized fields have realistic {{LOCALE}}-language values, not Lorem Ipsum.
+- Related records reference consistent IDs across collections.
+-->
+
+**Reference files:**
+{{SEED_REFERENCES}}
+
+---
+
+## §5 Latency & failure simulation
+
+**Pattern**: {{FAILURE_SIM_PATTERN}}
+
+<!-- e.g.:
+- Env flag `MOCK_DELAY_MS` applied globally
+- Query param `?fail=429` to force a status code
+- No failure simulation (all endpoints always succeed)
+-->
+
+**Rules:**
+- {{FAILURE_RULES}}
+
+**Reference files:**
+{{FAILURE_REFERENCES}}
+
+---
+
+## §6 Run & debug
+
+**Run command**: {{RUN_COMMAND}}
+
+<!-- e.g. npm run dev:mock / node server.js / etc. -->
+
+**Port allocation**: {{PORTS}}
+
+<!-- one port per sub-server — list them -->
+
+**Logging**: {{LOGGING}}
+
+**Reference files:**
+{{RUN_REFERENCES}}
+
+---
+
+## §7+ (Workspace-specific additions)
+
+Add sections here as new mock concerns emerge (auth simulation, WebSocket mocks, file-upload stubs).

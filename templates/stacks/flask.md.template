@@ -1,0 +1,152 @@
+# Flask standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for every Flask (Python) repo in this workspace. Naming, auth, persistence, migrations, tests, app structure — **how we write Flask here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+This document is populated by reading the actual code in the workspace's Flask repos. Every convention below names what already exists — not what the plugin thinks Flask "should" do.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Auth
+
+**Detected pattern**: {{AUTH_PATTERN}}
+
+<!-- One of:
+- Flask-Login session auth
+- Flask-JWT-Extended (or custom JWT) + decorator
+- Flask-HTTPAuth Basic / Token
+- Custom before_request middleware
+- OAuth2 via Authlib / Flask-Dance
+- Delegated to upstream gateway (no in-app auth)
+-->
+
+**Rules:**
+- {{AUTH_RULES}}
+
+**Reference files:**
+{{AUTH_REFERENCES}}
+
+---
+
+## §2 Persistence
+
+**Detected pattern**: {{PERSISTENCE_PATTERN}}
+
+<!-- e.g., Flask-SQLAlchemy session lifecycle, scoped_session usage, model conventions, repository pattern vs direct queries, transaction boundary (request-scoped vs explicit). -->
+
+**Rules:**
+- {{PERSISTENCE_RULES}}
+
+**Reference files:**
+{{PERSISTENCE_REFERENCES}}
+
+---
+
+## §3 Pagination
+
+**Detected pattern**: {{PAGINATION_PATTERN}}
+
+<!-- e.g., query.paginate() helpers, custom cursor pagination, page_size convention, response envelope shape. -->
+
+**Rules:**
+- {{PAGINATION_RULES}}
+
+**Reference files:**
+{{PAGINATION_REFERENCES}}
+
+---
+
+## §4 Migrations
+
+**Detected pattern**: {{MIGRATIONS_PATTERN}}
+
+<!-- e.g., Flask-Migrate (Alembic), naming convention, branching policy, data migrations as separate files, deployment policy. -->
+
+**Rules:**
+- {{MIGRATIONS_RULES}}
+
+**Reference files:**
+{{MIGRATIONS_REFERENCES}}
+
+---
+
+## §5 Routing & Blueprints
+
+**Detected pattern**: {{ROUTING_PATTERN}}
+
+<!-- e.g., Blueprint per feature, URL prefix convention, MethodView vs function routes, OpenAPI integration (flask-smorest, apispec, none). -->
+
+**Rules:**
+- {{ROUTING_RULES}}
+
+**Reference files:**
+{{ROUTING_REFERENCES}}
+
+---
+
+## §6 Error handling
+
+**Detected pattern**: {{ERROR_PATTERN}}
+
+<!-- e.g., @app.errorhandler decorators, custom exception classes, JSON error response shape, validation-error format, Sentry. -->
+
+**Rules:**
+- {{ERROR_RULES}}
+
+**Reference files:**
+{{ERROR_REFERENCES}}
+
+---
+
+## §7 Tests
+
+**Detected pattern**: {{TESTS_PATTERN}}
+
+<!-- e.g., pytest + Flask test client, fixtures (app, client, db, session), factory pattern, integration vs unit split. -->
+
+**Security-test harness** (per implementer-common-rules.md R4):
+- Allowed-role: {{SEC_TEST_ALLOWED}}
+- Denied-role: {{SEC_TEST_DENIED}}
+- Unauthenticated: {{SEC_TEST_UNAUTH}}
+
+**Reference files:**
+{{TESTS_REFERENCES}}
+
+---
+
+## §8 Logging
+
+**Detected pattern**: {{LOGGING_PATTERN}}
+
+<!-- e.g., app.logger config, structlog / python-json-logger, request_id middleware, log level per env. -->
+
+**Rules:**
+- {{LOGGING_RULES}}
+
+**Reference files:**
+{{LOGGING_REFERENCES}}
+
+---
+
+## §9 Config
+
+**Detected pattern**: {{CONFIG_PATTERN}}
+
+<!-- e.g., config classes (Development/Production), instance folder, python-dotenv, secrets via AWS Secrets Manager / SSM, app factory pattern. -->
+
+**Rules:**
+- {{CONFIG_RULES}}
+
+**Reference files:**
+{{CONFIG_REFERENCES}}
+
+---
+
+## DON'T (anti-patterns observed in this workspace)
+
+{{DONT_BLOCK}}
+
+<!-- Only populate when an anti-pattern was actually observed in code. Each entry: file:line + why it's wrong + the correct pattern from a §-section. Omit this section entirely if the codebase is clean. -->

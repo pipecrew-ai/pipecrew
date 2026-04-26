@@ -143,7 +143,7 @@ Emit:
 | A     | Repo Discovery           | 0:42     | 0      | —       |
 | B1    | Domain Questions         | 2:10     | 0      | —       |
 | B2    | Architect Discovery      | 4:03     | 1      | 77,922  |
-| B2.5  | Divergence Harvest       | 0:58     | 3      | 41,205  |
+| B2.5  | Stack Discovery          | 0:58     | 3      | 41,205  |
 | B3    | Design System            | 2:16     | 1      | 46,687  |
 | C1    | Workspace Config         | 0:08     | 0      | —       |
 | C2    | Docs Generation (CLAUDE.md + agent-context) | 4:12 | 4 (1r) | 186,350 |

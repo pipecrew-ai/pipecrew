@@ -1,0 +1,141 @@
+# CDK infrastructure standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for AWS CDK repos in this workspace. Stack layout, naming, stage/region handling, IAM, resource patterns — **how we write CDK here**.
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+**Stable section anchors (§1–§7) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §8+.
+
+---
+
+## §1 CDK version & language
+
+**Version**: {{CDK_VERSION}}
+
+<!-- e.g. AWS CDK v2.x, TypeScript -->
+
+**Top-level entrypoint**: {{ENTRYPOINT}}
+
+<!-- e.g. bin/app.ts -->
+
+---
+
+## §2 Stack layout & naming
+
+**Pattern**: {{STACK_LAYOUT}}
+
+<!-- e.g.:
+- One stack class per domain concern (buckets, queues, fargate services, ...)
+- Stack names follow `{name}-{stage}{regionSuffix}` convention
+- Stage/region come from cdk.context.json OR env vars OR CLI args — document the chosen source
+-->
+
+**Rules:**
+- {{STACK_RULES}}
+
+**Reference files:**
+{{STACK_REFERENCES}}
+
+---
+
+## §3 Stage + region parameterization
+
+**Pattern**: {{STAGE_REGION_PATTERN}}
+
+<!-- e.g.:
+- `stage` = dev | prod; `region` = eu | me
+- Encoded in stack name as `{stage}` + `{regionSuffix}` (empty for primary region)
+- Resolved in App() construction from env vars
+-->
+
+**Rules:**
+- {{STAGE_RULES}}
+
+<!-- Example:
+- Resource names include stage suffix for isolation: `my-bucket-{stage}`.
+- EU-region deployments append `-eu` to stack and resource names.
+- Never hardcode a stage in a construct. Pass it in via props.
+-->
+
+**Reference files:**
+{{STAGE_REFERENCES}}
+
+---
+
+## §4 Resource patterns
+
+**S3**: {{S3_PATTERN}}
+**RDS**: {{RDS_PATTERN}}
+**Lambda**: {{LAMBDA_PATTERN}}
+**ECS / Fargate**: {{ECS_PATTERN}}
+**SQS / SNS**: {{SQS_SNS_PATTERN}}
+**IAM**: {{IAM_PATTERN}}
+
+<!-- Describe the concrete props usage for each resource type — encryption, versioning, removal policy, log retention, etc.
+Example for S3:
+- Versioned: true
+- Encryption: S3_MANAGED
+- BlockPublicAccess: BLOCK_ALL
+- RemovalPolicy: RETAIN (not DESTROY)
+- CORS configured per usage (document when a bucket needs browser-direct access)
+-->
+
+**Rules:**
+- {{RESOURCE_RULES}}
+
+**Reference files:**
+{{RESOURCE_REFERENCES}}
+
+---
+
+## §5 Cross-stack references
+
+**Pattern**: {{CROSS_STACK_PATTERN}}
+
+<!-- e.g.:
+- CfnOutput + Fn.importValue
+- Direct construct reference where stacks live in the same App
+- SSM parameter passthrough
+-->
+
+**Rules:**
+- {{CROSS_STACK_RULES}}
+
+**Reference files:**
+{{CROSS_STACK_REFERENCES}}
+
+---
+
+## §6 Tests
+
+**Pattern**: {{CDK_TEST_PATTERN}}
+
+<!-- e.g. Jest snapshot tests against Template.fromStack(); fine-grained assertion tests -->
+
+**Rules:**
+- {{CDK_TEST_RULES}}
+
+**Reference files:**
+{{CDK_TEST_REFERENCES}}
+
+---
+
+## §7 Deploy
+
+**Pattern**: {{DEPLOY_PATTERN}}
+
+<!-- e.g.:
+- `npx cdk deploy --profile {profile} {stack-name}` for single-stack
+- CI-driven via GitHub Actions workflow
+- Stage gate before prod: dev → verify → prod
+-->
+
+**Rules:**
+- {{DEPLOY_RULES}}
+
+**Reference files:**
+{{DEPLOY_REFERENCES}}
+
+---
+
+## §8+ (Workspace-specific additions)

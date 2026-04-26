@@ -1,0 +1,255 @@
+# Design System — {{REPO_NAME}}
+
+> **Purpose**: Single source of truth for UI patterns, tokens, and component conventions in this repo.
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B3. Revised manually as the codebase evolves.
+
+This file is the contract between the repo and any UI-authoring agent (PipeCrew's ux-consultant, feature implementer, code reviewer, or a human collaborator). The **section headings with numeric anchors (§1, §2, §3.1 …) are stable** — agent prompts cite them by number. You may add sections; do not renumber the existing ones.
+
+---
+
+## 1. Tokens
+
+### 1.1 Colors
+
+{{COLOR_TOKENS}}
+
+<!-- Fill with the repo's actual token names. Example:
+| Token | Light | Dark | Meaning |
+|---|---|---|---|
+| `--background` | … | … | Page background |
+| `--primary`    | … | … | Brand primary |
+-->
+
+### 1.2 Typography
+
+{{TYPOGRAPHY_TOKENS}}
+
+<!-- Font families, heading sizes, body sizes — whatever the repo actually defines. -->
+
+### 1.3 Spacing
+
+{{SPACING_TOKENS}}
+
+<!-- The repo's spacing scale — Tailwind defaults, CSS var ladder, design-system spacer enum, etc. -->
+
+### 1.4 Shadows / Radii / Misc
+
+{{MISC_TOKENS}}
+
+---
+
+## 2. Page Shell
+
+The outermost wrapper every full-page route renders inside.
+
+{{PAGE_SHELL_EXAMPLE}}
+
+<!-- A code block showing the canonical page shell — navbar/sidebar + main + footer + direction handling. -->
+
+**Reference files**:
+{{PAGE_SHELL_REFERENCES}}
+
+---
+
+## 3. Component Tree Patterns
+
+**This section is the API the ux-consultant and feature implementer cite by subsection number.** Each subsection names an established shape, gives a canonical code block, lists reference files, and includes a DON'T anti-pattern. When a feature spans any of these subsections, the authoring agent MUST cite the subsection and match the shape.
+
+Missing a subsection a feature needs? That is a doc gap — flag it in the run, do not invent.
+
+### 3.1 Dashboard Tabs
+
+A `*Tab.tsx` (or equivalent) that renders a filterable, paginated table inside a dashboard page.
+
+**Canonical shape:**
+
+{{TAB_SHELL_CANONICAL}}
+
+<!-- Example (shadcn + Tailwind):
+```tsx
+<Card>
+  <CardHeader>
+    <div className="flex justify-between gap-4">
+      <div>
+        <CardTitle>{t("...title")}</CardTitle>
+        <CardDescription>{t("...desc")}</CardDescription>
+      </div>
+      {/* toolbar / bulk actions */}
+    </div>
+    {/* filter inputs */}
+  </CardHeader>
+  <CardContent>
+    <DataTable columns={columns} data={data} ... />
+  </CardContent>
+</Card>
+```
+-->
+
+**Rules:**
+- {{TAB_SHELL_RULES}}
+
+<!-- Example bullets:
+- A `*Tab.tsx` that renders a `DataTable` MUST wrap it in the shell primitive named above.
+- Filters belong inside the header region, not above the shell.
+- A toolbar (bulk-action buttons, status badge) appears in the header only when selection state > 0.
+-->
+
+**Reference files** (mimic these — do not invent a new shape):
+{{TAB_SHELL_REFERENCES}}
+
+**DON'T:**
+
+{{TAB_SHELL_ANTIPATTERN}}
+
+<!-- Example:
+```tsx
+// WRONG — bare DataTable with no shell, breaks visual consistency across dashboards
+<div className="space-y-4">
+  <TableFilterInput ... />
+  <DataTable ... />
+</div>
+```
+-->
+
+---
+
+### 3.2 Row Actions
+
+Action buttons rendered inside a data-table row (view, edit, claim, download, reject, …).
+
+**Canonical shape:**
+
+{{ROW_ACTIONS_CANONICAL}}
+
+<!-- Example (shadcn-style helper):
+```tsx
+import { createActionsColumn, viewAction, downloadAction } from "@/components/ui/data-table";
+
+createActionsColumn<RowT>(deps, {
+  headerKey: "common.actions",
+  actions: [
+    viewAction({ tooltipKey: "common.view", onClick: onView }),
+    downloadAction({ tooltipKey: "common.download", onClick: onDownload }),
+  ],
+});
+```
+-->
+
+**Rules:**
+- {{ROW_ACTIONS_RULES}}
+
+<!-- Example bullets:
+- Every row-action cell MUST use the shared helper named above. Do not hand-roll inline buttons.
+- Use the helper's existing action factories (viewAction, downloadAction, etc.) before inventing a new one.
+- Row actions are **icon buttons with tooltips**, not text links.
+- New action types must be added as factories to the helper, not inline in feature columns.
+-->
+
+**Reference files**:
+{{ROW_ACTIONS_REFERENCES}}
+
+**DON'T:**
+
+{{ROW_ACTIONS_ANTIPATTERN}}
+
+<!-- Example:
+```tsx
+// WRONG — hand-rolled text link; bypasses the helper, no tooltip, no a11y label
+<button className="text-primary hover:underline" onClick={...}>
+  {t("common.view")}
+</button>
+```
+-->
+
+---
+
+### 3.3 Detail Modals
+
+A modal/dialog that opens to show a detail view of one row.
+
+**Canonical shape:**
+
+{{DETAIL_MODAL_CANONICAL}}
+
+**Rules:**
+- {{DETAIL_MODAL_RULES}}
+
+**Reference files**:
+{{DETAIL_MODAL_REFERENCES}}
+
+**DON'T:**
+
+{{DETAIL_MODAL_ANTIPATTERN}}
+
+---
+
+### 3.4 Forms
+
+Form component structure, field grouping, validation, submit handling.
+
+**Canonical shape:**
+
+{{FORM_CANONICAL}}
+
+**Rules:**
+- {{FORM_RULES}}
+
+**Reference files**:
+{{FORM_REFERENCES}}
+
+**DON'T:**
+
+{{FORM_ANTIPATTERN}}
+
+---
+
+### 3.5+ (Repo-specific additions)
+
+Repos may add additional subsections here (file-upload flows, empty states, status banners, etc.). Keep the same shape: canonical code + rules + reference files + DON'T. Number sequentially (3.5, 3.6, …).
+
+---
+
+## 4. RTL / i18n
+
+{{RTL_I18N_GUIDANCE}}
+
+<!-- The repo's specific vocabulary:
+- Logical-property class names (Tailwind `me-*`/`ms-*`, raw `margin-inline-start`, theme helpers)
+- Direction handling on page root
+- `dir="ltr"` carve-outs for numeric content (ISBNs, phones, IBANs)
+- Arrow-icon flipping convention
+- Date / number formatting helpers
+-->
+
+---
+
+## 5. Loading / Empty / Error States
+
+The rendered primitive for each async state. Every component that consumes a query MUST render one of these states — no silent `return null`.
+
+| State | Primitive | Example file |
+|---|---|---|
+{{STATE_PRIMITIVES}}
+
+---
+
+## 6. Known Inconsistencies
+
+Defects the discover pass noticed that contradict this document. Kept here so future agents see the gap and don't imitate the broken file.
+
+| ID | Severity | Issue | Location | Fix plan |
+|---|---|---|---|---|
+{{KNOWN_INCONSISTENCIES}}
+
+<!-- Seeded by /discover; grown by /review + manual additions. -->
+
+---
+
+## 7. Components to Avoid
+
+Components the team has stopped using, or that have known bugs / RTL breakage. Agents must not recommend these.
+
+| Component | Reason | Use instead |
+|---|---|---|
+{{COMPONENTS_TO_AVOID}}

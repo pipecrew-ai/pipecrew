@@ -35,16 +35,45 @@ Run `cd {repo_path} && git diff <diff_base>...HEAD` to see what changed. If the 
 
 List every file the diff touches. Group them by layer: migrations, entities, repositories, services, controllers, exceptions, config, tests.
 
-### 3. Spec compliance pass
+### 3. Contract compliance pass (depends on `spec_policy`)
+
+The dispatch's `## Contract inputs` block sets `spec_policy: <api-first|code-first|no-api>`. Apply the matching set of checks below — Spring Boot patterns are the same across policies; only the **contract source** differs.
+
+**`spec_policy: api-first`** (an OpenAPI spec exists for this service)
+
+The dispatch provides the spec file path. The spec is the contract.
 
 For each endpoint the implementer added or modified:
-
 - **DTOs**: does the request/response class match the spec schema exactly? Field names? Nullability? Types? Enum values? Any invented fields? Any missing fields marked required in the spec?
 - **Path and method**: does the controller annotation match the spec path and HTTP method? (Or is it relying on the generated API interface? If so, the annotation should be absent on the method — verify this.)
 - **Status codes**: does the controller return the status codes the spec declares? Does the service throw exceptions that map to the right codes via the `GlobalExceptionHandler`?
 - **Validation**: does the controller validate request bodies (`@Valid`)? Are path parameters typed correctly (`UUID`, `@PathVariable`)?
 
 Flag any drift as **Critical**.
+
+**`spec_policy: code-first`** (no spec — the architect's inline contract IS the contract)
+
+The dispatch provides the inline contract block (copied byte-for-byte from Phase 2 API_DESIGN). Treat it the same as a spec for compliance purposes — the same Spring Boot DTO / path / status-code / validation checks apply, but read from the inline block instead of an OpenAPI file.
+
+For each endpoint:
+- **DTOs**: walk every field against the inline contract — field names, nullability, types, enums, required vs optional. Drift = **Critical**.
+- **Path and method**: match the inline contract's `Method` and `Path` lines. Drift = **Critical**.
+- **Status codes**: every code listed in the inline contract's "Success response" + "Error responses" must be reachable from the service / handler. Missing = **Critical**.
+- **Validation**: same checks as api-first.
+
+DO NOT flag "missing spec file" or "no $ref resolution" — they're legitimate absences for this policy.
+
+**`spec_policy: no-api`** (event-driven worker — no HTTP endpoints)
+
+The dispatch provides the Event Triggers block (from Phase 2 API_DESIGN) and absolute paths to event schema files (edited in Phase 3a). The schemas are the contract.
+
+For each handler:
+- **Event model**: walk every typed event model field-by-field against its schema file. Drift = **Critical**.
+- **Idempotency**: every handler must have an idempotency guard (event-id check, conditional DB write, distributed lock, or framework decorator). Missing = **Critical**.
+- **Partial-failure reporting**: SQS / Kinesis batch triggers must return per-record success/failure (`batchItemFailures`). Missing = **Critical**.
+- **DLQ + retry config**: deployment descriptor (SAM / Serverless / CDK) should configure a DLQ on the queue with `maxReceiveCount` ≥ 3 and reasonable retention. Missing = **Non-critical** unless the workspace's `stacks/python-worker.md` says otherwise.
+
+DO NOT flag "missing HTTP status codes" or "missing request body validation" — workers don't have those.
 
 ### 4. Requirements coverage pass
 
@@ -80,7 +109,22 @@ Walk the diff looking for these issues. Check each one against the repo's `CLAUD
 - **Role enforcement**: if the feature is gated by a role, is the role actually checked? Where? Look for `@PreAuthorize`, manual checks against `SecurityContextHolder`, or integration with the repo's auth layer. An endpoint with no role check when CLAUDE.md says the feature requires a role is a **Critical** finding.
 - **Input validation**: are size limits, format constraints, and enum values enforced before the data hits the database or S3? Missing validation on a size limit is a **Critical** finding for any upload flow.
 
-### 7. Produce the report
+### 7. Scope-drift check
+
+Walk every non-trivial diff hunk (skip whitespace-only, import reorder, generated-code regen). For each hunk, find the FR-X / EC-X it enforces. Hunks with no FR/EC trace go in a `## Scope findings` section placed above `## Suggestions`. Also check each hunk against the task file's `## Out of Scope` section: any hunk that matches an Out-of-Scope bullet is a **Critical** scope violation (not a Suggestion) — cite the file:line and the matching Out-of-Scope bullet. Add a `scope | {title} | {file}:{line} | {one-line-problem}` row to the FINDINGS block for every scope finding.
+
+### 8. Classify every Critical finding
+
+Tag each Critical finding as `mechanical` or `architectural`.
+
+- **`mechanical`** — the fix is a small local edit you can describe as "change X to Y" with no design judgment. Examples: rename a field to match the spec, add a missing enum value, fix a wrong HTTP status code, add a missing `@Valid`, register a missing module.
+- **`architectural`** — the fix needs a design decision, may cross several files, or needs user input. Examples: missing FR enforcement requiring a new layer, wrong domain model, missing transaction boundary, security pattern needing a policy decision.
+
+**When in doubt, mark `architectural`** — unnecessary user gate cost is low; wrong auto-fix cost is high.
+
+Add the `**Classification**:` line to each Critical's prose entry AND a 5th pipe field on every `critical` row in the FINDINGS block.
+
+### 9. Produce the report
 
 Use the Output Format below. Every finding must have file:line and a citation. Group findings into Critical, Non-critical, and Suggestions. If there are no findings in a category, explicitly write "None".
 
@@ -112,6 +156,7 @@ Use the Output Format below. Every finding must have file:line and a citation. G
 ### 1. [Short title]
 - **File**: path/to/file.java:82
 - **Requirement**: FR-2 / EC-4 / spec RequestUploadRequest
+- **Classification**: `mechanical` | `architectural` (per the rules in your dispatch prompt — required for every critical finding)
 - **Problem**: [what is wrong, in one or two sentences]
 - **Evidence**: [the specific code pattern or missing check that supports the finding]
 - **Suggested fix direction**: [not a code snippet, just "add a status check here that throws IllegalStateException when book.currentStatus != APPROVED"]
@@ -148,17 +193,19 @@ If fixes are needed, the downstream implementer should:
 
 ```
 <!-- BEGIN FINDINGS -->
-critical | {short-title} | {file}:{line} | {one-line-problem}
-critical | {short-title} | {file}:{line} | {one-line-problem}
+critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
+critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
 non-critical | {short-title} | {file}:{line} | {one-line-problem}
+scope | {short-title} | {file}:{line} | {one-line-problem}
 <!-- END FINDINGS -->
 ```
 
 Rules:
-- Severity is exactly `critical` or `non-critical` — no other values
+- Severity is exactly `critical`, `non-critical`, or `scope` — no other values
 - Fields are pipe-separated with single spaces around each pipe
 - File:line is an absolute or repo-relative path with a line number
 - One-line-problem is a single sentence, no embedded pipes or newlines
+- **For `critical` rows, a 5th field with `mechanical` or `architectural` is REQUIRED** — the orchestrator uses it to decide whether the fix-round can run without a user gate (see your dispatch prompt for the classification rules). Non-critical and scope rows omit the 5th field.
 - Omit `suggestions` from this block — only actionable findings
 - If there are zero findings, still emit the delimiter comments with no rows between them
 ```

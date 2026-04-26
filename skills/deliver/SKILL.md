@@ -29,11 +29,15 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 | `--with-infra` | Force infra phase |
 | `--no-mock` | Skip mock |
 | `--no-review` | Skip Phase 5.5 code review |
+| `--auto-fix-mechanical` | Phase 5.5 skips the user gate when ALL critical findings are classified `mechanical` (the reviewer tags each critical as `mechanical` or `architectural`). Any architectural critical re-asserts the gate. Use to tighten the loop on small features where reviewer findings are predictable (missing field, wrong status code, missing i18n key). |
 | `--force-security-review` | Force security review |
 | `--no-security` | Skip security review |
 | `--no-context-update` | Skip Phase 7 agent-context refresh |
-| `--with-pr` | Phase 7 creates PRs via `gh pr create` |
+| `--with-pr` | Phase 8 publishes draft PRs (one per repo) with cross-repo linking; without it Phase 8 only runs the feedback offering |
+| `--publish-despite-blockers` | Phase 8 PR publish ignores Phase 6 blocker gate (use only after manually reviewing blockers) |
+| `--no-feedback-prompt` | Phase 8 skips the end-of-run feedback prompt (CI-friendly) |
 | `--resume` | Resume interrupted pipeline (asks which if multiple) |
+| `--from-deferred[=<feature-slug>]` | Resume work the user previously chose to defer at a Phase 4.5 "Minimum only" gate. With a value, loads `{workspace_root}/{slug}/deferred/<feature-slug>.md` directly. Without a value, lists pending deferred files and prompts to pick one. Different from `--resume` (which picks up an INTERRUPTED in-flight pipeline) — `--from-deferred` starts a NEW run from a deferred follow-up file. |
 | `--no-worktrees` | Skip worktree creation for Phase 3 + Phase 5. Work in-place on the current branch of each repo. Use only for small interactive fixes where isolation is not needed. Default is to create one worktree per repo touched. |
 
 ### Examples
@@ -43,6 +47,8 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 /deliver "add 2FA to login flow" --with-infra --workspace=my-platform
 /deliver "bulk book status change" --service=publisher
 /deliver --resume --workspace=my-saas
+/deliver --from-deferred=publishers-choose-contract-type    # resume the deferred slice from a previous "Minimum only" run
+/deliver --from-deferred                                     # list pending deferred items and prompt to pick one
 ```
 
 ## Instructions
@@ -108,6 +114,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
     | 5.75 (Security) | keyword trigger or `--force-security-review` | `--no-security` skips |
     | 6 (Assess) | **2+ repos were modified** during Phase 5. If only 1 repo changed, the reviewer already covers it — skip Phase 6 and note "single-repo pipeline, Phase 6 skipped". | — |
     | 7 (Report) | always | — |
+    | 8 (Publish + Wrap-up) | always (Step 8.6 feedback offering); PR publish steps within Phase 8 only if `--with-pr` AND no Phase 6 blockers | `--with-pr` enables PR publish; `--publish-despite-blockers` overrides blocker gate; `--no-feedback-prompt` skips Step 8.6 |
 
     Store the derived phase plan in the scratchpad's Architecture Flags section. Log: "Auto-detected phases: {list}. Skipped: {list with reasons}."
 
@@ -127,7 +134,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
        └── report.md                Phase 7 final report
    ```
    The timestamp prefix of `{run_id}` makes sibling dirs chronologically sortable — no separate `active/` or `completed/` split. In all phase files, `{run_dir}` resolves to `{workspace_root}/{slug}/runs/deliver/{run_id}/`. See `phases/pre-flight.md` for run_id computation + directory creation. Update the scratchpad immediately after every phase completes.
-5. **User approval gates** — pause after Phase 1 (requirements), Phase 2 (architecture), Phase 3 (spec changes), Phase 4.5 (implementation plan), **Phase 5b UX consultant** (before launching feature-implementer), and **Phase 5.5 code review** (only if the reviewer found critical issues — the gate asks whether to dispatch a fix round).
+5. **User approval gates** — pause after Phase 1 (requirements), Phase 2 (architecture), Phase 3 (spec changes), Phase 4.5 (implementation plan), **Phase 5b UX consultant** (before launching feature-implementer), and **Phase 5.5 code review** (only if the reviewer found critical issues — the gate asks whether to dispatch a fix round; the gate is auto-skipped when `--auto-fix-mechanical` is set AND every critical is classified `mechanical` — see phase-5.5-code-review.md Step 2).
 
     **At EVERY gate, surface the wait to the UI**: before asking the user, run `node {plugin_dir}/scripts/gate.js open --run-dir={run_dir} --phase={N} --gate=approval --question="..." [--context="..."]`. After receiving the user's answer, run `node {plugin_dir}/scripts/gate.js close --run-dir={run_dir}`. This drives the yellow "waiting for input" banner in the pipeline-view UI and the `⏸` prefix in the browser tab title — essential when the user has the UI open in a second monitor and is working elsewhere. Forgetting to `close` leaves the banner stuck; treat open/close as mandatory bracketing around every gate. Full gate contract + label catalog in `{plugin_dir}/docs/site-view.md`.
 6. **Parallel execution** — Phases 5a, 5c, 5d run in parallel via background agents. Phase 5b runs sequentially (UX → user gate → implementer) but can run in parallel with 5a/5c/5d.
@@ -186,8 +193,9 @@ Phase 5.75: Security code review (security-consultant, if triggered)
 Phase 6: Assessment (assessor) ──────────────────── cross-repo spec + requirements verification
 Phase 7: Summary ──┬── Reporter agent (execution report with insights)
                    ├── Context-manager refresh (unless --no-context-update)
-                   ├── PR creation (if --with-pr)
-                   └── Archive scratchpad + history
+                   └── Archive scratchpad
+Phase 8: Publish ──┬── PR publish (if --with-pr): user gate → push → draft PRs → cross-repo linking → append PR URLs to report.md
+                   └── Run wrap-up + feedback offering (always): /learn --run + disclaimer about /learn --pr later
 ```
 
 ---
@@ -215,6 +223,7 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | 5.75. Security Review | `phases/phase-5.75-security-review.md` | 78 |
 | 6. Assessment | `phases/phase-6-assess.md` | 101 |
 | 7. Summary + Archive | `phases/phase-7-report.md` | 216 |
+| 8. PR Publish + Feedback Offering | `phases/phase-8-pr-publish.md` | 220 |
 
 **When entering a phase**: `Read {plugin_dir}/skills/deliver/phases/{phase-file}` — follow the instructions in that file for the phase.
 
@@ -242,7 +251,11 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | `--with-infra` | — | Forces Phase 5d even if architect didn't flag it |
 | `--no-mock` | Phase 5c | — |
 | `--no-review` | Phase 5.5 | Phase 5 → 6 directly |
-| `--with-pr` | — | Phase 7 creates one PR per worktree |
+| `--auto-fix-mechanical` | — | Bypasses Phase 5.5 user gate when ALL critical findings are `mechanical`; gate fires normally otherwise |
+| `--from-deferred[=<slug>]` | — | Loads a previous run's deferred follow-up file as the feature input. Phase 1 (product-owner) and Phase 2 (architect) still run — they refine the deferred items against current state. Phase 7 Step 7.5 marks the source file as `consumed` on success. |
+| `--with-pr` | — | Phase 8 publishes one draft PR per repo with cross-repo linking |
+| `--publish-despite-blockers` | — | Phase 8 PR publish ignores Phase 6 blocker gate |
+| `--no-feedback-prompt` | Phase 8 Step 8.6 | Phase 8 skips end-of-run feedback prompt |
 | `--resume` | Completed phases | Reads scratchpad, continues from current phase |
 
 **Architect auto-detection** (when no conflicting flag is set):

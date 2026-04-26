@@ -19,7 +19,7 @@ const ALLOWED_EVENTS = new Set([
 ]);
 
 const ALLOWED_SKILLS = new Set([
-  'discover', 'deliver', 'review', 'assess', 'context-refresh',
+  'discover', 'deliver', 'learn', 'review', 'assess', 'context-refresh',
   'onboard', 'feature', // 'onboard' and 'feature' kept for pre-rename checkpoints
 ]);
 

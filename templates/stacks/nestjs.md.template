@@ -1,0 +1,276 @@
+# NestJS standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for every NestJS repo in this workspace. Naming, auth, persistence, migrations, tests, module layout — **how we write NestJS here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+This document is populated by reading the actual code in the workspace's NestJS repos. Every convention below names what already exists — not what the plugin thinks NestJS "should" do. A repo on Prisma doesn't get TypeORM rules; an app with a custom JWT strategy doesn't get Passport rules.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Auth / role enforcement
+
+**Detected pattern**: {{AUTH_PATTERN}}
+
+<!-- One of:
+- @nestjs/passport + JWT strategy + @UseGuards(JwtAuthGuard) + custom RolesGuard
+- Keycloak adapter (e.g., nest-keycloak-connect)
+- Custom guard reading Authorization header
+- Clerk / Auth0 adapter
+- Delegated to API gateway (no in-service auth)
+- No auth (internal / worker service)
+-->
+
+**Rules:**
+- {{AUTH_RULES}}
+
+<!-- Example:
+- Protected routes use `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('ADMIN')` — declarative, at the controller or handler level.
+- Do NOT read the request.user object directly from `@Req()` to check roles; use the RolesGuard.
+- Public routes are explicitly marked with `@Public()` (metadata reflector pattern) — no accidental exposure.
+-->
+
+**Reference files:**
+{{AUTH_REFERENCES}}
+
+<!-- e.g.:
+- `src/auth/guards/jwt-auth.guard.ts` — the guard
+- `src/auth/decorators/roles.decorator.ts` — @Roles metadata
+- `src/users/users.controller.ts:22` — an example using @UseGuards + @Roles together
+-->
+
+---
+
+## §2 Persistence / ORM
+
+**Detected pattern**: {{PERSISTENCE_PATTERN}}
+
+<!-- One of:
+- TypeORM with repository-per-entity + Specification / QueryBuilder for filters
+- Prisma with the generated client injected via a `PrismaService`
+- MikroORM
+- Raw SQL via a query library (e.g., knex)
+- Mixed / transitioning (flag as inconsistency if observed)
+-->
+
+**Rules:**
+- {{PERSISTENCE_RULES}}
+
+<!-- Example for TypeORM:
+- Services inject the repository via `@InjectRepository(Entity)`; they do NOT inject `DataSource` directly.
+- Filter queries use `QueryBuilder` + `.andWhere()` with parameterized inputs — never string concatenation.
+- Transactions use `@Transactional()` from typeorm-transactional, or the DataSource's `transaction()` helper — one consistent approach across services.
+
+Example for Prisma:
+- `PrismaService` is injected into services; no direct `prisma` import.
+- `select` / `include` shapes live in the service method, not inline in the controller.
+-->
+
+**Reference files:**
+{{PERSISTENCE_REFERENCES}}
+
+---
+
+## §3 Pagination
+
+**Detected pattern**: {{PAGINATION_PATTERN}}
+
+<!-- One of:
+- nestjs-paginate (offset-based)
+- typeorm + raw `skip` / `take` via Pageable-style helper
+- Prisma cursor-based (for large datasets)
+- Custom pagination DTO + service method signature
+-->
+
+**Rules:**
+- {{PAGINATION_RULES}}
+
+**Reference files:**
+{{PAGINATION_REFERENCES}}
+
+---
+
+## §4 Database migrations
+
+**Tool**: {{MIGRATION_TOOL}}
+
+<!-- TypeORM migrations / Prisma Migrate / Flyway / raw SQL / none (schema managed elsewhere) -->
+
+**Format**: {{MIGRATION_FORMAT}}
+
+<!-- TS files with `up`/`down` methods / prisma/migrations/*.sql / etc. -->
+
+**Location**: {{MIGRATION_LOCATION}}
+
+<!-- src/migrations / prisma/migrations / etc. -->
+
+**Rules:**
+- {{MIGRATION_RULES}}
+
+<!-- Example for TypeORM:
+- Generate via `typeorm migration:generate`; never handwrite unless renaming / backfilling.
+- Run via `typeorm migration:run`; the app doesn't run migrations at startup in production.
+- Naming: TypeORM's timestamp prefix — do not override.
+
+Example for Prisma:
+- `prisma migrate dev --name describe_change` during local dev; CI uses `migrate deploy`.
+- Never check in a migration that modifies a `@@unique` on a column with NULLs without a data script.
+-->
+
+**Reference files:**
+{{MIGRATION_REFERENCES}}
+
+---
+
+## §5 Module layout & DI
+
+**Module structure**: {{MODULE_PATTERN}}
+
+<!-- e.g.:
+- One feature module per domain concern (UsersModule, BooksModule, ...)
+- Each module owns its controllers, services, providers, DTOs
+- Cross-module dependencies via exported providers (no circular imports — use forwardRef only when unavoidable)
+-->
+
+**DI style**: {{DI_PATTERN}}
+
+<!-- Almost always: constructor injection. Call out if there's any property injection. -->
+
+**Controller style**: {{CONTROLLER_PATTERN}}
+
+<!-- e.g.:
+- Controllers implement OpenAPI-generated interfaces (via nestjs-openapi-gen / nest-openapi-tools)
+- Or: hand-decorated @Controller + @Get/@Post + @ApiOperation (for Swagger)
+- Global ValidationPipe enabled in main.ts — DTOs use class-validator decorators
+-->
+
+**Rules:**
+- {{MODULE_RULES}}
+
+<!-- Example:
+- Every provider (service, repository, factory) is registered in its module's `providers:` array.
+- Exports only what other modules need — keep the surface minimal.
+- `forwardRef()` is a smell — if you find yourself reaching for it, consider restructuring.
+-->
+
+**Reference files:**
+{{MODULE_REFERENCES}}
+
+---
+
+## §6 Error handling
+
+**Global filter**: {{ERROR_FILTER}}
+
+<!-- e.g.:
+- A global @Catch() ExceptionFilter registered in main.ts, mapping custom exceptions to {statusCode, code, message}
+- NestJS built-in HttpException + exception filter extended for consistent error envelopes
+- Middleware-based error handling (rare; flag if seen)
+-->
+
+**Exception hierarchy**: {{EXCEPTION_HIERARCHY}}
+
+<!-- Custom exceptions extend a domain base (e.g., DomainException) or HttpException -->
+
+**Rules:**
+- {{ERROR_RULES}}
+
+<!-- Example:
+- Services throw specific exception types (UserNotFoundException, InvalidCredentialsException).
+- Never throw raw `Error` or generic `BadRequestException` from services — lose the error code specificity.
+- New exception classes live in `src/{feature}/exceptions/` and are mapped in the global filter (or extend a base that carries the error code).
+-->
+
+**Reference files:**
+{{ERROR_REFERENCES}}
+
+---
+
+## §7 Tests
+
+**Unit test harness**: {{UNIT_TEST_PATTERN}}
+
+<!-- Jest via @nestjs/testing Test.createTestingModule() — mock providers with .overrideProvider().useValue() -->
+
+**Integration / e2e test harness**: {{E2E_TEST_PATTERN}}
+
+<!-- supertest against app.getHttpServer(), with a dedicated AppModule (or TestAppModule) that wires in-memory / testcontainers DB -->
+
+**Security test pattern** (if auth is enforced): {{SECURITY_TEST_PATTERN}}
+
+<!-- e.g.:
+- e2e tests with mocked JwtAuthGuard + custom user contexts per test
+- Passport strategy override at test-module level
+- "Not established yet — first feature to add role gates establishes it"
+-->
+
+**Rules:**
+- {{TEST_RULES}}
+
+<!-- Example:
+- Every new controller endpoint has a unit test (service method) + an e2e test (HTTP roundtrip).
+- When a guard is added / modified, a security e2e test is mandatory: covers allowed roles, denied roles, no-auth → 401.
+- Mock data in tests matches the real wire shape — no "simplified" shortcuts.
+-->
+
+**Reference files:**
+{{TEST_REFERENCES}}
+
+---
+
+## §8 Logging & observability
+
+**Logger**: {{LOGGING_PATTERN}}
+
+<!-- e.g.:
+- Built-in nestjs Logger (per-class via `private readonly logger = new Logger(ClassName.name)`)
+- pino via `nestjs-pino` — structured JSON in prod
+- winston via `nest-winston`
+- Custom wrapper around one of the above
+-->
+
+**Request / correlation IDs**: {{REQUEST_ID_PATTERN}}
+
+<!-- AsyncLocalStorage + interceptor / request-id middleware / cls-hooked / not established -->
+
+**Rules:**
+- {{LOGGING_RULES}}
+
+**Reference files:**
+{{LOGGING_REFERENCES}}
+
+---
+
+## §9 Config & environment
+
+**Pattern**: {{CONFIG_PATTERN}}
+
+<!-- e.g.:
+- @nestjs/config with a typed ConfigService + validationSchema (Joi or Zod)
+- Raw process.env access (flag as anti-pattern if @nestjs/config is available)
+- dotenv loaded in main.ts
+-->
+
+**Env file layout**: {{ENV_FILE_LAYOUT}}
+
+<!-- .env, .env.development, .env.production, or per-profile -->
+
+**Rules:**
+- {{CONFIG_RULES}}
+
+<!-- Example:
+- All env vars are validated at startup; missing/malformed values fail fast.
+- Never read `process.env.FOO` directly in a service — always go through ConfigService.
+- Secrets come from the environment (or a secret manager) — never committed.
+-->
+
+**Reference files:**
+{{CONFIG_REFERENCES}}
+
+---
+
+## §10+ (Workspace-specific additions)
+
+Add sections here as new cross-cutting concerns emerge (message queues, scheduled jobs, feature flags, caching, etc.). Keep the same shape: pattern + rules + reference files.

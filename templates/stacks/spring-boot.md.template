@@ -1,0 +1,241 @@
+# Spring Boot standards — {{WORKSPACE_NAME}}
+
+> **Purpose**: The authoritative engineering-conventions document for every Spring Boot repo in this workspace. Naming, auth, persistence, migrations, tests, config structure — **how we write Spring Boot here**, not architecture (that's `platform.md`).
+> **Last Updated**: {{DATE}}
+> **Bootstrapped by**: PipeCrew `/discover` — Phase B2.5.
+
+This document is populated by reading the actual code in the workspace's Spring Boot repos. Every convention below names what already exists — not what the plugin thinks Spring Boot "should" do. A Spring Boot app on Flyway doesn't get Liquibase rules; an app with a custom JWT filter doesn't get `@PreAuthorize` rules.
+
+**Stable section anchors (§1–§9) are cited by number from implementer and reviewer agents.** Do not renumber existing sections; you may add §10+.
+
+---
+
+## §1 Auth / role enforcement
+
+**Detected pattern**: {{AUTH_PATTERN}}
+
+<!-- One of:
+- Spring Security filter chain + @PreAuthorize on controllers
+- SecurityConfig.requestMatchers().hasRole() (URL-based)
+- Custom JWT validation filter
+- Keycloak / Okta adapter
+- Delegated to gateway (no in-service auth)
+- No auth (internal-only service)
+-->
+
+**Rules:**
+- {{AUTH_RULES}}
+
+<!-- Example:
+- Role checks live in `SecurityConfig.requestMatchers("/path").hasAnyRole("ROLE_A", "ROLE_B")` — declarative, not imperative.
+- Do NOT read `SecurityContextHolder` inside service methods. If you need caller context, inject it as a parameter or use a method-level `@PreAuthorize`.
+- Controllers are annotation-free for auth — rules live in `SecurityConfig` centrally.
+-->
+
+**Reference files:**
+{{AUTH_REFERENCES}}
+
+<!-- e.g.:
+- `src/main/java/com/foo/config/SecurityConfig.java` — filter chain + request matchers
+- `src/main/java/com/foo/controller/BookController.java:45` — @PreAuthorize example
+-->
+
+---
+
+## §2 Persistence & query style
+
+**Detected pattern**: {{PERSISTENCE_PATTERN}}
+
+<!-- One of:
+- Spring Data JPA (interfaces extending JpaRepository) + Specification<> for filters
+- Spring Data JPA + @Query JPQL on custom methods
+- MyBatis mappers
+- Raw JDBC via JdbcTemplate
+- jOOQ
+-->
+
+**Rules:**
+- {{PERSISTENCE_RULES}}
+
+<!-- Example:
+- Filter / search endpoints compose `Specification<T>` predicates — never StringBuilder-built JPQL.
+- One repository per aggregate root.
+- Native SQL lives in `@Query(nativeQuery = true)`, not in entity managers directly.
+-->
+
+**Reference files:**
+{{PERSISTENCE_REFERENCES}}
+
+---
+
+## §3 Pagination
+
+**Detected pattern**: {{PAGINATION_PATTERN}}
+
+<!-- One of:
+- Spring Data Pageable + Page<T>
+- Manual limit/offset via EntityManager
+- Cursor-based (custom)
+- None (no paginated endpoints yet)
+-->
+
+**Rules:**
+- {{PAGINATION_RULES}}
+
+**Reference files:**
+{{PAGINATION_REFERENCES}}
+
+---
+
+## §4 Database migrations
+
+**Tool**: {{MIGRATION_TOOL}}
+
+<!-- Liquibase / Flyway / MyBatis Migrations / manual SQL / none -->
+
+**Format**: {{MIGRATION_FORMAT}}
+
+<!-- YAML changesets / XML / SQL files with V{N}__{name}.sql naming / etc. -->
+
+**Master location**: {{MIGRATION_MASTER}}
+
+<!-- e.g. src/main/resources/db/changelog/db.changelog-master.yaml -->
+
+**Rules:**
+- {{MIGRATION_RULES}}
+
+<!-- Example for Liquibase:
+- Every new changeset is referenced in the master changelog; an unreferenced file silently never runs.
+- `include:` entries carry `relativeToChangeLogFile: true`.
+- Changeset IDs follow the dated-author convention observed in existing files.
+-->
+
+**Reference files:**
+{{MIGRATION_REFERENCES}}
+
+---
+
+## §5 Controllers & dependency injection
+
+**Controller style**: {{CONTROLLER_PATTERN}}
+
+<!-- One of:
+- Implement OpenAPI-generated interfaces (no @RequestMapping on methods)
+- Hand-written @RestController + @RequestMapping
+- Mixed (flag as inconsistency if observed)
+-->
+
+**DI style**: {{DI_PATTERN}}
+
+<!-- One of:
+- Constructor injection via @RequiredArgsConstructor (Lombok)
+- Constructor injection written by hand
+- @Autowired field injection (flag if in new code — legacy smell)
+-->
+
+**Rules:**
+- {{CONTROLLER_RULES}}
+
+**Reference files:**
+{{CONTROLLER_REFERENCES}}
+
+---
+
+## §6 Error handling
+
+**Global handler**: {{ERROR_HANDLER}}
+
+<!-- Usually: @ControllerAdvice class mapping custom exceptions to ResponseEntity<ErrorResponse> -->
+
+**Exception hierarchy**: {{EXCEPTION_HIERARCHY}}
+
+<!-- Brief description: custom exceptions extend a base, mapped to specific HTTP codes -->
+
+**Rules:**
+- {{ERROR_RULES}}
+
+<!-- Example:
+- Throw specific exception types (e.g., `BookNotFoundException`, `ContractFileNotAvailableException`), never raw `IllegalArgumentException` or `RuntimeException` from services.
+- New exception classes live in the repo's `exception/` package and are mapped in `GlobalExceptionHandler`.
+-->
+
+**Reference files:**
+{{ERROR_REFERENCES}}
+
+---
+
+## §7 Tests
+
+**Unit test pattern**: {{UNIT_TEST_PATTERN}}
+
+<!-- e.g. JUnit 5 + Mockito @ExtendWith(MockitoExtension.class) -->
+
+**Integration / controller test pattern**: {{INTEGRATION_TEST_PATTERN}}
+
+<!-- e.g. @WebMvcTest + MockMvc, or @SpringBootTest + TestRestTemplate -->
+
+**Security test pattern** (if auth is enforced in this workspace): {{SECURITY_TEST_PATTERN}}
+
+<!-- e.g. @WebMvcTest + @WithMockUser + spring-security-test dep
+     OR custom JWT-injection test fixture
+     OR not established yet — first feature to add role-gated endpoints establishes it -->
+
+**Rules:**
+- {{TEST_RULES}}
+
+<!-- Example:
+- Every new controller endpoint has both a service-layer unit test and a controller integration test.
+- When auth/role enforcement changes, add a security test covering allowed roles, denied roles, and unauthenticated calls.
+- Mock data in tests uses the production wire shape (e.g., full S3 event keys with the real prefix).
+-->
+
+**Reference files:**
+{{TEST_REFERENCES}}
+
+---
+
+## §8 Logging & observability
+
+**Logging framework**: {{LOGGING_PATTERN}}
+
+<!-- e.g. Lombok @Slf4j, structured JSON via logstash-logback-encoder, MDC for correlation IDs -->
+
+**Rules:**
+- {{LOGGING_RULES}}
+
+**Reference files:**
+{{LOGGING_REFERENCES}}
+
+---
+
+## §9 Config / YAML structure
+
+**Profile files**: {{CONFIG_FILES}}
+
+<!-- e.g. application.yaml, application-dev.yaml, application-prod.yaml, application-test.yaml -->
+
+**Nesting convention**: {{CONFIG_NESTING}}
+
+<!-- Describe the actual top-level keys and their expected nesting. Example:
+- `aws:` owns `buckets:` and `sqs:` (both nested under `aws`)
+- `service:` owns inter-service HTTP clients
+- `spring:` is Spring Boot's own — don't rename keys inside it
+-->
+
+**Rules:**
+- {{CONFIG_RULES}}
+
+<!-- Example:
+- Editing a nested key must preserve its nesting. Changing `aws.sqs` to top-level `sqs` silently breaks config resolution.
+- New environment overrides live in `application-{env}.yaml`, not scattered in other files.
+- Secrets and credentials are NEVER in config files — they come from environment variables or a secret manager.
+-->
+
+**Reference files:**
+{{CONFIG_REFERENCES}}
+
+---
+
+## §10+ (Workspace-specific additions)
+
+Add sections here as new cross-cutting concerns emerge (caching, messaging, scheduled jobs, feature flags, etc.). Keep the same shape: pattern + rules + reference files.

@@ -262,128 +262,13 @@ Review it? (yes / continue)
 
 If the user says "yes", show the platform.md content.
 
-**Update scratchpad**: Set Phase B2 status to COMPLETED. Set Current Phase to "B2.5. Divergence Harvest".
+**Update scratchpad**: Set Phase B2 status to COMPLETED. Set Current Phase to "B2.5. Stack Discovery".
 
 ---
 
-### B2.5: Per-Service Divergence Harvest
+### B2.5: Stack Discovery + Per-Service Divergence
 
-The architect's B2 pass necessarily generalizes — it surveys N repos in one reading and tends to describe the Tech Stack / Established Patterns as if all similar repos are uniform. In reality, individual repos often diverge: one auth-service might be on Spring Boot 3.3.5 with Nimbus JOSE while the others are on 3.5.7 with JJWT; one frontend might use `application.properties` while the platform expects YAML. Catching these divergences AFTER platform.md is written but BEFORE B3 / Phase C means every downstream agent reads correct facts.
-
-**Skip this phase if:**
-- The workspace has **only one api-service** AND no frontend (nothing to diverge from), OR
-- `--skip-divergence-harvest` was passed (escape hatch for fast iteration), OR
-- The user explicitly declined in the B2 summary prompt.
-
-Otherwise, run it. It's cheap (~6 parallel agents, ~60s wall, ~40-50k tokens total) and high-value.
-
-#### Step 1: Select repos to fan out
-
-Include: every repo in the config with `role` ∈ {`api-service`, `frontend`, `infrastructure`, `mock-server`}. Exclude pure docs/example repos if any.
-
-For each selected repo, record the single most load-bearing manifest file and at most one config file — this list bounds the divergence agent's reads:
-
-| Repo type | Manifest | Config (if any) |
-|---|---|---|
-| `spring-boot` | `pom.xml` | `src/main/resources/application.*` |
-| `nestjs` / `react` / `nextjs` / `node-mock` | `package.json` | `tsconfig.json`, `vite.config.*`, `next.config.*` |
-| `fastapi` | `pyproject.toml` or `requirements.txt` | `pyproject.toml` (again — reuses) |
-| `cdk` | `package.json`, `cdk.json` | `cdk.json`, `bin/*.ts` |
-| `other` | — (skip) | — |
-
-#### Step 2: Dispatch divergence agents in parallel
-
-**Tool**: `Agent`
-**subagent_type**: `general-purpose` (this is lightweight inspection, not architect-level reasoning)
-**description**: `"Divergence harvest — {repo-name}"`
-**prompt** (per repo — dispatch all calls in a single orchestrator message to parallelize):
-
-```
-MODE: divergence-harvest
-Repo: {repo_path}
-Repo type: {repo.type}
-Repo role: {repo.role}
-
-Read ONLY these files (do not explore the rest of the repo):
-- {manifest file}
-- {config file, if any}
-
-Read the Tech Stack section of platform.md at:
-{workspace_root}/{slug}/context/platform.md
-
-For this specific repo ({repo.name}), emit ONLY divergences from what
-platform.md claims about the workspace's tech stack. Format each as:
-
-  - {dimension}: platform says X, repo shows Y  (evidence: {file:line or filename})
-
-Dimensions to check:
-  - Framework major.minor version (e.g., Spring Boot, Next.js, CDK)
-  - Build/generator tool version (e.g., openapi-generator, tsc target)
-  - Libraries listed in platform.md that are MISSING in this repo
-  - Libraries present here that platform.md did NOT mention
-  - Config format (e.g., properties vs yaml vs toml, JS vs TS config)
-  - Root package / module path (if different from sibling services)
-  - Runtime base image if a Dockerfile is visible in the manifest
-
-If the repo matches platform.md on all dimensions, output EXACTLY the string:
-  No divergences.
-
-Do NOT explain what the repo does. Do NOT propose fixes. Do NOT describe
-the architecture. Emit only the delta list or the no-op token.
-
-Maximum 20 bullets. If you reach 20 you've probably over-scoped — collapse
-minor bullets.
-```
-
-All dispatches go out in one orchestrator message so they run concurrently. Expected: 30-60s wall time for the whole fan-out regardless of repo count.
-
-#### Step 3: Merge results into platform.md
-
-Collect each agent's response. For each agent that returned `No divergences.`, drop it.
-
-For the remaining agents, append a new subsection to platform.md under **Tech Stack** (insert AFTER the existing Tech Stack paragraphs, BEFORE the next top-level `##` heading):
-
-```markdown
-### Per-Service Divergences
-
-Discovered in Phase B2.5 on {date}. The general Tech Stack block above
-describes the workspace baseline; these per-repo overrides apply where
-a specific repo diverges. Use these when briefing implementers for that
-specific repo — do not apply the baseline blindly.
-
-#### {repo-name-1}
-- {dimension}: platform says X, repo shows Y (evidence: {ref})
-- ...
-
-#### {repo-name-2}
-- ...
-```
-
-Rules for the merge:
-- One H3 subsection per repo with divergences. Repos with "No divergences" are omitted.
-- Copy bullets verbatim from the agent response; do not re-word.
-- If a divergence contradicts something elsewhere in platform.md (e.g., the Integration Patterns section assumed OpenFeign everywhere), append a note at the end of the relevant original paragraph: `> Note: see ## Per-Service Divergences — {repo} uses RestTemplate, not Feign.`
-
-#### Step 4: Apply transient-failure and audit-findings rules
-
-- **Transient failure** (529 / 503 / 429): apply the same rules documented in the Phase C "Transient failure handling" block. A single-repo retry is cheap; if the retry also fails, skip that repo's divergence and mark it under the scratchpad's `## Phase Status` notes.
-- **Audit Findings contract**: the divergence-harvest agent's narrow prompt intentionally does NOT invite audit findings — that's Phase C's job, with wider file access. Do not extend the prompt with audit-findings instructions here; it would balloon the token budget for a job that's designed to be cheap.
-
-#### Step 5: Present summary to the user
-
-```
-## Divergence Harvest Complete
-
-Fanned out {N} agents in parallel, {M} returned divergences:
-- {repo-1}: {count} divergences ({top-severity dimension summary})
-- {repo-2}: {count} divergences
-- ... ({K} repos matched the baseline — no divergences)
-
-platform.md now includes a `### Per-Service Divergences` subsection under Tech Stack.
-Review it? (yes / continue)
-```
-
-**Update scratchpad**: Set Phase B2.5 status to COMPLETED with a one-line summary of divergences found. Set Current Phase to "B3. Design System" (if frontend repo exists) or "C. Generation".
+This phase lives in its own file: `phases/phase-b25-stack-discovery.md`. Load it when you reach B2.5; it produces both `stacks/{type}.md` (engineering conventions per stack) and the `### Per-Service Divergences` subsection in `platform.md` from a single per-stack code scan. Return here for B3.
 
 ---
 
@@ -391,7 +276,7 @@ Review it? (yes / continue)
 
 **Skip if**: no repo in the config has `role: "frontend"`. Proceed directly to Phase C.
 
-**Design-system output location — per-repo, not workspace-wide.** Each frontend repo gets its own `{repo_path}/agent-context/design-system.md` because different frontend repos often use different component libraries (e.g., publisher-frontend on MUI, admin-portal on Ant Design). Storing at the workspace level would overwrite when the second frontend is processed. If a repo already has `agent-context/design-system.md` (hand-written by the team), the discovery agent uses refresh semantics — read + merge, never destroy-and-rewrite.
+**Design-system output location — per-repo, not workspace-wide.** Each frontend repo gets its own `{repo_path}/agent-context/common/DESIGN_SYSTEM.md` because different frontend repos often use different component libraries (e.g., publisher-frontend on MUI, admin-portal on Ant Design). Storing at the workspace level would overwrite when the second frontend is processed. If a repo already has `agent-context/common/DESIGN_SYSTEM.md` (hand-written by the team), the discovery agent uses refresh semantics — read + merge, never destroy-and-rewrite.
 
 **Step 1: Detect design system presence**
 
@@ -480,14 +365,14 @@ Output format — structured, not narrative:
 - Wrapper directory: {path or "none"}
 ```
 
-**After the agent returns**: save the report to `{repo_path}/agent-context/design-system.md`.
+**After the agent returns**: save the report to `{repo_path}/agent-context/common/DESIGN_SYSTEM.md`.
 
 **Write semantics:**
-- If `{repo_path}/agent-context/` does not exist yet, create it first (`mkdir -p`).
-- If `{repo_path}/agent-context/design-system.md` does not exist, write the agent's output verbatim.
+- If `{repo_path}/agent-context/common/` does not exist yet, create it first (`mkdir -p`).
+- If `{repo_path}/agent-context/common/DESIGN_SYSTEM.md` does not exist, write the agent's output verbatim.
 - If the file already exists (hand-curated by the team), show a diff and ask:
   ```
-  {repo-name}/agent-context/design-system.md already exists.
+  {repo-name}/agent-context/common/DESIGN_SYSTEM.md already exists.
   (o) Overwrite — replace with what B3 discovered
   (m) Merge — dispatch a refresh pass that merges new findings into the existing file
   (s) Skip — keep the existing file untouched
@@ -511,7 +396,7 @@ Options:
 Choose (a) or (b):
 ```
 
-- **(a)**: write a minimal `{repo_path}/agent-context/design-system.md` stating: "No design system detected. Recommend components based on what exists in the codebase. Do not assume any component library is available — check before recommending." This ensures the UX consultant always has a file to read at `{repo_path}/agent-context/design-system.md`.
+- **(a)**: write a minimal `{repo_path}/agent-context/common/DESIGN_SYSTEM.md` stating: "No design system detected. Recommend components based on what exists in the codebase. Do not assume any component library is available — check before recommending." This ensures the UX consultant always has a file to read at `{repo_path}/agent-context/common/DESIGN_SYSTEM.md`.
 - **(b)**: same as (a), plus append to `{workspace_root}/{slug}/context/platform.md` under `## Known Constraints`: "No established design system in {repo-name}. Components are ad-hoc. Consider establishing a component library + Storybook before scaling the frontend."
 
 **Update scratchpad**: Set Phase B3 status to COMPLETED. Set Current Phase to "C. Generation".

@@ -243,6 +243,24 @@ Run `/discover --resume --workspace={slug}` to fix at any time.
 
 Only stop if a HARD artifact (config.json, platform.md) is missing. Soft artifacts produce warnings and proceed.
 
+**Step 1.7: Check for deferred follow-up items.**
+
+Phase 4.5 may have written deferred sub-tasks to `{workspace_root}/{slug}/deferred/<feature-slug>.md` if a previous run's user picked "Minimum only" at the plan gate (see `phases/phase-4-plan.md` — section "When user picks 'Minimum only'"). This step decides whether to load one of those deferred files as the feature input for THIS run.
+
+Scan: `ls {workspace_root}/{slug}/deferred/*.md 2>/dev/null` and parse each file's frontmatter for `status`. Pending files have `status: pending`; consumed files have `status: consumed` and are ignored here.
+
+Branch on the CLI:
+
+| Condition | Action |
+|---|---|
+| `--from-deferred=<feature-slug>` was passed with a value | **Direct resume.** Read `{workspace_root}/{slug}/deferred/<feature-slug>.md`. If the file is missing or has `status: consumed`, error and stop with the exact path that was checked. If `status: pending`, use the file's body as the feature input — substitute it for any `<feature description>` argument the user typed. Record `deferred_source_file: {path}` in the scratchpad Run Info so Phase 7 can mark it consumed. Log: `"Resuming deferred slice from {path} (source run: {source_run_id})."` |
+| `--from-deferred` was passed without a value AND ≥1 pending file exists | **Interactive resume.** List the pending files (slug, source run age, deferred-task count), prompt: `"Pick one to resume (1..N) or `c` to cancel."` On a number: same as direct-resume above using that file. On `c`: stop the run. |
+| `--from-deferred` was passed without a value AND zero pending files exist | Error and stop: `"--from-deferred passed but no pending deferred files in {workspace_root}/{slug}/deferred/."` |
+| No `--from-deferred` flag AND ≥1 pending file exists | **Heads-up only — do NOT prompt.** Print `"ℹ {N} deferred follow-up items in {workspace_root}/{slug}/deferred/. Use \`/deliver --from-deferred=<feature-slug>\` to resume one."` Continue with the user's typed feature description. |
+| No `--from-deferred` flag AND zero pending files | Silent. Continue. |
+
+When a deferred file is loaded (either branch), the new `run_id` is still computed in Step 2 from the deferred file's `feature` field (not a new slug from the user's typed description, which may have been ignored). The new run is a fresh run dir; the source deferred file's `source_run_id` is just a back-reference, not the run identity.
+
 **Step 2: Compute `run_id`.**
 
 Derive a kebab-cased feature slug from the feature description: lowercase, replace any run of non-alphanumeric characters with a single `-`, strip leading/trailing dashes, truncate to 24 chars. Prepend the current UTC timestamp in `YYYY-MM-DD-HHMMSS` format:

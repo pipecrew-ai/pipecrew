@@ -27,9 +27,10 @@ After `/discover` completes, you have:
 | Flag | Effect |
 |------|--------|
 | `--resume` | Resume an interrupted onboarding from the scratchpad |
-| `--workspace=<slug>` | Required with `--resume` if multiple onboardings exist |
+| `--workspace=<slug>` | Required with `--resume` and `--refresh-stacks` if multiple workspaces exist |
 | `--greenfield` | Skip repo scan, start with brainstorm + scaffold (see Phase Greenfield) |
-| `--skip-divergence-harvest` | Skip Phase B2.5 (per-service divergence pass). Useful for fast iteration; not recommended for first-time onboarding of heterogeneous workspaces. |
+| `--skip-divergences` | Phase B2.5 still produces `stacks/{type}.md`, but skips the platform.md divergence write. Useful for fast iteration or when divergences are hand-curated. |
+| `--refresh-stacks` | Run only Phase B2.5 against an existing workspace — refreshes both `stacks/{type}.md` docs and the platform.md divergence subsection from a fresh code scan. Combine with `--skip-divergences` to refresh stacks only. Requires `--workspace=<slug>` if more than one workspace exists. Skips Phase A/B1/B2/B3/C/D. |
 
 ### Examples
 ```
@@ -37,6 +38,8 @@ After `/discover` completes, you have:
 /discover /home/dev/projects/my-saas /home/dev/projects/my-saas-infra
 /discover --resume
 /discover --resume --workspace=my-saas
+/discover --refresh-stacks --workspace=my-saas
+/discover --refresh-stacks --workspace=my-saas --skip-divergences
 ```
 
 ## Instructions
@@ -171,7 +174,7 @@ Both are kept; neither replaces the other.
 | A. Repo Discovery | PENDING | |
 | B1. Domain Questions | PENDING | |
 | B2. Architect Discovery | PENDING | |
-| B2.5. Divergence Harvest | PENDING | |
+| B2.5. Stack Discovery + Divergence | PENDING | |
 | B3. Design System | PENDING | |
 | C. Generation | PENDING | |
 | D. Verification | PENDING | |
@@ -240,7 +243,7 @@ If any model exceeds **80%** of its observed ceiling:
 ```
 ⚠️ Today's {model} usage is at {N}% of your observed daily budget.
 A full onboarding typically consumes {estimate} Opus tokens
-(architect discovery + divergence harvest + design system + docs generation).
+(architect discovery + stack discovery + design system + docs generation).
 You may hit rate limits mid-run.
 
 Continue anyway? (yes / no)
@@ -265,7 +268,7 @@ Phase Greenfield: Brainstorm + Scaffold ─ (only if --greenfield OR zero repos 
 Phase A:  Repo Discovery ─────── scan dirs, detect tech stacks, confirm with user
 Phase B:  Domain Questions ────── 4 questions to the user
 Phase B2: Architect Discovery ─── solution-architect reads code, generates platform.md (MODE: discovery)
-Phase B2.5: Divergence Harvest ── lightweight per-repo fan-out, folds stack divergences back into platform.md
+Phase B2.5: Stack Discovery ───── per-stack scan; produces stacks/{type}.md + per-repo divergences in platform.md
 Phase B3: Design System ────────── (only if frontend) discover components, tokens, patterns
 Phase C:  Generation ──────────── config + CLAUDE.md + platform.md + agents + agent-context
 Phase D:  Verification ────────── validate paths, check git status, summary
@@ -280,6 +283,7 @@ Each phase lives in its own file. Load only the active phase.
 | Greenfield (brainstorm + scaffold) | `phases/phase-greenfield-brainstorm.md` |
 | A. Repo Discovery | `phases/phase-a-repo-discovery.md` |
 | B. Domain Questions + Architect + Design System Discovery | `phases/phase-b-domain-and-architect.md` |
+| B2.5. Stack Discovery + Divergence | `phases/phase-b25-stack-discovery.md` |
 | C. Generation | `phases/phase-c-generation.md` |
 | D. Verification | `phases/phase-d-verification.md` |
 

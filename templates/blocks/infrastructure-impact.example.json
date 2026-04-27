@@ -1,0 +1,32 @@
+{
+  "_comment": "Canonical example for the INFRASTRUCTURE_IMPACT block emitted by the solution-architect inside outputs/phase-2-architecture.md. Per-infra-repo entries listing resources added, modified, or removed. The JSON is the structured INDEX consumed by Phase 5d (terraform-implementer / cdk-stack-implementer) to enumerate the changes per repo. Detailed configuration (cross-stack references, IAM policies, naming conventions) lives in the prose under each repo's section. Field reference lives in docs/file-formats.md. If a feature has no infrastructure impact, emit `{\"infra_changes\": []}` rather than omitting the block.",
+  "infra_changes": [
+    {
+      "repo": "platform-cdk",
+      "type": "cdk",
+      "resources_added": [
+        { "name": "BookUploadBucket", "kind": "s3.Bucket", "summary": "S3 bucket for book file storage" },
+        { "name": "BookProcessingQueue", "kind": "sqs.Queue", "summary": "SQS queue receiving S3 ObjectCreated notifications" }
+      ],
+      "resources_modified": [],
+      "resources_removed": [],
+      "cross_stack_refs": [
+        { "from": "BookProcessingQueue", "to": "publisher-service-stack", "purpose": "publisher worker consumes from this queue" }
+      ],
+      "fr_ids": ["FR-1"]
+    },
+    {
+      "repo": "platform-terraform",
+      "type": "terraform",
+      "resources_added": [
+        { "name": "aws_iam_role.book_uploader", "kind": "iam.Role", "summary": "IAM role for the upload service" }
+      ],
+      "resources_modified": [
+        { "name": "aws_s3_bucket_policy.uploads", "kind": "s3.BucketPolicy", "summary": "Add put permission for book_uploader role" }
+      ],
+      "resources_removed": [],
+      "cross_stack_refs": [],
+      "fr_ids": ["FR-1"]
+    }
+  ]
+}

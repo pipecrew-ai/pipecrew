@@ -1,0 +1,36 @@
+{
+  "_comment": "Canonical example for the DATA_MODEL block emitted by the solution-architect inside outputs/phase-2-architecture.md. Carries the structured INDEX of entity changes and database changes per service. Field-level details (types, relationships, migration SQL) live in the prose under each entity / change section. Field reference and consumer list live in docs/file-formats.md. Producers must match this structure; consumers extract via scripts/extract-block.js. Strip the _comment field from real output. If a feature touches no data layer, emit `{\"entities\": [], \"database_changes\": []}` rather than omitting the block.",
+  "entities": [
+    {
+      "name": "Book",
+      "change_kind": "added",
+      "service": "publisher-service",
+      "fr_ids": ["FR-1"]
+    },
+    {
+      "name": "Order",
+      "change_kind": "modified",
+      "service": "order-service",
+      "fr_ids": ["FR-3"]
+    }
+  ],
+  "database_changes": [
+    {
+      "service": "publisher-service",
+      "scope": "table",
+      "name": "books",
+      "change_kind": "added",
+      "migration_file": "V20260427_001__add_books_table.sql",
+      "summary": "Create books table with upload status tracking"
+    },
+    {
+      "service": "order-service",
+      "scope": "column",
+      "table": "orders",
+      "name": "contract_id",
+      "change_kind": "added",
+      "migration_file": "V20260427_002__add_contract_id_to_orders.sql",
+      "summary": "Nullable contract_id reference"
+    }
+  ]
+}

@@ -54,14 +54,7 @@ After editing any config file (YAML / TOML / JSON / XML / properties / ini / dot
 | `*.xml` (e.g. `pom.xml`) | `xmllint --noout {file}` |
 | `*.properties` | Trivially `grep -n '=' {file}` to verify every non-empty / non-comment line has `=` |
 
-**Structural integrity** is as important as parse success. If the file is hierarchical (YAML, TOML), confirm you did not change the nesting level of an existing key — the most common silent config bug is accidentally un-nesting a key during a whitespace-sensitive edit (e.g., moving `sqs:` out from under `aws:`). Before-and-after path listings help:
-
-```bash
-# YAML example — print the tree of top-level paths, compare before/after the edit
-yq eval '... | path | join(".")' {file}
-```
-
-Any structural change that wasn't requested is a **Critical** regression. Unintentional indentation / nesting changes ship broken configs silently; downstream runtime errors won't point here.
+**Structural integrity** matters as much as parse success. For hierarchical formats (YAML, TOML), confirm you didn't accidentally un-nest a key — moving `sqs:` out from under `aws:` parses fine but ships a broken config. Diff the key paths before/after (`yq eval '... | path | join(".")' {file}` for YAML). Any unrequested structural change is a **Critical** regression.
 
 ---
 
@@ -109,7 +102,7 @@ If your change crosses workspace-level patterns, also update `{workspace_root}/{
 
 > AGENT-CONTEXT-DEFERRED: {what wasn't updated} ({why}) — `/context-refresh` follow-up needed.
 
-The repo's `CLAUDE.md` itself typically specifies its own documentation-update rules — re-read them before reporting done. Where the repo's rules are stricter than this rule, the repo wins.
+Where the repo's own `CLAUDE.md` rules are stricter than this rule, the repo wins.
 
 ---
 

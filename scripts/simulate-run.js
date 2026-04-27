@@ -19,10 +19,12 @@
  *     the demo as a "realistic" /deliver run alongside the synthesized one.
  *
  * Usage:
- *   node simulate-run.js                          generate demo workspace, exit
- *   node simulate-run.js --launch-ui              also spawn site-view
+ *   node simulate-run.js                          generate demo workspace AND spawn site-view (default)
+ *   node simulate-run.js --no-ui                  generate-only; skip site-view spawn
+ *   node simulate-run.js --launch-ui              explicit (default — no-op, kept for clarity)
  *   node simulate-run.js --port=5180              site-view start port
  *   node simulate-run.js --keep                   skip the wipe (incremental dev)
+ *   node simulate-run.js --step-ms=0              static mode (UI mounts on COMPLETED run)
  */
 
 const fs = require('fs');
@@ -32,12 +34,15 @@ const { spawn } = require('child_process');
 const { resolveRoot: resolveWorkspaceRoot } = require('./workspace-root');
 
 // ─── CLI args ─────────────────────────────────────────────────
-let launchUi = false;
+// UI launch is now the default — spawning the site-view IS the point of the
+// simulator most of the time. Pass --no-ui for headless generation.
+let launchUi = true;
 let port = 5173;
 let keep = false;
 let stepMsArg = null; // null = use default; numeric = override
 for (const arg of process.argv.slice(2)) {
-  if (arg === '--launch-ui') launchUi = true;
+  if (arg === '--launch-ui') launchUi = true;       // explicit (default behaviour, no-op)
+  else if (arg === '--no-ui') launchUi = false;     // opt-out — generate-only
   else if (arg.startsWith('--port=')) port = parseInt(arg.slice(7), 10);
   else if (arg === '--keep') keep = true;
   else if (arg.startsWith('--step-ms=')) stepMsArg = parseInt(arg.slice(10), 10);

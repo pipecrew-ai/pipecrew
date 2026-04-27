@@ -5,31 +5,38 @@ description: "Cross-repo incident triage. Takes a one-line symptom + optional fl
 
 ## Read-only guarantee — the hard rule
 
-The troubleshooter agent operates strictly **read-only**. This is enforced in three layers:
+The troubleshooter agent operates strictly **read-only**. Three layers, all on by default once the plugin is installed:
 
-1. **Agent system prompt** — `templates/agents/troubleshooter.md.template` opens with a HARD RULES block (R1: Bash allowlist, R2: blocklist, R3: pre-flight self-check, R4: escape valve for would-be mutations, R5: bash-guard awareness, R6: report.md is the only permitted write). The agent reads these on every invocation.
-2. **Bash guard script** — `scripts/troubleshooter-bash-guard.js` is a deny-by-pattern classifier (98 unit tests). Pipe any candidate command in and it exits 0 (allow) or 1 with a reason (deny). Catches AWS / kubectl / docker / git / filesystem / package-manager / HTTP / DB mutations, shell-access escapes (`kubectl exec`, `aws ssm start-session`), evasion (`$(...)`, backticks, `eval`, `nohup`, base64-pipe-bash, output redirects), and long-running flags (`-f`, `--watch`). Unknown commands are denied conservatively — the allowlist is what the troubleshooter actually needs, nothing more.
-3. **Optional `PreToolUse` hook** — install the snippet below in `~/.claude/settings.json` (or `.claude/settings.json` in the workspace) to make the guard a hard intercept at the tool-dispatch layer. With the hook installed, the agent literally cannot execute a mutation even if its prompt fails — Claude Code blocks the Bash call before it runs.
+1. **Agent system prompt** — `templates/agents/troubleshooter.md.template` opens with a HARD RULES block (R1: Bash allowlist, R2: blocklist, R3: pre-flight self-check, R4: escape valve for would-be mutations, R5: bash-guard awareness, R6: `report.md` is the only permitted write). The agent reads these on every invocation. Always on.
+2. **Bash guard script** — `scripts/troubleshooter-bash-guard.js` is a deny-by-pattern classifier (111 unit tests). Catches AWS / kubectl / docker / git / filesystem / package-manager / HTTP / DB mutations, shell-access escapes (`kubectl exec`, `aws ssm start-session`), evasion (`$(...)`, backticks, standalone `eval`/`exec`, `nohup`, base64-pipe-bash, output redirects, backgrounding), and long-running flags (`-f`, `--watch`). Unknown commands are denied conservatively — the allowlist is what the troubleshooter actually needs, nothing more.
+3. **Plugin-shipped `PreToolUse` hook** — `.claude-plugin/hooks/hooks.json` installs the guard as a Bash `PreToolUse` intercept the moment the plugin is installed. The agent literally cannot execute a mutation: Claude Code blocks the Bash call before it runs.
 
-### Recommended hook config
+### How the hook stays scoped to /troubleshoot only
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "agentMatcher": ".*-troubleshooter$",
-        "command": "node {plugin_dir}/scripts/troubleshooter-bash-guard.js \"$BASH_COMMAND\""
-      }
-    ]
-  }
-}
+Claude Code's hook matcher syntax has no `agentMatcher` — a `PreToolUse` hook on `Bash` fires for **every** Bash dispatch from **every** agent in the user's environment. We work around this with a marker file:
+
+```
+~/.claude/.pipecrew-troubleshooter-active
 ```
 
-The `agentMatcher` regex scopes the guard to any agent whose name ends in `-troubleshooter` (e.g. `dal-troubleshooter`, `payments-troubleshooter`) — other agents are unaffected. If the guard exits non-zero, the Bash tool call is rejected with the guard's reason on stderr; the agent reads that reason and reformulates (or, per HARD RULE R4, writes the would-be mutation into `report.md` for a human to execute).
+The `/troubleshoot` skill writes this file (with the orchestrator's pid + run_id) before dispatching the troubleshooter agent and removes it on completion. The guard checks the marker on every hook invocation:
 
-If you don't install the hook, layers 1 + 2 still hold — but layer 1 is prompt-driven (model compliance), and layer 2 only fires if the agent or orchestrator chooses to call the guard. The hook makes layer 2 unconditional.
+- **Marker absent** (no /troubleshoot run active) → guard exits 0 immediately. Other agents — implementers, reviewers, the user's own `git push` / `npm install` / `terraform apply` — are completely unaffected.
+- **Marker present but pid is dead** (orchestrator crashed, marker left behind) → guard auto-cleans the stale marker and exits 0. Self-healing.
+- **Marker present + pid alive** → guard runs the full allowlist/blocklist classifier. Mutations are rejected; the agent receives the deny reason on stderr and (per HARD RULE R4) writes the would-be mutation into `report.md` for a human.
+
+Net effect: the hook is a no-op except during a live `/troubleshoot` run, and during that run it is a hard intercept on the troubleshooter agent's Bash calls. No `agentMatcher` needed; no impact on the rest of the user's agents.
+
+### Disabling the hook (if needed)
+
+If for any reason you want to disable the hook (e.g., debugging a false-positive in the guard), uninstall it via:
+
+```bash
+# Disable plugin hooks user-wide
+claude config set plugins.pipecrew.hooks.enabled false
+```
+
+…or simply remove the marker file's create step from the `/troubleshoot` skill (Step 3 below) — without the marker, the hook never enforces. Layers 1 + 2 still hold: the agent's HARD RULES still apply, and the guard script remains callable manually for testing.
 
 ---
 
@@ -102,7 +109,7 @@ Options:
 
 If the validator exits non-zero with structural errors, surface them and stop — don't dispatch the agent against a malformed table.
 
-### Step 3: Initialize run dir
+### Step 3: Initialize run dir + arm the bash-guard hook
 
 ```bash
 mkdir -p {workspace_root}/{slug}/runs/troubleshoot/{timestamp}-{slug-of-symptom}
@@ -111,6 +118,21 @@ mkdir -p {workspace_root}/{slug}/runs/troubleshoot/{timestamp}-{slug-of-symptom}
 Where `{slug-of-symptom}` is the first 6-8 words of the symptom kebab-cased and truncated to 40 chars.
 
 Write a `scratchpad.md` with the initial inputs (symptom, flags, env, user/trace IDs).
+
+**Arm the marker file.** This is what activates the plugin's `PreToolUse` bash guard for the upcoming troubleshooter dispatch. Without the marker the hook is a no-op (so other agents in the user's session keep working normally); with it, every Bash call from the troubleshooter agent is vetted against the read-only allowlist.
+
+```bash
+mkdir -p ~/.claude
+cat > ~/.claude/.pipecrew-troubleshooter-active <<EOF
+pid=$$
+run_id={timestamp}-{slug-of-symptom}
+created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+```
+
+The `pid=$$` value MUST be the orchestrator's pid (the shell process running this skill), not the troubleshooter agent's pid — the guard's stale-detection logic kills the marker if THIS pid is dead. The troubleshooter is a child agent; if it crashes, the orchestrator still runs and the marker stays armed correctly until cleanup.
+
+**Critical**: the marker MUST be removed in Step 6 (the wrap-up step) regardless of whether the run succeeds or fails. Treat Step 6 as a `finally` block.
 
 ### Step 4: Dispatch the troubleshooter agent
 
@@ -185,9 +207,19 @@ On `edit`: open an edit loop with the user to refine the entry before writing.
 
 On `no`: skip — but keep the entry in the run's `report.md` for future reference.
 
-### Step 6: Wrap up
+### Step 6: Wrap up — ALWAYS runs (success, failure, or interruption)
 
-Print a one-liner:
+This step is the `finally` block: it must execute even if Steps 4 or 5 errored, the user cancelled, or the agent returned an error report. Do NOT skip it.
+
+**Disarm the marker file** so the bash-guard hook stops vetting Bash calls (other agents in the user's session would otherwise see false-positive denials on legitimate mutations):
+
+```bash
+rm -f ~/.claude/.pipecrew-troubleshooter-active
+```
+
+If the marker was already cleaned by a stale-marker auto-recovery, `rm -f` no-ops. Either way, after this command the guard is back to fast-allow mode.
+
+**Print a one-liner:**
 
 ```
 Troubleshoot run complete: {workspace_root}/{slug}/runs/troubleshoot/{run-id}/report.md
@@ -199,3 +231,9 @@ If the user wants to act on the suggested fix:
 - For a code fix in a single repo: they can run that repo's implementer agent directly with the fix-list from the report.
 - For a cross-repo fix: they can run `/deliver` with the fix scope as the feature description.
 - For an infra/config change: they edit and re-deploy manually — the troubleshooter is read-only on infra by design.
+
+### Error / interruption handling
+
+If anything between Step 3 and Step 5 fails (the troubleshooter agent errors, the user cancels, the platform.md file is unreadable), the orchestrator MUST still execute the marker cleanup from Step 6 before surfacing the error to the user. Treat the marker cleanup as the first action in any error path.
+
+If the orchestrator process itself dies before cleanup (the user kills the session entirely), the guard's stale-pid detection handles it — on the next Bash dispatch from any agent, the guard sees the dead pid in the marker, removes the marker, and exits 0. The next session starts clean.

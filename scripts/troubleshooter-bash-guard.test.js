@@ -9,16 +9,60 @@
  *   - DENY:  mutations and evasion attempts the guard must catch.
  */
 
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
 const SCRIPT = path.join(__dirname, 'troubleshooter-bash-guard.js');
+const MARKER_PATH = path.join(os.homedir(), '.claude', '.pipecrew-troubleshooter-active');
 
 let passed = 0, failed = 0;
 
 function run(cmd) {
   const r = spawnSync('node', [SCRIPT, cmd], { encoding: 'utf8' });
   return { exitCode: r.status, stderr: r.stderr || '' };
+}
+
+function runStdin(input) {
+  const r = spawnSync('node', [SCRIPT], { encoding: 'utf8', input });
+  return { exitCode: r.status, stderr: r.stderr || '', stdout: r.stdout || '' };
+}
+
+function withMarker(contents, fn) {
+  const existed = fs.existsSync(MARKER_PATH);
+  let backup = null;
+  if (existed) backup = fs.readFileSync(MARKER_PATH, 'utf8');
+  try {
+    fs.mkdirSync(path.dirname(MARKER_PATH), { recursive: true });
+    fs.writeFileSync(MARKER_PATH, contents);
+    fn();
+  } finally {
+    if (backup !== null) fs.writeFileSync(MARKER_PATH, backup);
+    else if (fs.existsSync(MARKER_PATH)) fs.unlinkSync(MARKER_PATH);
+  }
+}
+
+function withoutMarker(fn) {
+  const existed = fs.existsSync(MARKER_PATH);
+  let backup = null;
+  if (existed) {
+    backup = fs.readFileSync(MARKER_PATH, 'utf8');
+    fs.unlinkSync(MARKER_PATH);
+  }
+  try { fn(); }
+  finally { if (backup !== null) fs.writeFileSync(MARKER_PATH, backup); }
+}
+
+function hookPayload(command) {
+  return JSON.stringify({
+    session_id: 'test-session',
+    transcript_path: '/tmp/transcript.json',
+    cwd: process.cwd(),
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Bash',
+    tool_input: { command, description: 'test' },
+  });
 }
 
 function expectAllow(cmd) {
@@ -188,6 +232,115 @@ expectDeny('aws logs tail /aws/x | tee /tmp/log', 'tee');
 // Unknown / unclassified — denied conservatively
 expectDeny('some-random-cli --do-stuff', 'allowlist');
 expectDeny('python -c "import os; os.system(\'rm -rf /\')"', 'allowlist');
+
+console.log('\n=== HOOK MODE: JSON-on-stdin payload extraction ===\n');
+
+function expectHookAllow(name, payload, markerSetup) {
+  const fn = markerSetup || ((f) => f());
+  fn(() => {
+    const r = runStdin(payload);
+    if (r.exitCode === 0) { console.log(`  HOOK ALLOW ok   ${name}`); passed++; }
+    else { console.error(`  HOOK ALLOW FAIL ${name}\n         exit ${r.exitCode}: ${r.stderr.trim()}`); failed++; }
+  });
+}
+
+function expectHookDeny(name, payload, markerSetup, expectedReason) {
+  const fn = markerSetup || ((f) => f());
+  fn(() => {
+    const r = runStdin(payload);
+    if (r.exitCode === 1) {
+      if (!expectedReason || r.stderr.toLowerCase().includes(expectedReason.toLowerCase())) {
+        console.log(`  HOOK DENY  ok   ${name}`);
+        passed++;
+      } else {
+        console.error(`  HOOK DENY  FAIL ${name}\n         expected reason matching "${expectedReason}", got: ${r.stderr.trim()}`);
+        failed++;
+      }
+    } else {
+      console.error(`  HOOK DENY  FAIL ${name}\n         expected exit 1, got ${r.exitCode}`);
+      failed++;
+    }
+  });
+}
+
+// Marker absent: hook-mode call is a no-op, regardless of command content.
+// (This is THE key property — other agents in the user's environment must
+// not be affected by the plugin's hook unless /troubleshoot is active.)
+
+expectHookAllow('marker absent + read-only command → fast-allow',
+  hookPayload('aws logs tail /aws/ecs/foo --since 1h'),
+  withoutMarker);
+
+expectHookAllow('marker absent + MUTATION command → still fast-allow (other agent)',
+  hookPayload('terraform apply -auto-approve'),
+  withoutMarker);
+
+expectHookAllow('marker absent + npm install (e.g. user dev work) → fast-allow',
+  hookPayload('npm install lodash'),
+  withoutMarker);
+
+expectHookAllow('marker absent + git push (e.g. user push) → fast-allow',
+  hookPayload('git push origin main'),
+  withoutMarker);
+
+// Marker stale (dead pid): treat as no marker, fast-allow.
+
+expectHookAllow('marker stale (pid=999999, almost certainly dead) → fast-allow',
+  hookPayload('terraform apply'),
+  (fn) => withMarker('pid=999999 run_id=stale-test created_at=2020-01-01T00:00:00Z', fn));
+
+// Marker live (current process pid): full classifier runs.
+
+const livePid = process.pid;
+
+expectHookAllow('marker live + allowlist command → allow',
+  hookPayload('aws logs tail /aws/ecs/foo --since 1h'),
+  (fn) => withMarker(`pid=${livePid} run_id=test-run created_at=${new Date().toISOString()}`, fn));
+
+expectHookAllow('marker live + git diff → allow',
+  hookPayload('git diff main...HEAD'),
+  (fn) => withMarker(`pid=${livePid} run_id=test-run created_at=${new Date().toISOString()}`, fn));
+
+expectHookDeny('marker live + kubectl delete → deny',
+  hookPayload('kubectl delete pod foo -n bar'),
+  (fn) => withMarker(`pid=${livePid} run_id=test-run created_at=${new Date().toISOString()}`, fn),
+  'kubectl mutating');
+
+expectHookDeny('marker live + terraform apply → deny',
+  hookPayload('terraform apply'),
+  (fn) => withMarker(`pid=${livePid} run_id=test-run created_at=${new Date().toISOString()}`, fn),
+  'terraform mutation');
+
+expectHookDeny('marker live + curl POST to non-localhost → deny',
+  hookPayload('curl -X POST https://api.example.com/v1/users -d {}'),
+  (fn) => withMarker(`pid=${livePid} run_id=test-run created_at=${new Date().toISOString()}`, fn),
+  'mutating method');
+
+expectHookDeny('marker live + evasion ($(...)) → deny',
+  hookPayload('aws logs tail $(echo /aws/x) --since 1h'),
+  (fn) => withMarker(`pid=${livePid} run_id=test-run created_at=${new Date().toISOString()}`, fn),
+  'command substitution');
+
+// Non-Bash hook payload routed to us by mistake → safe-allow (we only
+// enforce Bash; we must not block Read / Write / Edit dispatches).
+
+expectHookAllow('non-Bash payload (Read tool) → allow without classifying',
+  JSON.stringify({
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Read',
+    tool_input: { file_path: '/tmp/foo' },
+  }),
+  (fn) => withMarker(`pid=${livePid} run_id=x created_at=${new Date().toISOString()}`, fn));
+
+// Malformed JSON on stdin → fall back to treating it as a raw command.
+// (Defensive: we shouldn't crash if Claude Code's payload format ever drifts.)
+
+(() => {
+  const r = runStdin('this is not json — treat as raw command');
+  // Raw command "this is..." doesn't match allowlist or blocklist → conservative deny.
+  if (r.exitCode === 1) { console.log('  HOOK ALLOW ok   malformed-JSON → fallback to raw + conservative deny'); passed++; }
+  else { console.error(`  HOOK FAIL malformed-JSON: expected deny, got exit ${r.exitCode}`); failed++; }
+})();
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

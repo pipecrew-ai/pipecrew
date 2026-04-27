@@ -7,23 +7,47 @@
  * The agent itself enforces those rules in its reasoning, but agents make
  * mistakes — this guard is the defense-in-depth layer.
  *
- * Wired in via a `PreToolUse` hook on the Bash tool, scoped to the
- * `{slug}-troubleshooter` agent. The hook pipes the command string to
- * stdin; this script exits 0 (allow) or 1 (deny + reason on stderr).
+ * INVOCATION MODES (auto-detected):
  *
- * USAGE (from a hook script):
- *   echo "$BASH_COMMAND" | node troubleshooter-bash-guard.js
- *   if [ $? -ne 0 ]; then
- *     echo "Blocked by troubleshooter-bash-guard"
- *     exit 1   # PreToolUse non-zero exit blocks the tool call
- *   fi
+ *   1. PreToolUse hook (the live enforcement path).
+ *      Claude Code pipes the hook event payload as JSON on stdin:
+ *        { "hook_event_name": "PreToolUse", "tool_name": "Bash",
+ *          "tool_input": { "command": "...", "description": "..." }, ... }
+ *      The script auto-detects this shape, extracts tool_input.command,
+ *      and gates on the marker file (see "marker-file self-gating" below).
  *
- * USAGE (manual / standalone):
- *   node troubleshooter-bash-guard.js "aws logs tail /aws/ecs/foo --since 1h"
+ *   2. Plain stdin (one-line command).
+ *        echo "aws logs tail /aws/x" | node troubleshooter-bash-guard.js
+ *      No marker check — runs the full allow/deny logic. Useful for
+ *      orchestrator-level pre-checks or piping from other agents.
+ *
+ *   3. argv (manual / test harness).
+ *        node troubleshooter-bash-guard.js "aws logs tail /aws/x"
+ *      No marker check — runs the full allow/deny logic.
+ *
+ * MARKER-FILE SELF-GATING (hook mode only):
+ *
+ *   Plugin-shipped hooks fire on EVERY Bash dispatch from EVERY agent in
+ *   the user's session, and Claude Code's matcher syntax has no
+ *   "agentMatcher" to scope a hook to one specific subagent. We work
+ *   around this with a marker file:
+ *
+ *     - The /troubleshoot skill writes ~/.claude/.pipecrew-troubleshooter-active
+ *       (containing the orchestrator's pid + run_id) before dispatching the
+ *       troubleshooter agent, and removes it on completion (or on error).
+ *     - When the hook fires, this script first checks the marker. If the
+ *       marker is absent OR points at a dead pid, it exits 0 immediately
+ *       — the hook becomes a no-op. Other agents (implementers, reviewers,
+ *       the user's own Bash calls) are completely unaffected.
+ *     - Only when the marker is present AND the pid is alive does the
+ *       script proceed to the allow/deny classifier.
+ *
+ *   Plain-stdin and argv modes (#2 / #3) skip the marker check — those
+ *   callers explicitly opted in to enforcement.
  *
  * EXIT CODES:
- *   0 — command matches the read-only allowlist; allow
- *   1 — command matches the mutation blocklist OR is not on the allowlist; deny
+ *   0 — command is read-only / hook is no-op / marker absent or stale; allow
+ *   1 — command violates the rules; deny (with reason on stderr)
  *
  * Zero dependencies — pure Node stdlib.
  *
@@ -33,17 +57,91 @@
  */
 
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
-// Read command — first from argv, fall back to stdin.
+const MARKER_PATH = path.join(os.homedir(), '.claude', '.pipecrew-troubleshooter-active');
+
+// ── Read input ─────────────────────────────────────────────────────────
+//
+// Three input shapes; auto-detect.
+
 let cmd;
+let invokedFromHook = false;
+
 if (process.argv[2]) {
+  // Mode 3: argv — explicit caller, no marker check.
   cmd = process.argv.slice(2).join(' ');
 } else {
-  try { cmd = fs.readFileSync(0, 'utf8').trim(); }
-  catch { cmd = ''; }
+  // Mode 1 or 2: stdin. Try to parse as JSON first (hook payload); fall
+  // back to raw command string.
+  let raw;
+  try { raw = fs.readFileSync(0, 'utf8').trim(); }
+  catch { raw = ''; }
+
+  if (raw.startsWith('{')) {
+    try {
+      const payload = JSON.parse(raw);
+      // Validate it's actually a Bash PreToolUse payload — anything else
+      // we can't classify safely; allow rather than deny so we don't
+      // accidentally break a non-Bash hook.
+      if (payload && payload.tool_name === 'Bash' && payload.tool_input && typeof payload.tool_input.command === 'string') {
+        cmd = payload.tool_input.command;
+        invokedFromHook = true;
+      } else {
+        // Unknown JSON shape on stdin from a hook. Allow — better than
+        // accidentally blocking legitimate non-Bash tool calls if Claude
+        // Code routes a different event our way.
+        process.exit(0);
+      }
+    } catch {
+      // Looked like JSON but didn't parse. Treat as raw command.
+      cmd = raw;
+    }
+  } else {
+    cmd = raw;
+  }
+}
+
+// ── Marker-file self-gating (hook mode only) ───────────────────────────
+//
+// In hook mode, we need to make sure we ONLY classify Bash calls coming
+// from a /troubleshoot run. The marker file is the signal.
+
+if (invokedFromHook) {
+  let marker;
+  try { marker = fs.readFileSync(MARKER_PATH, 'utf8').trim(); }
+  catch { marker = null; }
+
+  if (!marker) {
+    // No active /troubleshoot run — this Bash call is from a different
+    // agent or a different skill. Allow without classifying.
+    process.exit(0);
+  }
+
+  // Marker contents: "pid=<n> run_id=<id> created_at=<iso>". Parse and
+  // verify the pid is still alive. Stale marker (process died without
+  // cleanup) → treat as no marker.
+  const pidMatch = marker.match(/pid=(\d+)/);
+  if (pidMatch) {
+    const pid = parseInt(pidMatch[1], 10);
+    let alive = false;
+    try { process.kill(pid, 0); alive = true; }   // signal 0 = liveness probe
+    catch { alive = false; }
+    if (!alive) {
+      // Stale marker — orchestrator died without cleanup. Best-effort
+      // remove it so the next session starts clean, then allow this call.
+      try { fs.unlinkSync(MARKER_PATH); } catch { /* ignore */ }
+      process.exit(0);
+    }
+  }
+  // Marker present + pid alive → fall through to the classifier.
 }
 
 if (!cmd) {
+  // Empty command should never reach the classifier; in hook mode we
+  // already exited above on the marker check, so this only fires for
+  // explicit empty argv/stdin invocations.
   console.error('troubleshooter-bash-guard: empty command');
   process.exit(1);
 }

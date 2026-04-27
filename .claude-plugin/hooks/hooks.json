@@ -1,0 +1,17 @@
+{
+  "_comment": "PipeCrew plugin hooks. Auto-loaded by Claude Code when the plugin is installed. The single hook below installs the troubleshooter bash guard as a PreToolUse intercept on the Bash tool. The guard self-gates on a marker file (~/.claude/.pipecrew-troubleshooter-active) — when no /troubleshoot run is active, it exits 0 immediately, so this hook has zero effect on every other agent in the user's environment. See scripts/troubleshooter-bash-guard.js for the full enforcement logic and skills/troubleshoot/SKILL.md for the marker create/cleanup contract.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/troubleshooter-bash-guard.js\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

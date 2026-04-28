@@ -1,11 +1,11 @@
 ---
 name: simulate-run
-description: Generate the demo workspace at {workspace_root}/simulate-run-demo/ with full /discover + /deliver + /learn artifacts following the latest plugin schema (Phase 8 PR publish, pr_urls.json, learn runs, stacks docs, architecture diagrams). Each invocation wipes and recreates the workspace in place — fixed run IDs are reused, so no timestamped run dirs accumulate. Optionally launches the site-view pointed at the demo. Zero agent cost.
+description: Generate the demo workspace at {workspace_root}/simulate-run-demo/ with full /discover + /deliver + /learn artifacts following the latest plugin schema (Phase 8 PR publish, pr_urls.json, learn runs, stacks docs, architecture diagrams). Each invocation wipes and recreates the workspace in place — fixed run IDs are reused, so no timestamped run dirs accumulate. Spawns the site-view pointed at the demo by default; pass --no-ui for headless generation. Zero agent cost.
 ---
 
 # /simulate-run
 
-Fabricates a fully-populated demo workspace so the site-view drawer can be exercised end-to-end without spending agent tokens. Useful for:
+Fabricates a fully-populated demo workspace AND spawns the site-view so the project drawer can be exercised end-to-end without spending agent tokens. Useful for:
 
 - UI regression checks after editing `site-view/server.js` or `index.html`
 - Demoing the plugin to teammates without running real features
@@ -14,20 +14,21 @@ Fabricates a fully-populated demo workspace so the site-view drawer can be exerc
 ## Usage
 
 ```
-/simulate-run [--launch-ui] [--port=<n>] [--keep] [--step-ms=<n>]
+/simulate-run [--no-ui] [--port=<n>] [--keep] [--step-ms=<n>]
 ```
 
 **Flags**:
-- `--launch-ui` — after generation, spawn the site-view server pointed at the demo's most recent `/deliver` run. **Implicitly enables live timeline mode** (default `--step-ms=1500`) so the user can watch characters move queued → working → done.
+- `--no-ui` — generate the demo workspace files only; do NOT spawn the site-view. Use this for headless regression tests or scripted setup.
+- `--launch-ui` — explicit form of the default. Kept for backwards compatibility — it's a no-op now since UI launch is the default.
 - `--port=<n>` — initial port for the UI (default 5173; the server auto-increments if busy).
 - `--keep` — skip the wipe step. Useful for incremental edits to specific files between runs.
-- `--step-ms=<n>` — milliseconds between timeline steps for the active `/deliver` run (deliver_a / "Bulk Upload"). Default: `1500` when `--launch-ui` is set, `0` otherwise. Set `--step-ms=0` to force static mode (write the completed run all at once); set `--step-ms=150` for fast headless tests.
+- `--step-ms=<n>` — milliseconds between timeline steps for the active `/deliver` run (deliver_a / "Bulk Upload"). Default: `1500` when the UI is on (the default), `0` when `--no-ui` is set. Set `--step-ms=0` to force static mode (write the completed run all at once); set `--step-ms=150` for fast headless tests.
 
 ## Modes
 
-**Static mode** (default without `--launch-ui`, or any `--step-ms=0`): every artifact is written all at once with backdated timestamps. The UI mounts on a fully-COMPLETED run.
+**Live mode** (default — UI on, `--step-ms` defaults to `1500`): the historical artifacts (`/discover`, `/learn` runs, `deliver_b`) are written all at once, but the active `/deliver` run (`deliver_a` — Bulk Upload) is initialized in PENDING state. The script then steps through ~22 timeline events — phase starts/ends and parallel implementation/review tasks — appending to `checkpoints.jsonl` and rewriting `scratchpad.md` on each step. The site-view's `fs.watch` triggers an SSE broadcast on every change, so the browser animates forward in real time.
 
-**Live mode** (default with `--launch-ui`, or any `--step-ms>0`): the historical artifacts (`/discover`, `/learn` runs, `deliver_b`) are still written all at once, but the active `/deliver` run (`deliver_a` — Bulk Upload) is initialized in PENDING state. The script then steps through ~22 timeline events — phase starts/ends and parallel implementation/review tasks — appending to `checkpoints.jsonl` and rewriting `scratchpad.md` on each step. The site-view's `fs.watch` triggers an SSE broadcast on every change, so the browser animates forward in real time.
+**Static mode** (default with `--no-ui`, or any `--step-ms=0`): every artifact is written all at once with backdated timestamps. If the UI is launched in this mode (e.g. `/simulate-run --step-ms=0`), it mounts on a fully-COMPLETED run.
 
 ## Behavior
 
@@ -47,17 +48,17 @@ When the user invokes `/simulate-run`:
 
 1. Pass through every CLI flag the user provided to the Node script.
 2. Launch via Bash:
-   - With `--launch-ui`: `run_in_background: true` so the spawned site-view keeps serving.
-   - Without: foreground — the script generates files and exits.
-3. Report the demo workspace path + which artifacts were produced.
+   - **Default (UI on)**: `run_in_background: true` so the spawned site-view keeps serving. The script writes the historical runs immediately, then steps the live `deliver_a` run for ~33 seconds (22 events × 1500ms) so the browser animates.
+   - With `--no-ui`: foreground — the script generates files and exits.
+3. Report the demo workspace path, the URL the site-view is serving on, and which artifacts were produced.
 
 ```bash
-node {plugin_dir}/scripts/simulate-run.js [--launch-ui] [--port=<n>] [--keep]
+node {plugin_dir}/scripts/simulate-run.js [--no-ui] [--port=<n>] [--keep] [--step-ms=<n>]
 ```
 
 ## What gets exercised in site-view
 
-After running with `--launch-ui`, opening the project drawer should show every section populated:
+After running (default — UI on), opening the project drawer should show every section populated:
 
 - Workspace info + repos (4 demo repos)
 - Audit summary with critical/high/medium/low pills

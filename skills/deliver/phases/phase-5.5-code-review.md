@@ -96,6 +96,15 @@ INSTRUCTIONS:
 9. Produce the report in the Output Format from your system prompt. Every finding must have file:line and a citation.
 
 Do not fix anything. Your output is a report the orchestrator will pass to an implementer for fix dispatch if needed.
+
+CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgotten):
+- **FINDINGS_SUMMARY block first.** The first machine-readable block in your report MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
+- **Classify every Critical.** Every Critical finding MUST carry `**Classification**: mechanical` or `**Classification**: architectural` in its prose entry, AND a 5th pipe field on its `critical` FINDINGS row. Missing classifications default to architectural — costs a user-gate round-trip.
+- **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
+- **Apply only your system-prompt passes.** Contract / craft / security / test / scope-drift are defined in your agent system prompt. Do not invent additional checks. Do not flag findings the prompt didn't authorize.
+- **Read-only.** No Edit, no Write, no state-mutating command. Output is the report only.
+
+Now: review the diff in `{service_worktree_path}` for the feature, against the requirements and contract above.
 ```
 
 **Frontend reviewer — one for the frontend**
@@ -136,6 +145,16 @@ INSTRUCTIONS:
 9. Produce the report in the Output Format from your system prompt. Every finding must have file:line and a citation.
 
 Do not fix anything. Your output is a report the orchestrator will pass to an implementer for fix dispatch if needed.
+
+CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgotten):
+- **FINDINGS_SUMMARY block first.** The first machine-readable block in your report MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
+- **Classify every Critical.** Every Critical finding MUST carry `**Classification**: mechanical` or `**Classification**: architectural` in its prose entry, AND a 5th pipe field on its `critical` FINDINGS row. Missing classifications default to architectural — costs a user-gate round-trip.
+- **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
+- **Spec field-name fidelity.** Frontend types must match the OpenAPI spec field names byte-for-byte. Renaming a spec field (e.g., `bookId` → `id`) is a Critical type-drift finding. Walk every typed model field-by-field.
+- **Apply only your system-prompt passes.** Typing / data-fetching / routing / i18n / RTL / accessibility / tests / scope-drift are defined in your agent system prompt. Do not invent additional checks.
+- **Read-only.** No Edit, no Write, no state-mutating command. Output is the report only.
+
+Now: review the diff in `{frontend_worktree_path}` for the feature, against the requirements and the spec field names above.
 ```
 
 **On completion of each reviewer**: save the report to `outputs/phase-5-5-code-review.md` (append one section per reviewed repo). Update the scratchpad with the review findings count.

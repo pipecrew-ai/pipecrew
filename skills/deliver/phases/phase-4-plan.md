@@ -457,3 +457,11 @@ When you finish implementing and testing, update the task file's status before r
 
 Leave the body verbatim. Then produce your report to the orchestrator in the format the task body specified.
 
+CRITICAL FOR THIS DISPATCH (do not skip — these are the HARD RULES from `{plugin_dir}/docs/implementer-common-rules.md` most often forgotten):
+- **R9 — COVERAGE block.** Emit BOTH the human-readable `## Requirement coverage` table AND the `<!-- BEGIN COVERAGE -->` JSON block. Count the `FR-X` and `EC-X` lines in your task file body before reporting done — your COVERAGE block must contain one entry per ID, each with a `file:line` enforcement point.
+- **R6 — Scope discipline.** Every line in your diff must trace to an FR-X, EC-X, or sub-task line in the task file. If it doesn't, do not write it.
+- **R7 — Stop on load-bearing ambiguity.** Do not guess. If a field name, type, status code, or contract shape is ambiguous, return an `## Assumptions` block at the top of your report instead of coding.
+- **R8 — Stay in your launched worktree.** Never `git checkout` another branch, never `git worktree add`, never edit outside `{worktree_path}`.
+
+Now: load the task file at the path above and implement the feature within `{worktree_path}`.
+

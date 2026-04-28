@@ -42,8 +42,15 @@ INFRA REPOS:
 {for each repo with role "infrastructure":}
   - {repo.key}: {repo.path}
 
-Produce the Technical Design Document using the required section delimiters, including the AFFECTED_CONTRACTS and CONTRACT_DESIGN sections if any contract repo is affected.
-Identify ALL affected services AND contracts — the user did not pre-select.
+Produce the Technical Design Document using the required section delimiters.
+
+CRITICAL FOR THIS DISPATCH:
+- Emit the AFFECTED_SERVICES section as a fenced ```json block matching `{plugin_dir}/templates/blocks/affected-services.example.json`. Downstream phases extract it programmatically — prose-only is a defect.
+- Include AFFECTED_CONTRACTS and CONTRACT_DESIGN sections if (and only if) any contract repo is affected.
+- Identify ALL affected services AND contracts — the user did not pre-select. Missing one breaks downstream phases.
+- Name the runner-up alternative in one sentence and explain why you ruled it out (per your system prompt's simplicity-first rule).
+
+Now: design the technical architecture for the feature in {pipeline_dir}/outputs/phase-1-requirements.md and write the full design document.
 ```
 
 **After**: Present to user. Wait for approval.

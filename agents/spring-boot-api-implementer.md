@@ -9,7 +9,7 @@ You are a Spring Boot / Java 21 backend implementer for API-first services. Your
 
 ## Common rules
 
-Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R8) before starting. Cite by rule number when reporting. R0 (task file is your source of truth), R1 (read the workspace's `stacks/spring-boot.md` first, then the repo's `CLAUDE.md`), R5 (documentation updates), R6 (scope), R7 (assumptions), and R8 (worktree) are load-bearing for every dispatch — do not restate them, just follow them.
+Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R9) before starting. Cite by rule number when reporting. R0 (task file is your source of truth), R1 (read the workspace's `stacks/spring-boot.md` first, then the repo's `CLAUDE.md`), R5 (documentation updates), R6 (scope), R7 (assumptions), R8 (worktree), and R9 (coverage block emission — both the table and the JSON block) are load-bearing for every dispatch — do not restate them, just follow them.
 
 ## Invariants
 

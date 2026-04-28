@@ -54,6 +54,8 @@ The phase prompt from `skills/discover/phases/phase-b-domain-and-architect.md` w
 
 You take requirements from the product-owner and produce a **Technical Design Document** that drives all downstream implementation.
 
+**Identify ALL affected services and contracts.** The user does not pre-select. Walk every service and contract repo in `config.json`, decide whether the feature touches it, and include every one that is touched in your AFFECTED_SERVICES (and AFFECTED_CONTRACTS, if applicable). Missing one breaks downstream phases — the missing repo never gets a worktree, an implementer dispatch, or a reviewer pass.
+
 ### Design constraints — keep it small
 
 Pick the smallest design that satisfies the requirements. Specifically:
@@ -193,12 +195,20 @@ One line per service explaining why it's involved. The JSON above carries the da
 <!-- END ARCHITECTURE_DECISION -->
 
 <!-- BEGIN DATA_MODEL -->
-## Data Model
+**Read `{plugin_dir}/templates/blocks/data-model.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream consumers extract via `node {plugin_dir}/scripts/extract-block.js {this-file} DATA_MODEL` to enumerate entity and database changes per service. Schema reference: `{plugin_dir}/docs/file-formats.md` § DATA_MODEL.
+
+```json
+{ ... matches templates/blocks/data-model.example.json ... }
+```
+
+If the feature touches no data layer, emit `{"entities": [], "database_changes": []}`.
+
+## Data Model — detail (prose)
 ### New / Modified Entities
-[Field lists, relationships]
+[Field lists, relationships, validation rules. The JSON above names the entities; this section carries the field-level details.]
 
 ### Database Changes
-[Tables, columns, indexes, migrations]
+[Tables, columns, indexes, migration SQL or commands. The JSON above names the changes; this section carries the actual migration content.]
 <!-- END DATA_MODEL -->
 
 <!-- BEGIN CONTRACT_DESIGN -->
@@ -223,15 +233,21 @@ If no contract changes: write `N/A — no contract repos affected`.
 <!-- END CONTRACT_DESIGN -->
 
 <!-- BEGIN API_DESIGN -->
-## API Design
-Split by service. For each affected service, look up its `spec_policy` in the workspace config and use the matching format:
+**Read `{plugin_dir}/templates/blocks/api-design.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream phases extract via `node {plugin_dir}/scripts/extract-block.js {this-file} API_DESIGN` to enumerate per-service endpoints and handlers. Schema reference: `{plugin_dir}/docs/file-formats.md` § API_DESIGN.
 
-- **api-first** — short endpoint descriptor + reference to the spec path Phase 3b will edit.
-- **code-first** — full inline endpoint contract (see example above).
-- **no-api** — Event Triggers block per handler (see example above).
+```json
+{ ... matches templates/blocks/api-design.example.json ... }
+```
+
+## Per-service detail (prose)
+Split by service. For each affected service, look up its `spec_policy` in the workspace config and use the matching format below. The JSON above carries the navigable index (method, path, fr_ids, change_kind); this prose section carries the details consumers need that don't fit a uniform schema.
+
+- **api-first** — short endpoint descriptor + reference to the spec path Phase 3b will edit. The JSON entry is enough for orchestration; prose is for human review.
+- **code-first** — full inline endpoint contract (see example above). The JSON entry names the endpoint; the prose under it carries the full request/response/status-code schema verbatim. The implementer has nothing else to read.
+- **no-api** — Event Triggers block per handler (see example above). The JSON entry names the handler + trigger + schema ref; the prose carries delivery semantics, batch config, downstream targets, failure modes.
 
 ### Cross-Service Calls
-[If service A calls service B, document it]
+[If service A calls service B, document it. The JSON's `cross_service_calls` array carries this too — keep both in sync.]
 
 ### Spec Changes Required
 [Yes / No — if Yes, list ONLY `api-first` services whose spec files need editing. `code-first` and `no-api` services never appear here.]
@@ -256,8 +272,16 @@ Split by service. For each affected service, look up its `spec_policy` in the wo
 <!-- END FRONTEND_ARCHITECTURE -->
 
 <!-- BEGIN INFRASTRUCTURE_IMPACT -->
-## Infrastructure Impact
-For each infrastructure repo in the workspace config, list new resources or changes — or "None".
+**Read `{plugin_dir}/templates/blocks/infrastructure-impact.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream consumers (Phase 5d `terraform-implementer` / `cdk-stack-implementer`) extract via `node {plugin_dir}/scripts/extract-block.js {this-file} INFRASTRUCTURE_IMPACT` to enumerate per-repo resource changes. Schema reference: `{plugin_dir}/docs/file-formats.md` § INFRASTRUCTURE_IMPACT.
+
+```json
+{ ... matches templates/blocks/infrastructure-impact.example.json ... }
+```
+
+If no infra repo is affected, emit `{"infra_changes": []}`.
+
+## Infrastructure Impact — detail (prose)
+For each infra repo named in the JSON above, give the configuration detail consumers need: cross-stack references, IAM policy contents, naming-convention rationale, environment scoping. The JSON enumerates *what changes*; this prose carries *how* it's configured.
 <!-- END INFRASTRUCTURE_IMPACT -->
 
 <!-- BEGIN IMPLEMENTATION_ORDER -->

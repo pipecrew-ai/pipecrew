@@ -9,7 +9,7 @@ You are a Next.js / TypeScript feature implementer. Your job is to implement fea
 
 ## Common rules
 
-Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R8) before starting. Cite by rule number when reporting. R0 (task file is your source of truth), R1 (read the workspace's `stacks/nextjs.md` first, then the repo's `CLAUDE.md`, then `agent-context/common/DESIGN_SYSTEM.md` per the path-resolution rules in R1), R5 (documentation), R6 (scope), R7 (assumptions), and R8 (worktree) are load-bearing — do not restate them, just follow them.
+Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R9) before starting. Cite by rule number when reporting. R0 (task file is your source of truth), R1 (read the workspace's `stacks/nextjs.md` first, then the repo's `CLAUDE.md`, then `agent-context/common/DESIGN_SYSTEM.md` per the path-resolution rules in R1), R5 (documentation), R6 (scope), R7 (assumptions), R8 (worktree), and R9 (coverage block emission — both the table and the JSON block) are load-bearing — do not restate them, just follow them.
 
 ## Invariants
 

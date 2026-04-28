@@ -1,0 +1,61 @@
+{
+  "_comment": "Canonical example for the API_DESIGN block emitted by the solution-architect inside outputs/phase-2-architecture.md. Per-service entries with endpoints (api-first / code-first) or handlers (no-api). The JSON is the structured INDEX — full request/response schemas for code-first endpoints and full event-handler details for no-api workers live in the prose under each service section. Field reference and consumer list live in docs/file-formats.md. Producers must match this structure; consumers extract via scripts/extract-block.js. Strip the _comment field from real output.",
+  "services": [
+    {
+      "name": "publisher-service",
+      "spec_policy": "api-first",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/publishers/{id}/books",
+          "change_kind": "added",
+          "summary": "Upload a book file",
+          "fr_ids": ["FR-1"],
+          "ec_ids": ["EC-1"]
+        },
+        {
+          "method": "GET",
+          "path": "/v1/publishers/{id}/books/{bookId}",
+          "change_kind": "modified",
+          "summary": "Add `uploadStatus` field to response",
+          "fr_ids": ["FR-2"],
+          "ec_ids": []
+        }
+      ]
+    },
+    {
+      "name": "order-service",
+      "spec_policy": "code-first",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/orders",
+          "change_kind": "added",
+          "summary": "Create order with optional contractId — full inline contract in prose below",
+          "fr_ids": ["FR-3"],
+          "ec_ids": ["EC-2"]
+        }
+      ]
+    },
+    {
+      "name": "order-events-worker",
+      "spec_policy": "no-api",
+      "handlers": [
+        {
+          "name": "OrderCreatedHandler",
+          "trigger_source": "sqs:order-events",
+          "event_schema_ref": "shared-events/OrderCreated.avsc",
+          "fr_ids": ["FR-5"],
+          "ec_ids": []
+        }
+      ]
+    }
+  ],
+  "cross_service_calls": [
+    {
+      "from": "order-service",
+      "to": "publisher-service",
+      "purpose": "validate publisher exists before creating order"
+    }
+  ]
+}

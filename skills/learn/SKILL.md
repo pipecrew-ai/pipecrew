@@ -1,6 +1,6 @@
 ---
 name: learn
-description: "Learn from user feedback about a shipped feature — from a merged PR, a recorded /deliver run, a branch diff, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md, stacks/{type}.md, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. Every run is logged to context/learn-log.md for institutional memory."
+description: "Learn from user feedback about a shipped feature — from a merged PR, a recorded /deliver run, a branch diff, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md, stacks/{type}.md, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to context/learn-log.md for institutional memory."
 ---
 
 ## Description
@@ -31,6 +31,11 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 /pipecrew:learn --run=<run_id> [--workspace=<slug>]
 /pipecrew:learn --branch=<name> [--base=<main>] [--workspace=<slug>]
 /pipecrew:learn "<free-form text>" [--workspace=<slug>]
+
+# Optional fix-round flags (combine with any source mode above):
+/pipecrew:learn ... --fix-branch=<name>     # target a specific branch when dispatching the fix round
+/pipecrew:learn ... --auto-fix              # skip the post-apply prompt — always dispatch implementers
+/pipecrew:learn ... --no-fix                # skip the post-apply prompt — never dispatch implementers
 ```
 
 ### Flags
@@ -43,8 +48,11 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 | `--branch=<name>` | Branch name to diff (local). Base defaults to `main` or `dev` — whichever the workspace uses. |
 | `--base=<name>` | Override the base branch for `--branch` mode. |
 | `--workspace=<slug>` | Which workspace's docs to update. Auto-detects if omitted (scans `{workspace_root}/*/config.json` for repo paths that match the PR / branch). |
-| `--dry-run` | Show findings + proposed updates, but skip the apply step. Useful to preview. |
-| `--apply-all` | Skip per-finding approval and apply every non-plugin-level finding. Use with care. |
+| `--dry-run` | Show findings + proposed updates, but skip the apply step. Implies `--no-fix` (a dry run never dispatches implementers). |
+| `--apply-all` | Skip per-finding approval and apply every non-plugin-level finding. Does NOT imply `--auto-fix` — the fix-round prompt still runs after applies unless `--auto-fix` / `--no-fix` is also passed. |
+| `--fix-branch=<name>` | Optional branch name to dispatch the fix round against. If omitted, the orchestrator uses each affected repo's currently checked-out branch and asks the user to confirm before dispatching. |
+| `--auto-fix` | Skip the post-apply confirmation prompt and dispatch implementers for every approved finding's affected repo. Use with care — implementers will modify code on the resolved branch. |
+| `--no-fix` | Skip the post-apply confirmation prompt and do NOT dispatch any implementers. Equivalent to answering "n" at the prompt. |
 
 ### Examples
 
@@ -54,6 +62,11 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 /pipecrew:learn --run=2026-04-16-120338-book-content-upload
 /pipecrew:learn --branch=fix/contract-detail-modals --base=main
 /pipecrew:learn "the plugin keeps putting details in a separate route, we always want a modal"
+
+# With fix-round:
+/pipecrew:learn --run=2026-04-15-200215-contract-view-and-list --fix-branch=feature/contract-view-and-list
+/pipecrew:learn --pr=https://github.com/.../pull/31 --auto-fix
+/pipecrew:learn "we never split publisher modules" --no-fix     # docs only, do not touch any branch
 ```
 
 ## Instructions
@@ -65,6 +78,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 3. **Tier classification is the first filter.** Run-local findings are visible in the summary but don't become proposals. Only repo-scope, workspace-scope, and plugin-scope findings become actionable items.
 4. **Log every invocation.** Append to `{workspace_root}/{slug}/context/learn-log.md` — even if every finding was rejected. The record matters.
 5. **Be explicit about source reliability.** PR review comments from a human reviewer are strong signal. Post-merge fix commits are strong signal (the truth shipped). Free-form user text is strong signal but filtered through the user's recall. Run corrections are moderate signal (may have been one-off decisions).
+6. **Never dispatch a fix-round implementer without explicit user consent.** The fix round modifies real code on a real branch — it is the only step in `/learn` that touches anything outside the workspace docs. Default behavior is to ask the user (per repo, with the resolved branch named) before each dispatch. Only `--auto-fix` skips that gate, and only after the standard per-finding doc-approval gate has already run. `--dry-run` always implies `--no-fix`. Plugin-level findings never become fix-round dispatches (their target is the plugin, not workspace code).
 
 ---
 
@@ -77,7 +91,8 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 4. Present findings ──────────── (tier-classified, per-finding approval UX)         <- user gate
 5. Apply approved updates ─────── (file edits to the target tier)
 6. Write learn-log entry ─────── (durable record in the workspace)
-7. Report summary ────────────── (what was applied, what was flagged, one-line status)
+6.5. Optional fix round ──────── (per-repo implementer dispatch on the affected branch)  <- user gate
+7. Report summary ────────────── (what was applied, what was flagged, what was fixed, one-line status)
 ```
 
 ---
@@ -388,10 +403,21 @@ Append to `{workspace_root}/{slug}/context/learn-log.md` (create if missing). Fo
 |---|---|
 | 5 | Plugin-level: spring-boot implementer should prefer declarative security on greenfield code |
 
+### Fix-round dispatches
+*(this subsection appears only if Step 6.5 ran and at least one bundle was dispatched)*
+
+| Repo | Branch | Implementer | Duration | Tokens | Applied | Skipped | Tests | Lint |
+|---|---|---|---|---|---|---|---|---|
+| abvi-pms-frontend | feature/contract-view-and-list | react-feature-implementer | 4m 12s | 38K | #1, #3, #4, #5 | #2 (covered by #1) | pass | pass |
+| abvi-publisher-service | feature/contract-view-and-list | spring-boot-api-implementer | 2m 04s | 19K | — | (no bundle — no findings for this repo) | — | — |
+
+For each row that has a `Notes for the user` line in the agent output, also include it as a bullet underneath the table.
+
 ### Notes
-- Invocation args: `--pr=... --note="..."`
-- Duration: {mm:ss}
+- Invocation args: `--pr=... --note="..." [--fix-branch=... | --auto-fix | --no-fix]`
+- Duration: {mm:ss} (orchestrator + learner + fix-round dispatches combined)
 - Learner tokens used: ~{N}k
+- Fix-round tokens used: ~{N}k *(only if Step 6.5 dispatched anything)*
 ```
 
 The log is the durable record of how the workspace learned over time. Future `/pipecrew:learn` invocations can cross-reference this log to spot recurring patterns.
@@ -403,19 +429,164 @@ If you added a new entry for a finding that's marked **plugin-level**, don't onl
    To propose this upstream, open an issue / PR against the pipecrew plugin.
 ```
 
+### Step 6.5: Optional fix round — apply findings to existing code
+
+Doc updates from Step 5 only steer **future** runs. The branch the feedback came from still contains the violations the user flagged. This step optionally dispatches the per-repo implementer agents to fix them in place.
+
+**Skip this step entirely** when ANY of the following holds:
+- `--no-fix` was passed.
+- `--dry-run` was passed (no docs were applied either, so there's nothing to "match" the branch to).
+- Zero findings were applied at Step 5 (everything was rejected).
+- Every applied finding is `plugin-level` (no workspace repo to fix).
+
+Otherwise:
+
+#### 6.5.1 — Group approved findings by affected repo
+
+For each applied (non-plugin-level) finding, resolve the affected repo:
+
+1. The finding's target file path always lives under one of `config.repos[*].path` — match by longest-prefix path. For each finding store `{finding_id, repo_name, repo_type, repo_path, target_doc_path}`.
+2. The Observation / Evidence sections also contain concrete source-file references (e.g., `src/components/contracts/DownloadContractButton.tsx`). Extract any path that resolves under the same `repo_path` — these become the per-finding `affected_files` list.
+3. If a finding has no in-repo source files (it's purely about adding a new file or moving things around), keep the finding but mark `affected_files: []` — the implementer will use the Correction text to decide what to create / move.
+
+If the same repo is targeted by multiple findings, group them into ONE per-repo bundle. The orchestrator will dispatch ONE implementer per bundle, not N.
+
+#### 6.5.2 — Resolve the implementer agent per repo
+
+Use the canonical `TYPE_TO_AGENT` mapping in `{plugin_dir}/skills/deliver/phases/dispatch-rules.md` § "Agent Dispatch (TYPE_TO_AGENT mapping)". Same fallback chain applies:
+
+1. Workspace-local override at `~/.claude/agents/{slug}-{type}-implementer.md` — prefer if present.
+2. Plugin-shipped implementer from the table.
+3. `general-purpose` with the standard preamble — last resort.
+
+If the type has no plugin agent AND no workspace-local override (e.g., `type: api-collections`), skip that repo's bundle and tell the user — there is no implementer to dispatch.
+
+#### 6.5.3 — Resolve the target branch per repo
+
+In priority order:
+
+1. If `--fix-branch=<name>` was passed, use that name across every affected repo.
+2. Otherwise, run `git -C {repo_path} branch --show-current` for each repo and use whatever is currently checked out.
+3. If a repo is in a detached-HEAD state, or the resolved branch is `main` / `master` / `dev` (the workspace's protected base — read from `repos[*].main_branch` if present, else default heuristic), do NOT auto-proceed — explicitly ask the user to name a branch. The fix round must never run against a protected branch by default.
+
+Verify the branch exists on disk: `git -C {repo_path} rev-parse --verify {branch}`. If it doesn't, warn and skip that repo.
+
+**Do NOT create a worktree.** Unlike `/deliver`, the fix round operates on the user's existing branch in-place — that branch is the whole point. The implementer agents are documented to work in their `repo_path` argument; pass the actual repo path, not a worktree path.
+
+#### 6.5.4 — Per-repo confirmation gate
+
+For each repo bundle, before dispatching, render:
+
+```
+## Fix-round dispatch — {repo_name}
+
+Implementer:  {resolved_subagent_type}
+Branch:       {resolved_branch}    (resolved via {flag | current | user-input})
+Findings:     {N} ({list of finding IDs and one-line summaries})
+Files in scope: {list of resolved affected_files, or "(implementer will derive from Correction text)"}
+
+Dispatch? (y = yes / n = skip this repo / b = pick a different branch)
+```
+
+- `y` → queue this bundle for dispatch.
+- `n` → skip this repo entirely; record `fix-skipped` in the log.
+- `b` → prompt for a branch name; re-validate with the rule in 6.5.3; re-render this gate.
+
+`--auto-fix` skips this prompt and answers `y` for every bundle, BUT the protected-branch check from 6.5.3 still applies — `--auto-fix` will not silently dispatch against `main`/`master`/`dev`; in that case it pauses and asks for a branch.
+
+#### 6.5.5 — Build the implementer prompt
+
+For each queued bundle, dispatch via `Agent` tool with the resolved `subagent_type`. The prompt is structured the same way every implementer accepts a `fix_list`-style input. Pass:
+
+```
+**Tool**: Agent
+**subagent_type**: {resolved_subagent_type}
+**description**: "Fix round on {repo_name} — {N} findings from /learn"
+
+**Prompt body** (literal — substitute placeholders):
+
+You are dispatched as a fix-round implementer following a /pipecrew:learn run on the
+{workspace.name} workspace. The user just approved {M} workspace/repo durable doc updates
+that codify conventions this branch violated. Your job is to bring the existing branch in
+line with those new conventions.
+
+repo_path: {repo_path}
+branch:    {resolved_branch}    (already checked out — do NOT create a worktree, do NOT switch
+                                 branches, do NOT push, do NOT create commits unless explicitly
+                                 asked by the user later)
+
+Convention docs that were just updated (read these first — they are the source of truth):
+{for each doc edited at Step 5 that lives under this repo:}
+- {repo-relative path}    — section: "{section header that was added/edited}"
+
+Findings to apply (fix_list):
+
+{for each finding in this bundle:}
+### Finding {id} — {one-line summary}
+- **Observation** (what the code currently does): {finding.Observation}
+- **Correction** (what the code must do): {finding.Correction}
+- **Affected files** (resolved from Evidence — refine if you find more):
+  {bullet list of finding.affected_files; or "(none yet — derive from Correction)"}
+- **Reference convention**: {repo-relative path of the doc updated at Step 5 for this finding},
+  section "{section name}". Re-read it before editing — that is the rule of record.
+
+Constraints:
+1. Edit ONLY the named files plus any of their direct callers / imports / tests that break
+   because of the edit. Do NOT range further.
+2. Update tests that exercise the changed code paths. If a test encodes the OLD behavior as
+   the expected behavior, update both the test name and the assertion to match the new
+   convention.
+3. After all edits, run the repo's test suite and lint (use the commands documented in
+   {repo_path}/CLAUDE.md). Report failures — do not gloss over them.
+4. Do NOT commit. Do NOT push. Leave the working tree dirty for the user to inspect.
+5. If a finding cannot be applied (e.g., the file was deleted on this branch, or the
+   correction conflicts with another finding in this bundle), mark it
+   `fix-skipped: {reason}` in your output and continue with the others.
+
+Output (use this structure verbatim):
+
+## Fix round outcome — {repo_name}
+- Findings applied: {list ids}
+- Findings skipped: {list ids with reason}
+- Files changed: {list with one-line summary per file}
+- Tests run: {command} → {pass | fail count}
+- Lint: {command} → {pass | fail count}
+- Notes for the user: {any judgement calls you made or anything they should review by hand}
+```
+
+#### 6.5.6 — Run dispatches in parallel across repos, sequential within a repo
+
+Dispatch all per-repo bundles in parallel by issuing multiple `Agent` tool calls in a single message — the same parallelism rule `/deliver` uses for cross-repo work. Multiple findings within the same repo always go in ONE bundle to one implementer; never split same-repo findings across two parallel agents (they would race on the same files).
+
+#### 6.5.7 — Capture per-bundle outcome
+
+Parse each agent's `<usage>` block for `duration_ms` and `total_tokens`. Capture the `## Fix round outcome` block from the agent's response verbatim. For each bundle store `{repo_name, branch, subagent_type, duration_ms, total_tokens, applied_finding_ids, skipped_finding_ids, files_changed, test_status, lint_status, notes}`.
+
+These records feed the Step 6 log entry's new "Fix-round dispatches" subsection (write the log AFTER 6.5 if any fix-round dispatches ran — see Step 6 note below) and the Step 7 summary line.
+
+> **Re-write of the learn-log entry.** Step 6 may have already written the entry before 6.5 ran. If 6.5 produced any fix-round outcomes, append a `### Fix-round dispatches` subsection to the same entry (don't write a second entry). This keeps one log row per `/learn` invocation.
+
 ### Step 7: Summary
 
-Emit the standard one-line phase-done status:
+Emit the standard one-line phase-done status. Include a fix-round suffix when Step 6.5 dispatched at least one bundle:
 
 ```
 [feedback ✔] {N} applied, {N} rejected, {N} plugin-flagged — {source} ({mm:ss}, {Xk} tokens)
+            ↳ fix-round: {R} repos, {A} findings applied to code, {S} skipped
 ```
 
-If no findings were applied (everything rejected or dry-run), use ⚠:
+If no findings were applied AND no fix-round ran, use ⚠:
 
 ```
 [feedback ✔⚠] 0 applied, 4 rejected, 1 plugin-flagged — PR #31 (2:15, 18k tokens)
   No workspace docs updated. Rejections recorded in learn-log.md.
+```
+
+If the doc applies succeeded but the fix-round prompt was declined / `--no-fix` was passed, mention that explicitly so the user remembers the existing branch was NOT touched:
+
+```
+[feedback ✔] 4 applied, 0 rejected, 0 plugin-flagged — text "contract-view-and-list" (3:22, 22k tokens)
+  Fix round: skipped (--no-fix). Existing branches still violate the new conventions.
 ```
 
 ---
@@ -445,6 +616,9 @@ If `--run` was not supplied (PR / branch / free-form modes), this step is a no-o
 - **User cancels mid-approval** — findings already applied stay applied. Write the log with partial results. Emit a `feedback ✔⚠` line noting "user cancelled at finding #N".
 - **Learner agent fails** — report the failure; no log entry beyond "source collected, learner failed". User can re-invoke.
 - **`Edit` fails because target file drifted** — mark the finding as `apply-failed` and continue. The user sees this in the final summary and can re-run with a smaller scope.
+- **User cancels mid-fix-round-confirmation** — repos already dispatched continue running; repos still awaiting confirmation are recorded in the log as `fix-skipped: user-cancelled` and the run wraps up normally. Doc updates are NOT rolled back.
+- **Fix-round implementer fails** — capture the failure outcome in the per-repo row of the log (`Outcome: failed — {error summary}`) and continue with the other repos' bundles. Do NOT retry automatically — re-running `/learn` against the same source would re-dispatch correctly.
+- **Resolved branch is protected (main / master / dev)** — pause and require the user to name a non-protected branch. `--auto-fix` does NOT bypass this — protected-branch protection always wins.
 
 ---
 
@@ -453,9 +627,9 @@ If `--run` was not supplied (PR / branch / free-form modes), this step is a no-o
 Every `/pipecrew:learn` run emits the same event schema as `/deliver` / `/discover` runs (see `{plugin_dir}/docs/observability.md`):
 
 - `run_start` — with `skill: "learn"`, source mode, identifier.
-- `agent_end` — after the learner returns, with token usage.
-- `phase_end` — one per pipeline step above.
-- `run_end` — with applied/rejected/flagged counts.
+- `agent_end` — after the learner returns, with token usage. Also emitted after each fix-round implementer returns (one per dispatched bundle), with `agent_type` set to the resolved implementer (e.g., `react-feature-implementer`) and `phase: "6.5"`.
+- `phase_end` — one per pipeline step above. Step 6.5 emits its own `phase_end` only when at least one bundle was dispatched; otherwise a skip-reason is recorded as `phase_end` with `status: "skipped"` and `reason` set to one of `no-fix-flag` / `dry-run` / `no-applied-findings` / `all-plugin-level` / `user-declined`.
+- `run_end` — with applied/rejected/flagged counts AND fix-round counts (`fix_repos`, `fix_findings_applied`, `fix_findings_skipped`).
 
 Run directory: `{workspace_root}/{slug}/runs/learn/{run_id}/` where `{run_id}` = `{YYYY-MM-DD-HHMMSS}-{source-slug}`. `source-slug` = `pr-31`, `run-2026-04-16-xxx`, `branch-fix-foo`, or `text` (truncated first 24 chars of text).
 

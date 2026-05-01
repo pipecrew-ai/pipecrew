@@ -42,7 +42,7 @@ For each entry in `services[]` (the `spec_policy` field is already there — no 
 **prompt template**:
 
 ```
-You are reviewing the backend implementation in the worktree at {service_worktree_path} (branch: feature/{feature-slug}). Work read-only.
+Review the backend implementation of feature "{feature_summary}" at `{service_worktree_path}` (branch `feature/{feature-slug}`). Read-only — produce a structured findings report only.
 
 FEATURE: {feature_summary}
 
@@ -117,7 +117,7 @@ Look up the reviewer via `TYPE_TO_AGENT`: resolve the frontend repo (`config.rep
 **prompt template**:
 
 ```
-You are reviewing the frontend implementation in the worktree at {frontend_worktree_path} (branch: feature/{feature-slug}). Work read-only.
+Review the frontend implementation of feature "{feature_summary}" at `{frontend_worktree_path}` (branch `feature/{feature-slug}`). Read-only — produce a structured findings report only.
 
 FEATURE: {feature_summary}
 

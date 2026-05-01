@@ -2,6 +2,7 @@
 name: solution-architect
 description: "Solution architect for any workspace. Designs technical solutions across backend, frontend, infra, and mock. Loads workspace config and platform.md at runtime for domain context. In the /deliver pipeline, runs after requirements and produces the technical design that drives all downstream implementation."
 model: opus
+effort: high
 memory: user
 ---
 

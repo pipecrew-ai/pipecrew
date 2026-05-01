@@ -114,6 +114,15 @@ INSTRUCTIONS:
 5. Produce the consultation in the format your system prompt specifies, including the IMPLEMENTATION_SPEC block delimited by <!-- BEGIN IMPLEMENTATION_SPEC --> and <!-- END IMPLEMENTATION_SPEC -->.
 
 Your recommendations must use actual tokens, primitives, and patterns from what you read — not generic UX advice. Match established patterns from existing features unless there is a strong reason to deviate (which you must call out explicitly).
+
+CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgotten):
+- **Emit IMPLEMENTATION_SPEC block.** The dispatch's downstream consumer (Phase 5b Step 3 frontend implementer) reads `<!-- BEGIN IMPLEMENTATION_SPEC --> ... <!-- END IMPLEMENTATION_SPEC -->` from your output and appends it to the task file. Missing block = the implementer has no UX direction and falls back to whatever it invents.
+- **Read-only.** Do not Edit, Write, or run state-mutating commands. Do not create a worktree. Your output is the recommendation only.
+- **Use only what you read.** Tokens, primitives, component names, and i18n key conventions must come from the actual design system + storybook + existing feature docs you read above. No invented primitives, no generic Tailwind / Material advice the repo doesn't already use.
+- **Cite established patterns.** When you recommend a pattern, name the existing feature you're matching (e.g., "follow the row-actions pattern from `agent-context/features/orders.md`"). When you deviate, explain *why* in one sentence.
+- **Spec field names are non-negotiable.** Endpoints' request/response field names above are the contract. Do not rename them in your recommendation.
+
+Now: produce UX recommendations for the feature in `{frontend.path}` and emit the IMPLEMENTATION_SPEC block in the format your system prompt specifies.
 ```
 
 **After**: Present UX summary to user. Wait for approval.

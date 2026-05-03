@@ -1522,6 +1522,41 @@ function bodyArchie() { return `
     </g>
   </svg>`;
 }
+// Foreman — task-planner. Supervisor's cap (flat top + visor) distinguishes
+// from bruno's dome hard hat; left arm holds a clipboard with checklist lines
+// (the task list the planner produces); right arm raised, pointing — directing
+// labor on the construction site.
+function bodyForeman() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- supervisor's cap: flat crown + visor -->
+    <rect x="62" y="44" width="36" height="10" class="stroke-main"/>
+    <path d="M62 54 L102 54 L106 58 L58 58 Z" class="stroke-main"/>
+    <line x1="80" y1="44" x2="80" y2="54" class="stroke-thin"/>
+    <!-- head -->
+    <circle cx="80" cy="66" r="14" class="stroke-main"/>
+    <!-- torso -->
+    <rect x="64" y="82" width="32" height="34" class="stroke-main"/>
+    <!-- left arm holds a clipboard with checklist lines -->
+    <g class="arm-l">
+      <line x1="64" y1="88" x2="50" y2="98" class="stroke-main"/>
+      <rect x="36" y="96" width="20" height="26" class="stroke-main"/>
+      <rect x="42" y="92" width="8" height="6" class="stroke-thin"/>
+      <line x1="40" y1="104" x2="52" y2="104" class="stroke-thin"/>
+      <line x1="40" y1="110" x2="52" y2="110" class="stroke-thin"/>
+      <line x1="40" y1="116" x2="52" y2="116" class="stroke-thin"/>
+    </g>
+    <!-- right arm raised, pointing/directing -->
+    <g class="arm-r">
+      <line x1="96" y1="88" x2="112" y2="74" class="stroke-main"/>
+      <line x1="112" y1="74" x2="120" y2="68" class="stroke-thin"/>
+    </g>
+    <!-- legs -->
+    <line x1="72" y1="116" x2="70" y2="134" class="stroke-main"/>
+    <line x1="88" y1="116" x2="90" y2="134" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
 function bodyYara() { return `
   <svg class="char" viewBox="0 0 160 160">
     <g class="char-body">
@@ -1760,6 +1795,7 @@ function bodySage() { return `
 const BODIES = {
   pip:     bodyPip,
   archie:  bodyArchie,
+  foreman: bodyForeman,
   yara:    bodyYara,
   bruno:   bodyBruno,
   pixel:   bodyPixel,

@@ -668,6 +668,7 @@ function readHookErrors() {
 const ROLE_PATTERNS = [
   { role: 'pip',     patterns: ['product-owner', 'product-brainstormer'] },
   { role: 'archie',  patterns: ['solution-architect'] },
+  { role: 'foreman', patterns: ['task-planner', 'planner'] },
   { role: 'yara',    patterns: ['openapi-spec-editor', 'spec-editor', 'schema-implementer'] },
   { role: 'shield',  patterns: ['security-consultant', 'security-reviewer', 'security-auditor'] },
   { role: 'mira',    patterns: ['ux-consultant', 'ux-reviewer', 'ux-designer'] },
@@ -704,6 +705,7 @@ const PHASE_TO_ROLE = {
   '1':    'pip',
   '2':    'archie',
   '3':    'yara',
+  '4.5':  'foreman',
   '5.5':  'crit',
   '5.75': 'shield',
   '6':    'judge',
@@ -715,6 +717,7 @@ const PHASE_TO_ROLE = {
 const DEFAULT_AGENT_NAME = {
   pip:     'product-owner',
   archie:  'solution-architect',
+  foreman: 'task-planner',
   yara:    'openapi-spec-editor',
   bruno:   'backend-implementer',
   pixel:   'frontend-implementer',
@@ -855,6 +858,15 @@ function mapPhaseToLabel(phase) {
     const round = m ? m[1] : '1';
     return { label: `fix-r${round}`, category: 'fix' };
   }
+  // Plan sub-phases — 4.5-draft, 4.5-adjust, 4.5-adjust-r2, 4.5-persist.
+  // Bare 4.5 falls through to the catch-all below as plain 'plan'.
+  if (/^4\.5-draft$/.test(p))   return { label: 'plan-draft',   category: 'neutral' };
+  if (/^4\.5-adjust(\b|$|-)/.test(p)) {
+    const m = p.match(/-r(\d+)$/);
+    const round = m ? `-r${m[1]}` : '';
+    return { label: `plan-adjust${round}`, category: 'neutral' };
+  }
+  if (/^4\.5-persist$/.test(p)) return { label: 'plan-persist', category: 'neutral' };
   // Review (phase 5.5 without -fix)
   if (p === '5.5') return { label: 'review', category: 'review' };
   // Security (phase 5.75)

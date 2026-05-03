@@ -650,6 +650,7 @@ function writeDeliverRun({ runId, featureName, featureSlug, withPr, daysAgo, pic
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '1',   stage: 'Requirements',           agent_type: 'product-owner',                description: `Requirements for ${featureName}`,                       status: 'ok', total_tokens: 41200,  duration_ms: 145000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '2',   stage: 'Architecture',           agent_type: 'solution-architect',           description: `Technical design for ${featureName}`,                   status: 'ok', total_tokens: 86000,  duration_ms: 240000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '3',   stage: 'Spec edit',              agent_type: 'openapi-spec-editor',          description: 'OpenAPI spec edits',                                    status: 'ok', total_tokens: 52000,  duration_ms: 510000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '4.5', stage: 'Implementation plan',    agent_type: 'task-planner',                 description: `Hydrate task skeleton for ${featureName}`,              status: 'ok', total_tokens: 12000,  duration_ms: 25000  },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'spring-boot-api-implementer',  description: 'Backend service',                                       status: 'ok', total_tokens: 135000, duration_ms: 375000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Frontend implementation',agent_type: 'react-feature-implementer',    description: 'Frontend',                                              status: 'ok', total_tokens: 159000, duration_ms: 422000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Mock implementation',    agent_type: 'mock-endpoint-implementer',    description: 'Mock server',                                           status: 'ok', total_tokens: 91000,  duration_ms: 192000 },
@@ -683,6 +684,7 @@ function writeDeliverRun({ runId, featureName, featureSlug, withPr, daysAgo, pic
 | 2. Architecture      | COMPLETED | 4m 00s | 86K  |
 | 3. Spec Edit         | COMPLETED | 8m 30s | 52K  |
 | 4. Spec Sync         | COMPLETED | 0m 12s | —    |
+| 4.5. Implementation Plan | COMPLETED | 0m 25s | 12K  |
 | 5. Implementation    | COMPLETED | 7m 02s | 385K |
 | 5.5. Code Review     | COMPLETED | 7m 45s | 201K |
 | 5.75. Security Review| SKIPPED   | —      | —    |
@@ -725,11 +727,12 @@ ${withPr ? '| 8. Publish + Wrap-up | COMPLETED | 1m 50s | —    |' : '| 8. Publ
 | 2. Architecture         | Done    | 4m 00s | 86K  | 1 revision  |
 | 3. Spec Edit            | Done    | 8m 30s | 52K  | 2 endpoints added |
 | 4. Spec Sync            | Done    | 0m 12s | —    | mock + frontend updated |
+| 4.5. Implementation Plan| Done    | 0m 25s | 12K  | task-planner — 3 task files written |
 | 5. Implementation       | Done    | 7m 02s | 385K | 3 tasks parallel |
 | 5.5. Code Review        | Done    | 7m 45s | 201K | 3 critical → fixed |
 | 6. Assessment           | Done    | 7m 40s | 174K | PASS |
 | 7. Summary              | Done    | 3m 25s | 59K  | reporter + context-manager |
-| **Total**               | —       | **41m 19s** | **998K** | — |
+| **Total**               | —       | **41m 44s** | **1010K** | — |
 
 ## Repos Modified
 
@@ -785,6 +788,7 @@ async function runDeliverRunLive({ runId, featureName, featureSlug, withPr, days
     { id: '2',    label: '2. Architecture',       duration: '4m 00s', tokens: '86K'  },
     { id: '3',    label: '3. Spec Edit',          duration: '8m 30s', tokens: '52K'  },
     { id: '4',    label: '4. Spec Sync',          duration: '0m 12s', tokens: '—'    },
+    { id: '4.5',  label: '4.5. Implementation Plan', duration: '0m 25s', tokens: '12K' },
     { id: '5',    label: '5. Implementation',     duration: '7m 02s', tokens: '385K' },
     { id: '5.5',  label: '5.5. Code Review',      duration: '7m 45s', tokens: '201K' },
     { id: '5.75', label: '5.75. Security Review', duration: '—',      tokens: '—', alwaysSkipped: true },
@@ -875,17 +879,18 @@ ${dispatchSection}`;
   //   1: product-owner          (phase 1)
   //   2: solution-architect     (phase 2)
   //   3: openapi-spec-editor    (phase 3)
-  //   4: spring-boot-api-impl   (phase 5 — publisher-svc)
-  //   5: nestjs-implementer     (phase 5 — search-svc)
-  //   6: react-feature-impl     (phase 5 — frontend)
-  //   7: mock-endpoint-impl     (phase 5 — mock)
-  //   8: cdk-stack-impl         (phase 5 — infra-cdk)
-  //   9: spring-boot-code-rev   (phase 5.5)
-  //  10: react-code-reviewer    (phase 5.5)
-  //  11: assessor               (phase 6)
-  //  12: reporter               (phase 7)
-  //  13: context-manager        (phase 7)
-  //  14: run_end
+  //   4: task-planner           (phase 4.5)
+  //   5: spring-boot-api-impl   (phase 5 — publisher-svc)
+  //   6: nestjs-implementer     (phase 5 — search-svc)
+  //   7: react-feature-impl     (phase 5 — frontend)
+  //   8: mock-endpoint-impl     (phase 5 — mock)
+  //   9: cdk-stack-impl         (phase 5 — infra-cdk)
+  //  10: spring-boot-code-rev   (phase 5.5)
+  //  11: react-code-reviewer    (phase 5.5)
+  //  12: assessor               (phase 6)
+  //  13: reporter               (phase 7)
+  //  14: context-manager        (phase 7)
+  //  15: run_end
   // All events conform to templates/checkpoints-event.schema.json + the
   // canonical examples in docs/observability.md:
   //   - skill: 'deliver'
@@ -898,6 +903,7 @@ ${dispatchSection}`;
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '1',   stage: 'Requirements',           agent_type: 'product-owner',                description: `Requirements for ${featureName}`,                       status: 'ok', total_tokens: 41200,  duration_ms: 145000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '2',   stage: 'Architecture',           agent_type: 'solution-architect',           description: `Technical design for ${featureName}`,                   status: 'ok', total_tokens: 86000,  duration_ms: 240000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '3',   stage: 'Spec edit',              agent_type: 'openapi-spec-editor',          description: 'OpenAPI spec edits across publisher-svc + search-svc',  status: 'ok', total_tokens: 52000,  duration_ms: 510000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '4.5', stage: 'Implementation plan',    agent_type: 'task-planner',                 description: `Hydrate task skeleton for ${featureName}`,              status: 'ok', total_tokens: 12000,  duration_ms: 25000  },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'spring-boot-api-implementer',  description: 'publisher-svc (Spring Boot)',                           status: 'ok', total_tokens: 135000, duration_ms: 375000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'nestjs-implementer',           description: 'search-svc (NestJS)',                                   status: 'ok', total_tokens: 112000, duration_ms: 320000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Frontend implementation',agent_type: 'react-feature-implementer',    description: 'frontend (React)',                                      status: 'ok', total_tokens: 159000, duration_ms: 422000 },
@@ -1007,6 +1013,27 @@ ${dispatchSection}`;
     },
     () => { setPhase('4', 'IN_PROGRESS'); flush(); },
     () => { setPhase('4', 'COMPLETED');   flush(); },
+    // Phase 4.5 — task-planner hydrates the architect's TASK_SKELETON into
+    // per-task markdown files. Foreman (the planner character) preseeded queued
+    // by the server via PHASE_TO_ROLE['4.5']; the dispatch-log row promotes it
+    // queued → working → done.
+    () => {
+      setPhase('4.5', 'IN_PROGRESS');
+      upsertDispatch('foreman', {
+        phase: '4.5', agent: 'task-planner',
+        duration: '—', tokens: '—', outcome: 'in_progress',
+      });
+      flush();
+    },
+    () => {
+      upsertDispatch('foreman', {
+        duration: '0:25', tokens: '12K',
+        outcome: 'success — 5 task files written',
+      });
+      setPhase('4.5', 'COMPLETED');
+      flush();
+      emitCp(4);
+    },
     // Phase 5 — multi-stack fan-out. Five implementers run in parallel
     // (publisher-svc Spring Boot, search-svc NestJS, frontend React, mock,
     // infra-cdk) plus the UX consultant. Mira (UX) is preseeded queued by
@@ -1033,11 +1060,11 @@ ${dispatchSection}`;
       });
       flush();
     },
-    () => { setTask(1, 'COMPLETED'); flush(); emitCp(4); },  // spring-boot
-    () => { setTask(2, 'COMPLETED'); flush(); emitCp(5); },  // nestjs
-    () => { setTask(3, 'COMPLETED'); flush(); emitCp(6); },  // react
-    () => { setTask(4, 'COMPLETED'); flush(); emitCp(7); },  // mock
-    () => { setTask(5, 'COMPLETED'); setPhase('5', 'COMPLETED'); flush(); emitCp(8); },  // cdk
+    () => { setTask(1, 'COMPLETED'); flush(); emitCp(5); },  // spring-boot
+    () => { setTask(2, 'COMPLETED'); flush(); emitCp(6); },  // nestjs
+    () => { setTask(3, 'COMPLETED'); flush(); emitCp(7); },  // react
+    () => { setTask(4, 'COMPLETED'); flush(); emitCp(8); },  // mock
+    () => { setTask(5, 'COMPLETED'); setPhase('5', 'COMPLETED'); flush(); emitCp(9); },  // cdk
     // Phase 5.5 — code review is per-repo (one reviewer per affected
     // service + one for the frontend). Mock + infra are excluded by policy
     // (phase-5.5-code-review.md). Reviewers dispatch in parallel; if any
@@ -1065,7 +1092,7 @@ ${dispatchSection}`;
         outcome: 'success — NEEDS_FIXES: 1 critical (auth branch missing)',
       });
       flush();
-      emitCp(9);
+      emitCp(10);
     },
     () => {
       upsertDispatch('crit-fe', {
@@ -1073,7 +1100,7 @@ ${dispatchSection}`;
         outcome: 'success — NEEDS_FIXES: 2 critical (route guard + render-ref)',
       });
       flush();
-      emitCp(10);
+      emitCp(11);
     },
     // Phase 5.5 fix-round gate — only fires when reviewers flagged critical
     // findings. Asks the user to authorize the re-dispatch.
@@ -1121,7 +1148,7 @@ ${dispatchSection}`;
     },
     // Phase 6.
     () => { setPhase('6', 'IN_PROGRESS'); flush(); },
-    () => { setPhase('6', 'COMPLETED'); flush(); emitCp(11); },
+    () => { setPhase('6', 'COMPLETED'); flush(); emitCp(12); },
     // Phase 7 — reporter is the only character we promote here.
     // Sage (context-manager) is intentionally NOT given a dispatch entry, so
     // it stays queued in the UI even though the checkpoint event fires (the
@@ -1140,9 +1167,9 @@ ${dispatchSection}`;
         outcome: 'success — report.md written',
       });
       flush();
-      emitCp(12);
+      emitCp(13);
     },
-    () => { setPhase('7', 'COMPLETED'); flush(); emitCp(13); },
+    () => { setPhase('7', 'COMPLETED'); flush(); emitCp(14); },
     // Phase 8 — PR publish + feedback offer. Feedback-learner (loop) is the
     // run's terminal agent and its `done` state is what closes the pyramid in
     // the UI. We model it as: queued → working when Phase 8 starts, then
@@ -1163,7 +1190,7 @@ ${dispatchSection}`;
       });
       runStatus = 'COMPLETED';
       flush();
-      emitCp(14);
+      emitCp(15);
     },
   ];
 
@@ -1189,11 +1216,12 @@ ${dispatchSection}`;
 | 2. Architecture         | Done    | 4m 00s | 86K  | 1 revision  |
 | 3. Spec Edit            | Done    | 8m 30s | 52K  | 2 endpoints added |
 | 4. Spec Sync            | Done    | 0m 12s | —    | mock + frontend updated |
+| 4.5. Implementation Plan| Done    | 0m 25s | 12K  | task-planner — 3 task files written |
 | 5. Implementation       | Done    | 7m 02s | 385K | 3 tasks parallel |
 | 5.5. Code Review        | Done    | 7m 45s | 201K | 3 critical → fixed |
 | 6. Assessment           | Done    | 7m 40s | 174K | PASS |
 | 7. Summary              | Done    | 3m 25s | 59K  | reporter + context-manager |
-| **Total**               | —       | **41m 19s** | **998K** | — |
+| **Total**               | —       | **41m 44s** | **1010K** | — |
 
 ## Repos Modified
 

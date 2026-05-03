@@ -46,6 +46,7 @@ Produce the Technical Design Document using the required section delimiters.
 
 CRITICAL FOR THIS DISPATCH:
 - Emit the AFFECTED_SERVICES section as a fenced ```json block matching `{plugin_dir}/templates/blocks/affected-services.example.json`. Downstream phases extract it programmatically — prose-only is a defect.
+- Emit the TASK_SKELETON section as a fenced ```json block matching `{plugin_dir}/templates/blocks/task-skeleton.example.json`. Phase 4.5's task-planner consumes this — without it the planner falls back to LLM-parsing RISKS prose, which is fragile. Every `D` sub-task in the skeleton must cite its corresponding RISKS sub-bullet via `deferral_reason`.
 - Include AFFECTED_CONTRACTS and CONTRACT_DESIGN sections if (and only if) any contract repo is affected.
 - Identify ALL affected services AND contracts — the user did not pre-select. Missing one breaks downstream phases.
 - Name the runner-up alternative in one sentence and explain why you ruled it out (per your system prompt's simplicity-first rule).
@@ -68,7 +69,9 @@ Now: design the technical architecture for the feature in {pipeline_dir}/outputs
 node {plugin_dir}/scripts/split-design.js {pipeline_dir}/outputs/phase-2-architecture.md
 ```
 
-This scans every `<!-- BEGIN X -->` block, extracts each `\`\`\`json` fence, and writes one file per block to `{pipeline_dir}/outputs/blocks/<slug>.json` (e.g., `affected-services.json`, `api-design.json`, `data-model.json`, `infrastructure-impact.json`, `contract-design.json`). Prose-only blocks are skipped silently. **Loud-fails on JSON parse error** — exit 3 means the architect emitted malformed JSON; halt the pipeline and surface the error to the user.
+This scans every `<!-- BEGIN X -->` block, extracts each `\`\`\`json` fence, and writes one file per block to `{pipeline_dir}/outputs/blocks/<slug>.json` (e.g., `affected-services.json`, `api-design.json`, `data-model.json`, `infrastructure-impact.json`, `contract-design.json`, `task-skeleton.json`). Prose-only blocks are skipped silently. **Loud-fails on JSON parse error** — exit 3 means the architect emitted malformed JSON; halt the pipeline and surface the error to the user.
+
+**Verify TASK_SKELETON exists**: after `split-design.js` runs, check that `{pipeline_dir}/outputs/blocks/task-skeleton.json` was produced. If missing (architect skipped the block), do NOT proceed — Phase 4.5 will fail without it. Re-dispatch the architect via `SendMessage` with: `"Your output is missing the TASK_SKELETON block. Read templates/blocks/task-skeleton.example.json and emit the block now — same conversation, do not redo the rest of the design."`
 
 Downstream phases (3, 4, 5) read these side files instead of the markdown. The orchestrator no longer pulls `phase-2-architecture.md` into context — that file is the human-narrative artifact for the Phase 2 gate review only.
 

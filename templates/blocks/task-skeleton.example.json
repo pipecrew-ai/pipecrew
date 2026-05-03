@@ -1,0 +1,127 @@
+{
+  "_comment": "Canonical example for the TASK_SKELETON block emitted by the solution-architect inside outputs/phase-2-architecture.md. The skeleton is a per-repo, sub-task-shaped projection of AFFECTED_SERVICES + RISKS — what labor is required, how it splits across repos, and which sub-tasks are Minimum (M) vs Deferrable (D). Phase 4.5's task-planner consumes it and hydrates each sub-task into a per-task markdown file, adding workspace-shaped material (pitfalls, audit-findings, Contract Reference) the architect did not have. Field reference and consumer list live in docs/file-formats.md. The _comment field is illustrative only — strip it from real output.",
+  "feature_summary": "publishers choose contract type when requesting",
+  "tasks": [
+    {
+      "repo_key": "publisher-service",
+      "repo_role": "api-service",
+      "spec_policy": "api-first",
+      "sub_tasks": [
+        {
+          "id_hint": "be-dtos",
+          "title": "DTOs / Models",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2"],
+          "summary": "ContractType enum + request/response DTOs"
+        },
+        {
+          "id_hint": "be-repo",
+          "title": "Repository",
+          "tier": "M",
+          "fr_refs": ["FR-3"],
+          "summary": "save / find by contract_type"
+        },
+        {
+          "id_hint": "be-service",
+          "title": "Service layer",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-3"],
+          "summary": "business rule: non-revocable type"
+        },
+        {
+          "id_hint": "be-controller",
+          "title": "Controller endpoints",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2"],
+          "summary": "POST /contracts, GET /contracts/{id}"
+        },
+        {
+          "id_hint": "be-tests",
+          "title": "Tests",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2", "FR-3"],
+          "summary": "unit (service) + integration (controller)"
+        },
+        {
+          "id_hint": "be-bulk",
+          "title": "Bulk-update endpoint",
+          "tier": "D",
+          "fr_refs": ["FR-7"],
+          "summary": "PATCH /contracts/bulk",
+          "deferral_reason": "RISKS §2 — low v1 usage; ship after telemetry shows demand"
+        }
+      ]
+    },
+    {
+      "repo_key": "frontend",
+      "repo_role": "frontend",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        {
+          "id_hint": "fe-api",
+          "title": "API layer",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2"],
+          "summary": "types + service methods + error classes"
+        },
+        {
+          "id_hint": "fe-hooks",
+          "title": "React Query hooks",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2"],
+          "summary": "useContracts, useContract"
+        },
+        {
+          "id_hint": "fe-page",
+          "title": "Page + routing",
+          "tier": "M",
+          "fr_refs": ["FR-2"],
+          "summary": "/contracts page + role-guarded route"
+        },
+        {
+          "id_hint": "fe-i18n",
+          "title": "i18n keys",
+          "tier": "M",
+          "fr_refs": ["FR-2"],
+          "summary": "every workspace language"
+        },
+        {
+          "id_hint": "fe-tests",
+          "title": "Tests",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2"],
+          "summary": "unit + integration for the M slice"
+        },
+        {
+          "id_hint": "fe-detail",
+          "title": "Contract detail dialog",
+          "tier": "D",
+          "fr_refs": ["FR-5"],
+          "summary": "rich detail view with edit affordance",
+          "deferral_reason": "RISKS §3 — v2 enhancement"
+        }
+      ]
+    },
+    {
+      "repo_key": "mock-server",
+      "repo_role": "mock-server",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        {
+          "id_hint": "mock-data",
+          "title": "Mock data",
+          "tier": "M",
+          "fr_refs": ["FR-1"],
+          "summary": "realistic contract fixtures"
+        },
+        {
+          "id_hint": "mock-handlers",
+          "title": "Endpoint handlers",
+          "tier": "M",
+          "fr_refs": ["FR-1", "FR-2"],
+          "summary": "POST /contracts, GET /contracts/{id}"
+        }
+      ]
+    }
+  ]
+}

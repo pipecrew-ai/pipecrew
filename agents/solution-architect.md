@@ -296,8 +296,25 @@ For each infra repo named in the JSON above, give the configuration detail consu
 
 <!-- BEGIN RISKS -->
 ## Risks & Trade-offs
-[Key risks, mitigations, alternatives considered]
+[Key risks, mitigations, alternatives considered. **Sub-bullets that should ship later** must be tagged with one of: `deferred`, `out of scope`, `follow-up`, `v2`, or `enhancement`. Phase 4.5's task-planner reads these tags to populate the `tier: "D"` entries in TASK_SKELETON, so any deferrable item flagged here MUST also appear as a `D` sub-task in TASK_SKELETON below with a `deferral_reason` that quotes back to the relevant RISKS sub-bullet.]
 <!-- END RISKS -->
+
+<!-- BEGIN TASK_SKELETON -->
+**Read `{plugin_dir}/templates/blocks/task-skeleton.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the source of truth — Phase 4.5's task-planner extracts it with `node {plugin_dir}/scripts/extract-block.js {this-file} TASK_SKELETON` and hydrates each sub-task into a per-task markdown file. Schema reference: `{plugin_dir}/docs/file-formats.md` § TASK_SKELETON.
+
+This block is a per-repo, sub-task-shaped projection of AFFECTED_SERVICES + RISKS — you already have the data in working memory; the skeleton just structures it for the planner. Rules:
+
+1. **One `tasks[]` entry per repo touched** — derive `repo_key` from `config.json` (the same keys you used in AFFECTED_SERVICES / AFFECTED_CONTRACTS / INFRASTRUCTURE_IMPACT). `repo_role` mirrors `config.repos[repo_key].role` (`api-service`, `frontend`, `mock-server`, `infrastructure`, `worker`). `spec_policy` mirrors `config.services[svc].spec_policy` for service repos, or `n/a` for frontend / mock / infra.
+2. **Sub-tasks are stack-shaped, not feature-shaped** — backend services break into DTOs / repository / service / controller / tests; frontend into API layer / hooks / components / page+routing / i18n / tests; mock into data + handlers; infra into resources + IAM. Don't invent new categories — Phase 4.5 maps these to the implementer's task-file template.
+3. **Each sub-task has `tier: "M" | "D"`.** `M` = needed for the smallest shippable form. `D` = listed under RISKS as deferrable. Every `D` sub-task MUST have a `deferral_reason` field that quotes the RISKS sub-bullet (e.g., `"RISKS §2 — low v1 usage"`).
+4. **`fr_refs` is required and non-empty for every sub-task.** Pull from AFFECTED_SERVICES `fr_ids` / `ec_ids`; if a sub-task supports an FR/EC the architect didn't yet trace to a service, add it here. The planner uses these to filter the FR list it pastes into each task file.
+5. **`summary` is one short sentence** — what the sub-task delivers, not a full description. The planner uses it as the row caption in the plan summary table.
+6. **No D items?** If RISKS lists nothing as deferrable, every sub-task is `M` and Phase 4.5's gate collapses to a 2-option form. That's fine — don't fabricate `D` items just to balance the slices.
+
+```json
+{ ... matches templates/blocks/task-skeleton.example.json ... }
+```
+<!-- END TASK_SKELETON -->
 ```
 
 ---

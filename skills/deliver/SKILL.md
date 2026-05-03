@@ -105,7 +105,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
     |-------|-------------|---------------|
     | 3a (Contract Edit) | architect's `AFFECTED_CONTRACTS` is non-empty | `--skip-spec-edit` skips |
     | 3b (Spec Edit) | architect found spec changes AND at least one affected service has `spec_policy: api-first` | `--skip-spec-edit` skips |
-    | 4 (Spec Sync) | any repo has `spec_copies` in config | skipped if no `spec_copies` |
+    | 4 (Spec Sync) | user opts in at the Phase 3 approval gate | **default OFF** — skipped unless the user answers "yes" to the spec-sync follow-up at the Phase 3 gate. Auto-skipped (and the gate question is suppressed) when no repo has `spec_copies` referencing any affected service — there are no sync targets to ask about. |
     | 5a (Backend) | config has repos with `role: "api-service"` | `--frontend-only` skips |
     | 5b (Frontend) | config has repos with `role: "frontend"` | `--backend-only` skips |
     | 5c (Mock) | config has repos with `role: "mock-server"` | `--no-mock` skips |
@@ -180,7 +180,7 @@ Phase 1: Requirements (dal-product-owner) ──────── WHAT         
 Phase 2: Architecture (solution-architect) ─────── HOW + WHICH SERVICES    <- user gate
 Phase 3a: Contract Edit (schema-implementer) ────── SHARED SCHEMAS          ┐
 Phase 3b: Spec Edit (openapi-spec-editor) ────────── API CONTRACT             ┴─<- single user gate (both diffs)
-Phase 4: Sync Specs ────────────────────────────── automatic
+Phase 4: Sync Specs ────────────────────────────── opt-in at Phase 3 gate (default OFF)
 Phase 4.5: Implementation Plan + Context Budget ─── full task list          <- user gate
 Phase 5: Parallel ──────┬── 5a: Backend (spring-boot-api-implementer — one per service)
   (Agent tool dispatch) ├── 5b: Frontend (ux-consultant → react-feature-implementer)

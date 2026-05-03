@@ -180,11 +180,19 @@ Render a combined view that shows the user both artifacts:
 - {svc_key}: spec_policy is {policy}, handled by {code-first: "architect's inline endpoint contract in API_DESIGN" | no-api: "event schema in Phase 3a contract repo"}
 ```
 
-Ask:
+Ask the primary approval question:
 
-> "Approve these contract + spec changes to continue to Phase 4 (spec sync), or reject and revert?"
+> "Approve these contract + spec changes? (yes / no — no will revert)"
 
-**On approval**: proceed to Phase 4.
+**If approved AND at least one repo has `spec_copies` entries referencing any affected service** (i.e., there are sync targets), ask the follow-up:
+
+> "Sync the edited spec(s) to consuming repos that hold copies (frontend / mock / etc.)? **Default is no** — answer 'yes' to run Phase 4. (yes / no)"
+
+If no repo has `spec_copies` for the affected services, skip the follow-up entirely and record `Phase 4: SKIPPED — no sync targets`.
+
+Persist the answer to the scratchpad's Architecture Flags section as `spec_sync_opt_in: yes | no` (treat unset as `no`). Phase 4 reads this flag to decide whether to run.
+
+**On approval**: proceed to Phase 4 (which itself reads `spec_sync_opt_in` and skips when `no`).
 
 **On rejection**: revert BOTH sub-phases.
 

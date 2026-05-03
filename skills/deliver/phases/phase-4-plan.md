@@ -1,8 +1,12 @@
 ### Phase 4: Sync Specs
 
-**Skip if**: no repos in the config have `spec_copies`. This means no downstream repos consume copies of the service specs — nothing to sync.
+**Default: OFF.** Phase 4 only runs when the user explicitly opted in at the Phase 3 approval gate. Read `spec_sync_opt_in` from the scratchpad's Architecture Flags section.
 
-For each affected service, find all repos that have `spec_copies` entries referencing that service, and copy the updated spec:
+**Skip conditions** (any of these → skip the phase):
+- `spec_sync_opt_in` is `no` or unset → log `"Phase 4 skipped — user did not opt in at the Phase 3 gate."`
+- No repo has `spec_copies` entries referencing any affected service → log `"Phase 4 skipped — no sync targets exist."` (this case should already have been caught at the Phase 3 gate, which suppresses the follow-up question; the skip-check here is defensive.)
+
+When NOT skipped, for each affected service, find all repos that have `spec_copies` entries referencing that service, and copy the updated spec:
 
 ```bash
 # For each repo that has spec_copies:
@@ -12,9 +16,9 @@ For each affected service, find all repos that have `spec_copies` entries refere
       cp {config.repos[config.services[service_key].repo].path}/{config.services[service_key].spec_file} {repo.path}/{relative_path}
 ```
 
-Report which repos received which spec copies. If no copies were needed, report "No spec_copies configured — Phase 4 skipped."
+Report which repos received which spec copies.
 
-**Update scratchpad**: Set Phase 4 Status to COMPLETED (or SKIPPED). Set Current Phase to "Phase 4.5: Implementation Plan".
+**Update scratchpad**: Set Phase 4 Status to COMPLETED (or SKIPPED with the specific reason from the skip-conditions above). Set Current Phase to "Phase 4.5: Implementation Plan".
 
 ---
 

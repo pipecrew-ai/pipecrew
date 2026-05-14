@@ -1,0 +1,48 @@
+# UI Components
+
+<!-- human-owned -->
+
+## Component Library
+
+{{COMPONENT_LIBRARY_OVERVIEW}}
+
+## Where Components Live
+
+{{COMPONENT_LOCATIONS}}
+
+## Adding a New Component
+
+{{ADDING_COMPONENT_STEPS}}
+
+## Wrappers vs Raw Library Components
+
+{{WRAPPER_PATTERN}}
+
+## Storybook
+
+{{STORYBOOK_USAGE}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{COMPONENT_LIBRARY_OVERVIEW}}: name the library (shadcn/ui, MUI, Chakra,
+  Radix, custom), version, and how it's installed (in-tree vs npm package).
+- {{COMPONENT_LOCATIONS}}: where shared components live, where feature-
+  specific components live, and the rule for promotion.
+- {{ADDING_COMPONENT_STEPS}}: numbered list of how to add a shared
+  component (file location, story, test, export).
+- {{WRAPPER_PATTERN}}: when to use the library directly vs wrap it. If
+  there are local wrappers (e.g., Button with project-specific variants),
+  document the rule.
+- {{STORYBOOK_USAGE}}: whether Storybook is required for new components,
+  what story types to write, where stories live.
+- {{WHAT_NOT_TO_DO_BULLETS}}: prohibitions specific to UI components
+  (e.g., don't bypass wrappers, don't inline color values, don't create
+  one-off variants).
+-->

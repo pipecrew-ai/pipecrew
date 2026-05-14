@@ -1,0 +1,89 @@
+# Conventions
+
+<!-- human-owned -->
+
+## Naming Conventions
+
+### Packages / Modules
+
+{{PACKAGE_CONVENTIONS}}
+
+### Classes / Files
+
+{{CLASS_FILE_CONVENTIONS}}
+
+### Methods / Functions
+
+{{METHOD_CONVENTIONS}}
+
+## Dependency Injection
+
+{{DI_PATTERN}}
+
+## Annotation / Decorator Patterns
+
+{{ANNOTATION_PATTERNS}}
+
+## Type Declarations
+
+{{TYPE_CONVENTIONS}}
+
+## Logging
+
+{{LOGGING_CONVENTIONS}}
+
+## Transaction Management
+
+{{TRANSACTION_PATTERNS}}
+
+## Error Handling
+
+{{ERROR_HANDLING_OVERVIEW}}
+
+See `error-handling.md` for the complete exception-to-HTTP mapping.
+
+## Query / ORM Conventions
+
+{{QUERY_PATTERNS}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file is the rule book agents read before writing code. It is HUMAN-
+OWNED — agents do not edit it after generation. Surface findings instead.
+
+Each section: list the convention as observed in the code. Cite specific
+file paths as anchors (e.g., "See src/services/BookService.java:42").
+Note exceptions explicitly — DON'T pretend the codebase is more uniform
+than it is.
+
+- {{PACKAGE_CONVENTIONS}}: list the top-level package/module structure with
+  one-line purpose each.
+- {{CLASS_FILE_CONVENTIONS}}: suffix conventions (*Entity, *Service, etc.),
+  file naming patterns.
+- {{METHOD_CONVENTIONS}}: naming patterns (verb-first, getX/setX, repository
+  finder conventions).
+- {{DI_PATTERN}}: how DI works in this stack (constructor vs field vs
+  function injection). Name the LIBRARY and the canonical pattern.
+- {{ANNOTATION_PATTERNS}}: standard annotation/decorator stacks for entities,
+  services, controllers. Show the actual ordering used.
+- {{TYPE_CONVENTIONS}}: var/let/const, explicit vs inferred types, generics
+  conventions.
+- {{LOGGING_CONVENTIONS}}: which library, which levels for what, structured
+  vs free-form.
+- {{TRANSACTION_PATTERNS}}: how transactions are scoped, when they wrap
+  external calls, the canonical pattern for "DB + external system together".
+- {{ERROR_HANDLING_OVERVIEW}}: 2-3 sentences pointing to the global handler
+  + the canonical "throw a typed exception, let it propagate" pattern.
+- {{QUERY_PATTERNS}}: ORM-specific gotchas (N+1 prevention, JPQL/SQL
+  patterns, dynamic query construction). Name pitfalls observed in code.
+- {{WHAT_NOT_TO_DO_BULLETS}}: convention-level prohibitions distinct from
+  architecture's. Style violations live here. Examples: "Do NOT use field
+  injection", "Do NOT add hand-written classes to generated packages".
+-->

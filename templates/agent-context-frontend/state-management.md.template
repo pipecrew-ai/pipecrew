@@ -1,0 +1,54 @@
+# State Management
+
+<!-- human-owned -->
+
+## Overview
+
+{{STATE_MANAGEMENT_OVERVIEW}}
+
+## Contexts
+
+{{CONTEXTS_TABLE}}
+
+## Custom Hooks
+
+{{CUSTOM_HOOKS_TABLE}}
+
+## Server State (TanStack Query / SWR / etc.)
+
+{{SERVER_STATE_PATTERNS}}
+
+## Form State (react-hook-form / Formik / etc.)
+
+{{FORM_STATE_PATTERNS}}
+
+## Role / Permission Checks
+
+{{ROLE_CHECK_PATTERN}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{STATE_MANAGEMENT_OVERVIEW}}: 2-3 sentences naming the state libraries
+  used and the philosophy (server state in queries, client state in
+  contexts, form state in form libs, persistent state in localStorage).
+- {{CONTEXTS_TABLE}}: markdown table Context | Provides | Where Used
+  columns. One row per Context provider in the app.
+- {{CUSTOM_HOOKS_TABLE}}: markdown table Hook | Purpose | File columns.
+  Cover the load-bearing hooks an agent will need (auth, roles, pagination,
+  filters, debounce).
+- {{SERVER_STATE_PATTERNS}}: query key conventions, cache invalidation
+  patterns, suspense vs not, error handling.
+- {{FORM_STATE_PATTERNS}}: validation library (zod, yup), submit handling,
+  error display.
+- {{ROLE_CHECK_PATTERN}}: the canonical hook for role checks, with a code
+  example. Critical — agents reach for this often.
+- {{WHAT_NOT_TO_DO_BULLETS}}: prohibitions (no inline role-string compares,
+  no user state in localStorage, no global mutable state).
+-->

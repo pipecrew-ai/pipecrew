@@ -13,9 +13,25 @@
 const fs = require('fs');
 const path = require('path');
 
+// Each mandatory bullet accepts EITHER the legacy wording (from
+// templates/repo-CLAUDE.md.template) OR the new wording (from the
+// role-specific templates/repo-CLAUDE-{backend,frontend}.md.template).
+// Union-style — if either pattern matches, the bullet is considered present.
 const MANDATORY_BULLETS = [
-  /Before planning any change, read `[^`]+AGENT_INDEX\.md` — it maps tasks to the relevant feature, service, and convention files\./,
-  /When you add, change, or restructure a feature, integration, or module, update the matching file under `[^`]+` in the same change\./,
+  // Bullet 1: read AGENT_INDEX before planning a change.
+  [
+    // Legacy phrasing
+    /Before planning any change, read `[^`]+AGENT_INDEX\.md` — it maps tasks to the relevant feature, service, and convention files\./,
+    // New phrasing (role-specific templates)
+    /Read `[^`]*AGENT_INDEX\.md` — it maps tasks to docs\./,
+  ],
+  // Bullet 2: update agent-context after relevant changes.
+  [
+    // Legacy phrasing
+    /When you add, change, or restructure a feature, integration, or module, update the matching file under `[^`]+` in the same change\./,
+    // New phrasing (role-specific templates)
+    /Update `[^`]*agent-context\/?` ONLY when you added something new to the world/,
+  ],
 ];
 
 const COUPLING_PATTERNS = [
@@ -62,10 +78,13 @@ function validate(body, repoRoot) {
     }
   }
 
-  // 2. Mandatory bullets present (hard-fail)
-  for (const re of MANDATORY_BULLETS) {
-    if (!re.test(body)) {
-      errors.push(`mandatory-bullet: required preamble bullet missing — pattern ${re}`);
+  // 2. Mandatory bullets present (hard-fail). Each bullet is a list of
+  //    alternative regex patterns — match ANY one to satisfy the bullet.
+  for (let i = 0; i < MANDATORY_BULLETS.length; i++) {
+    const alternatives = MANDATORY_BULLETS[i];
+    const matched = alternatives.some(re => re.test(body));
+    if (!matched) {
+      errors.push(`mandatory-bullet: required preamble bullet ${i + 1} missing — must match one of ${alternatives.length} accepted phrasings (legacy or role-specific template)`);
     }
   }
 
@@ -104,10 +123,16 @@ function validate(body, repoRoot) {
     warnings.push(`size: ${lineCount} lines above soft ceiling of 150 — likely leaking agent-context content`);
   }
 
-  // 6. Must-know bullet cap (hard-fail >10)
+  // 6. Must-know / Inviolable Rules bullet cap (hard-fail >10).
+  //    Legacy template uses "## Must-know guidelines"; role-specific templates
+  //    use "## Inviolable Rules". Count whichever is present.
   const mustKnowCount = countSectionBullets(body, /^## Must-know guidelines/m);
+  const inviolableCount = countSectionBullets(body, /^## Inviolable Rules/m);
   if (mustKnowCount > 10) {
     errors.push(`must-know: ${mustKnowCount} bullets under "## Must-know guidelines" — cap is 10; surplus belongs in agent-context/conventions.md`);
+  }
+  if (inviolableCount > 10) {
+    errors.push(`inviolable-rules: ${inviolableCount} bullets under "## Inviolable Rules" — cap is 10; surplus belongs in agent-context/conventions.md (style rules) or domains/{name}.md (domain-specific dont's)`);
   }
 
   // 7. Secret scan (hard-fail on all; email is still flagged — reviewer can accept)

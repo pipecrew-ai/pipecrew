@@ -75,6 +75,496 @@ function write(p, body) { fs.writeFileSync(p, body); }
 function writeJson(p, obj) { fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n'); }
 function appendJsonl(p, ev) { fs.appendFileSync(p, JSON.stringify(ev) + '\n'); }
 
+// ─── Sample Phase 1 / Phase 2 doc generators ──────────────────
+// These produce realistic-shape content for the demo workspace's two
+// /deliver runs (Bulk Upload + Contract Modals) so the site-view's
+// drawer + downstream tooling can render the full schema. The shape
+// matches what the real product-owner / solution-architect produce in
+// /deliver Phase 1 / Phase 2 — including the BEGIN/END section markers
+// and the REQUIREMENTS_INDEX / TASK_SKELETON / AFFECTED_SERVICES JSON
+// blocks consumers extract via scripts/extract-block.js.
+
+const PHASE1_SAMPLES = {
+  'bulk-upload': `# Feature: Bulk Upload
+
+<!-- BEGIN OVERVIEW -->
+## Overview
+- **User Story**: As a Publisher, I want to upload up to 50 PDF book files in one batch so I can submit my catalog without one-at-a-time uploads.
+- **Business Value**: Cuts publisher onboarding time from ~8 hours (one-at-a-time) to ~10 minutes for a typical 50-book catalog.
+- **Affected Roles**: Publisher (primary), ALC Manager (secondary — sees the new books in review queue).
+<!-- END OVERVIEW -->
+
+<!-- BEGIN FUNCTIONAL_REQUIREMENTS -->
+## Functional Requirements
+- FR-1: Publisher can upload up to 50 PDF files in a single bulk request, max 100MB per file.
+- FR-2: Each file is associated with a Book entity created in DRAFT state.
+- FR-3: Upload validates file format (PDF only) and size limit before persistence.
+- FR-4: Successful upload returns a per-file response with the new Book id and S3 location.
+- FR-5: Failed files in the batch don't block successful files — partial-success returns per-file status.
+- FR-6: Search-svc indexes each new Book within 30s of upload via the \`book.uploaded\` event.
+- FR-7: Frontend shows per-file upload progress and per-file success/failure on completion.
+- FR-8: Only the publisher who initiated the batch can see its files (ownership enforcement).
+<!-- END FUNCTIONAL_REQUIREMENTS -->
+
+<!-- BEGIN API_CONTRACT -->
+## API Capabilities
+
+### Existing Capabilities (from OpenAPI spec)
+- Single-book upload: \`POST /api/v1/books\` with one PDF — already supports validation and S3 persistence.
+- Search indexing: \`book.uploaded\` SQS event already consumed by search-svc.
+
+### Capability Gaps
+- No batch endpoint exists. Need a new \`POST /api/v1/books/bulk\` accepting multipart with up to 50 files.
+- No per-file failure reporting in the response shape — current single-upload returns 200 or 4xx atomically.
+<!-- END API_CONTRACT -->
+
+<!-- BEGIN UX_REQUIREMENTS -->
+## UX Requirements (HIGH-LEVEL ONLY)
+- UX-1: Publisher must be able to select multiple files at once (drag-and-drop OR file picker with multi-select).
+- UX-2: Per-file progress bar visible during upload.
+- UX-3: Per-file success/failure shown when batch completes; failed files surface the validation error.
+- UX-4: Locale support for ar/en including RTL — error messages translated.
+- UX-5: Loading, empty, and error states for the upload queue.
+<!-- END UX_REQUIREMENTS -->
+
+<!-- BEGIN EDGE_CASES -->
+## Edge Cases & Error Handling
+- EC-1: Reject files larger than 100MB with HTTP 413 Payload Too Large per file.
+- EC-2: Reject non-PDF files with HTTP 400 — error message names the offending filename.
+- EC-3: Batches over 50 files are rejected with HTTP 400 before any persistence.
+- EC-4: Partial S3 upload failure (network drop mid-batch) — retry that file once, mark failed if retry also fails.
+- EC-5: Publisher session expires mid-upload — return HTTP 401, frontend prompts re-login and offers to resume the batch.
+<!-- END EDGE_CASES -->
+
+<!-- BEGIN TESTING_REQUIREMENTS -->
+## Testing Requirements
+- TEST-1: Unit-test the bulk validator (file count, size, format).
+- TEST-2: Integration test of the bulk endpoint with 50 valid + 5 invalid files; assert per-file response shape.
+- TEST-3: E2E test of the search-svc indexing path end-to-end.
+- TEST-4: Frontend unit + integration tests for the multi-file upload component.
+<!-- END TESTING_REQUIREMENTS -->
+
+<!-- BEGIN OUT_OF_SCOPE -->
+## Out of Scope
+- Bulk delete or bulk status change. Single-book operations remain the path for non-create cases.
+- Background scheduling — uploads are synchronous-respond, not deferred to a queue.
+- Auto-retry of failed files. The user re-attempts via UI.
+<!-- END OUT_OF_SCOPE -->
+
+<!-- BEGIN REQUIREMENTS_INDEX -->
+\`\`\`json
+{
+  "requirements": [
+    { "id": "FR-1", "summary": "Publisher uploads up to 50 PDFs in one batch, max 100MB per file" },
+    { "id": "FR-2", "summary": "Each file becomes a Book in DRAFT state" },
+    { "id": "FR-3", "summary": "Upload validates format + size before persistence" },
+    { "id": "FR-4", "summary": "Per-file response includes new Book id + S3 location" },
+    { "id": "FR-5", "summary": "Per-file partial-success — failures don't block successes" },
+    { "id": "FR-6", "summary": "Search-svc indexes each new Book within 30s via book.uploaded SQS event" },
+    { "id": "FR-7", "summary": "Frontend shows per-file progress + per-file success/failure" },
+    { "id": "FR-8", "summary": "Only initiating publisher can see batch files" }
+  ],
+  "edge_cases": [
+    { "id": "EC-1", "summary": "Reject files >100MB with HTTP 413", "applies_to": ["FR-1", "FR-3"] },
+    { "id": "EC-2", "summary": "Reject non-PDF files with HTTP 400", "applies_to": ["FR-3"] },
+    { "id": "EC-3", "summary": "Reject batches >50 files with HTTP 400 before persistence", "applies_to": ["FR-1"] },
+    { "id": "EC-4", "summary": "Retry single S3 upload failure once, mark failed if retry fails", "applies_to": ["FR-5"] },
+    { "id": "EC-5", "summary": "Session expiry mid-upload returns 401; frontend prompts re-login", "applies_to": ["FR-7"] }
+  ]
+}
+\`\`\`
+<!-- END REQUIREMENTS_INDEX -->
+`,
+
+  'contract-modals': `# Feature: Contract Modals
+
+<!-- BEGIN OVERVIEW -->
+## Overview
+- **User Story**: As an ALC Manager, I want to view contract details inline in a modal so I don't lose the list context when reviewing one contract.
+- **Business Value**: Replaces three nav-out routes with inline modals — cuts contract-review clicks per session by ~40% and keeps the table state intact.
+- **Affected Roles**: ALC Manager (primary), Publisher (sees a read-only modal).
+<!-- END OVERVIEW -->
+
+<!-- BEGIN FUNCTIONAL_REQUIREMENTS -->
+## Functional Requirements
+- FR-1: ALC Manager can open a contract detail modal from the contract list row without leaving the list page.
+- FR-2: Modal shows contract type, status, parties, dates, and the linked book's title.
+- FR-3: Modal supports closing via Escape key, clicking outside, or the close button.
+- FR-4: Publisher sees a read-only version of the same modal; no edit affordances render.
+- FR-5: Backend exposes \`GET /api/v1/contracts/{id}/detail\` returning the full record needed by the modal.
+<!-- END FUNCTIONAL_REQUIREMENTS -->
+
+<!-- BEGIN API_CONTRACT -->
+## API Capabilities
+
+### Existing Capabilities (from OpenAPI spec)
+- \`GET /api/v1/contracts\` — paginated list (already used by the contracts page).
+- \`GET /api/v1/contracts/{id}\` — minimal contract record (id, type, status, party_ids).
+
+### Capability Gaps
+- Existing \`/contracts/{id}\` doesn't include the linked Book title or party display names — modal would need 3 separate fetches. Need a \`/detail\` endpoint that joins the data server-side.
+<!-- END API_CONTRACT -->
+
+<!-- BEGIN UX_REQUIREMENTS -->
+## UX Requirements (HIGH-LEVEL ONLY)
+- UX-1: Modal opens centered with a backdrop that captures focus.
+- UX-2: ALC Manager sees Edit + Cancel actions in the modal footer; Publisher sees Close only.
+- UX-3: Loading state while detail fetches; error state if the fetch fails.
+- UX-4: Locale support for ar/en, RTL flips the close-button position.
+<!-- END UX_REQUIREMENTS -->
+
+<!-- BEGIN EDGE_CASES -->
+## Edge Cases & Error Handling
+- EC-1: Contract not found (404) — modal shows "This contract no longer exists" and a Close button.
+- EC-2: User loses permission mid-session — modal closes and the list re-fetches.
+- EC-3: Rapid open/close interactions — debounce so we don't fire 5 detail fetches.
+<!-- END EDGE_CASES -->
+
+<!-- BEGIN TESTING_REQUIREMENTS -->
+## Testing Requirements
+- TEST-1: Backend integration test for the new \`/detail\` endpoint, including the not-found path.
+- TEST-2: Frontend integration test for the modal — open from row, verify content, verify role-based actions, close via all three methods.
+- TEST-3: a11y test — focus trap on the modal, Escape closes.
+<!-- END TESTING_REQUIREMENTS -->
+
+<!-- BEGIN OUT_OF_SCOPE -->
+## Out of Scope
+- Edit-in-modal. The Edit action navigates to the existing edit page (existing behavior preserved).
+- Contract creation flow. This feature is read-only display.
+<!-- END OUT_OF_SCOPE -->
+
+<!-- BEGIN REQUIREMENTS_INDEX -->
+\`\`\`json
+{
+  "requirements": [
+    { "id": "FR-1", "summary": "ALC Manager opens contract detail modal from list row without leaving the page" },
+    { "id": "FR-2", "summary": "Modal shows type, status, parties, dates, linked book title" },
+    { "id": "FR-3", "summary": "Modal closes via Escape, outside click, or close button" },
+    { "id": "FR-4", "summary": "Publisher sees read-only modal — no edit affordances" },
+    { "id": "FR-5", "summary": "Backend exposes GET /api/v1/contracts/{id}/detail with joined data" }
+  ],
+  "edge_cases": [
+    { "id": "EC-1", "summary": "Not found (404) — modal shows graceful empty state", "applies_to": ["FR-1", "FR-5"] },
+    { "id": "EC-2", "summary": "Permission lost mid-session — modal closes, list re-fetches", "applies_to": ["FR-4"] },
+    { "id": "EC-3", "summary": "Debounce rapid open/close to avoid duplicate fetches", "applies_to": ["FR-1"] }
+  ]
+}
+\`\`\`
+<!-- END REQUIREMENTS_INDEX -->
+`,
+};
+
+const PHASE2_SAMPLES = {
+  'bulk-upload': `# Technical Design — Bulk Upload
+
+<!-- BEGIN AFFECTED_CONTRACTS -->
+## Affected Contracts
+1. \`book-events\` — adds a new \`book.batch.uploaded\` Avro schema referenced by the bulk endpoint when emitting per-batch summary events.
+   - Files to edit: \`schemas/book.batch.uploaded.avsc\` (NEW)
+   - **Change classification: additive** (new event type — no existing consumers break)
+<!-- END AFFECTED_CONTRACTS -->
+
+<!-- BEGIN AFFECTED_SERVICES -->
+\`\`\`json
+{
+  "services": [
+    {
+      "name": "publisher-service",
+      "spec_policy": "api-first",
+      "endpoints_added": [
+        { "method": "POST", "path": "/api/v1/books/bulk" }
+      ],
+      "endpoints_modified": [],
+      "handlers_added": [],
+      "fr_ids": ["FR-1", "FR-2", "FR-3", "FR-4", "FR-5", "FR-8"],
+      "ec_ids": ["EC-1", "EC-2", "EC-3", "EC-4"]
+    },
+    {
+      "name": "search-service",
+      "spec_policy": "no-api",
+      "endpoints_added": [],
+      "endpoints_modified": [],
+      "handlers_added": ["handle_book_uploaded"],
+      "fr_ids": ["FR-6"],
+      "ec_ids": []
+    }
+  ],
+  "spec_edit_order": ["publisher-service"],
+  "frontend_required": true,
+  "mock_required": true
+}
+\`\`\`
+
+## Notes
+- **publisher-service**: owns the new bulk endpoint + per-file persistence + S3 upload orchestration.
+- **search-service**: already consumes \`book.uploaded\` per-record events; no change needed for the indexing path.
+
+## Spec Edit Order — rationale
+Single api-first service; trivial.
+
+## Frontend / Mock notes
+Frontend integrates the new endpoint via an \`useBulkUpload()\` hook. Mock mirrors the per-file response shape including the partial-success case.
+<!-- END AFFECTED_SERVICES -->
+
+<!-- BEGIN ARCHITECTURE_DECISION -->
+## Architecture Decision
+The bulk endpoint orchestrates per-file persistence in a synchronous request — files are validated, persisted to RDS + S3, and emit the \`book.uploaded\` event individually as each succeeds. Per-file partial-success is captured in the response array. **Runner-up considered**: deferring uploads to an SQS queue with a polling-status endpoint. Rejected because publishers expect a synchronous per-file outcome, and the latency tail (50 × 100MB ≈ 30s end-to-end at typical S3 throughput) is acceptable.
+<!-- END ARCHITECTURE_DECISION -->
+
+<!-- BEGIN DATA_MODEL -->
+## Data Model
+- **Book** (existing): no schema change. New rows persist with status DRAFT.
+- **BulkUploadRequest** (NEW): tracks the batch envelope.
+  - id (UUID, PK)
+  - publisher_id (FK)
+  - file_count, success_count, failure_count
+  - submitted_at (timestamp)
+- **Migrations**: one Liquibase changeset adds \`bulk_upload_request\` table with FK index on publisher_id.
+<!-- END DATA_MODEL -->
+
+<!-- BEGIN API_DESIGN -->
+## API Design
+
+### POST /api/v1/books/bulk
+- **Auth**: Publisher
+- **Request**: multipart/form-data, field name \`files\` (1–50 entries), each ≤ 100MB
+- **Response 200**: \`BulkUploadResponse { batch_id, results: BulkUploadResult[] }\`
+- **BulkUploadResult**: \`{ filename, status: "success" | "failed", book_id?, s3_url?, error? }\`
+- **Errors**: 400 (>50 files, non-PDF, oversized — at the batch level), 401 (session expiry), 413 (per-file size — surfaced inline in the result array)
+<!-- END API_DESIGN -->
+
+<!-- BEGIN FRONTEND_ARCHITECTURE -->
+## Frontend Architecture
+New feature module under \`src/features/bulk-upload/\`:
+- \`api/types.ts\` — TS types matching the spec
+- \`api/services.ts\` — \`uploadBulk()\` service method
+- \`hooks/useBulkUpload.ts\` — React Query mutation with per-file progress streamed via XHR upload events
+- \`components/BulkUploadDropzone.tsx\` — drag-and-drop, multi-file picker
+- \`components/BulkUploadProgressList.tsx\` — per-file progress + final status
+- \`pages/BulkUploadPage.tsx\` — page shell + role guard
+- \`__tests__/\` — component + hook tests with msw mocks
+<!-- END FRONTEND_ARCHITECTURE -->
+
+<!-- BEGIN INFRASTRUCTURE_IMPACT -->
+## Infrastructure Impact
+- **publisher-service ECS task**: bump request body size limit at the load-balancer to 5 GB (50 × 100MB).
+- **books-bucket-{stage} S3**: no change — multipart upload with existing IAM role.
+- **No new queues**: existing \`book-events\` queue is reused.
+- **CloudWatch**: add a metric filter for "bulk_upload_partial_failure" log line for ops visibility.
+<!-- END INFRASTRUCTURE_IMPACT -->
+
+<!-- BEGIN IMPLEMENTATION_ORDER -->
+## Implementation Order
+1. Phase 3a: contract addition (\`book.batch.uploaded.avsc\`).
+2. Phase 3b: spec edit (publisher-service \`POST /books/bulk\`).
+3. Phase 5a: backend (publisher-service migration + endpoint).
+4. Phase 5b: frontend (in parallel with 5a).
+5. Phase 5c: mock.
+6. Phase 5d: infra (ALB body size bump + CloudWatch filter).
+<!-- END IMPLEMENTATION_ORDER -->
+
+<!-- BEGIN RISKS -->
+## Risks & Trade-offs
+- **Latency tail** for max-size batches (~30s). Mitigated by per-file streaming progress in the response.
+- **Memory pressure** on the ECS task during 50-file in-flight uploads. Sub-bullet: stream files to S3 directly without buffering — **deferred** to a follow-up if memory metrics show pressure post-launch (RISKS §1).
+- **Failure-mode UX** ambiguity: re-uploading failed files only is a v2 enhancement — **out of scope** for this slice (RISKS §2).
+<!-- END RISKS -->
+
+<!-- BEGIN TASK_SKELETON -->
+\`\`\`json
+{
+  "feature_summary": "publishers upload up to 50 PDFs in one batch with per-file partial-success",
+  "tasks": [
+    {
+      "repo_key": "publisher-service",
+      "repo_role": "api-service",
+      "spec_policy": "api-first",
+      "sub_tasks": [
+        { "id_hint": "be-migration", "title": "Liquibase changeset for bulk_upload_request", "tier": "M", "fr_refs": ["FR-2"], "summary": "new table + FK index" },
+        { "id_hint": "be-dtos", "title": "DTOs / Models", "tier": "M", "fr_refs": ["FR-1", "FR-4", "FR-5"], "summary": "BulkUploadRequest entity + BulkUploadResult DTO + response wrapper" },
+        { "id_hint": "be-service", "title": "Service layer", "tier": "M", "fr_refs": ["FR-2", "FR-3", "FR-4", "FR-5", "FR-8"], "summary": "validate + persist per-file + emit per-file events + ownership check" },
+        { "id_hint": "be-controller", "title": "Controller endpoint", "tier": "M", "fr_refs": ["FR-1"], "summary": "POST /books/bulk with multipart parsing" },
+        { "id_hint": "be-tests", "title": "Tests", "tier": "M", "fr_refs": ["FR-1", "FR-3", "FR-5"], "summary": "unit (validator) + integration (50 valid + 5 invalid)" },
+        { "id_hint": "be-stream", "title": "Stream files to S3 without buffering", "tier": "D", "fr_refs": ["FR-1"], "summary": "memory optimization", "deferral_reason": "RISKS §1 — only if memory metrics show pressure post-launch" }
+      ]
+    },
+    {
+      "repo_key": "frontend",
+      "repo_role": "frontend",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        { "id_hint": "fe-api", "title": "API layer (types + service)", "tier": "M", "fr_refs": ["FR-1", "FR-4"], "summary": "BulkUploadRequest / Response types + uploadBulk()" },
+        { "id_hint": "fe-hook", "title": "useBulkUpload hook", "tier": "M", "fr_refs": ["FR-7"], "summary": "React Query mutation with per-file XHR progress" },
+        { "id_hint": "fe-dropzone", "title": "BulkUploadDropzone component", "tier": "M", "fr_refs": ["UX-1"], "summary": "drag-and-drop + multi-file picker" },
+        { "id_hint": "fe-progress", "title": "BulkUploadProgressList component", "tier": "M", "fr_refs": ["UX-2", "UX-3", "FR-7"], "summary": "per-file progress bars + final status icons" },
+        { "id_hint": "fe-page", "title": "Page + routing", "tier": "M", "fr_refs": ["FR-1"], "summary": "BulkUploadPage + role guard" },
+        { "id_hint": "fe-i18n", "title": "i18n keys", "tier": "M", "fr_refs": ["UX-4"], "summary": "en + ar" },
+        { "id_hint": "fe-tests", "title": "Tests", "tier": "M", "fr_refs": ["FR-7"], "summary": "hook + component tests with msw" },
+        { "id_hint": "fe-retry", "title": "Re-upload-failed-only affordance", "tier": "D", "fr_refs": ["FR-5"], "summary": "v2 UX — selective retry button", "deferral_reason": "RISKS §2 — out of scope for this slice" }
+      ]
+    },
+    {
+      "repo_key": "mock-server",
+      "repo_role": "mock-server",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        { "id_hint": "mock-data", "title": "Mock data + scenarios", "tier": "M", "fr_refs": ["FR-1", "FR-5"], "summary": "happy path + 5-failure scenario" },
+        { "id_hint": "mock-handler", "title": "Endpoint handler", "tier": "M", "fr_refs": ["FR-1"], "summary": "POST /books/bulk with per-file response shape" }
+      ]
+    },
+    {
+      "repo_key": "infra",
+      "repo_role": "infrastructure",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        { "id_hint": "infra-alb", "title": "ALB body size bump", "tier": "M", "fr_refs": ["FR-1"], "summary": "5 GB max-body on the publisher-service listener" },
+        { "id_hint": "infra-metric", "title": "CloudWatch metric filter", "tier": "M", "fr_refs": ["FR-5"], "summary": "filter on bulk_upload_partial_failure log line" }
+      ]
+    }
+  ]
+}
+\`\`\`
+<!-- END TASK_SKELETON -->
+`,
+
+  'contract-modals': `# Technical Design — Contract Modals
+
+<!-- BEGIN AFFECTED_CONTRACTS -->
+## Affected Contracts
+N/A
+<!-- END AFFECTED_CONTRACTS -->
+
+<!-- BEGIN AFFECTED_SERVICES -->
+\`\`\`json
+{
+  "services": [
+    {
+      "name": "demo-backend",
+      "spec_policy": "api-first",
+      "endpoints_added": [
+        { "method": "GET", "path": "/api/v1/contracts/{id}/detail" }
+      ],
+      "endpoints_modified": [],
+      "handlers_added": [],
+      "fr_ids": ["FR-5"],
+      "ec_ids": ["EC-1"]
+    }
+  ],
+  "spec_edit_order": ["demo-backend"],
+  "frontend_required": true,
+  "mock_required": true
+}
+\`\`\`
+
+## Notes
+Single backend change — a join endpoint that returns the contract record plus the linked Book title and party display names so the modal needs one fetch instead of three.
+
+## Frontend / Mock notes
+Frontend builds a generic Modal primitive and a ContractDetailModal that consumes the new endpoint.
+<!-- END AFFECTED_SERVICES -->
+
+<!-- BEGIN ARCHITECTURE_DECISION -->
+## Architecture Decision
+Server-side join in the new \`/detail\` endpoint instead of three client-side fetches. Cuts modal-open latency by ~600ms and avoids an N+1 across the contract list. **Runner-up**: GraphQL-style field selection. Rejected — workspace doesn't have a GraphQL infrastructure and the cost of introducing one for a single endpoint is unjustified.
+<!-- END ARCHITECTURE_DECISION -->
+
+<!-- BEGIN DATA_MODEL -->
+## Data Model
+No schema change. The \`/detail\` endpoint joins existing tables (Contract, Book, Party) read-only.
+<!-- END DATA_MODEL -->
+
+<!-- BEGIN API_DESIGN -->
+## API Design
+
+### GET /api/v1/contracts/{id}/detail
+- **Auth**: ALC Manager (full read) or Publisher (own contracts only — same scoping as the list endpoint)
+- **Response 200**: \`ContractDetail { id, type, status, parties: PartyDisplay[], dates, book: { id, title } }\`
+- **Errors**: 404 if the contract isn't visible to the caller, 401 on auth failure
+<!-- END API_DESIGN -->
+
+<!-- BEGIN FRONTEND_ARCHITECTURE -->
+## Frontend Architecture
+- New \`Modal\` primitive in \`src/components/ui/Modal.tsx\` (focus-trap + Escape handler).
+- \`ContractDetailModal\` consumer component under \`src/features/contracts/\`.
+- \`useContractDetail(id)\` React Query hook.
+- Wires into the existing contracts list-row click handler — replaces the current \`navigate('/contracts/{id}')\` call.
+<!-- END FRONTEND_ARCHITECTURE -->
+
+<!-- BEGIN INFRASTRUCTURE_IMPACT -->
+## Infrastructure Impact
+None — pure code change.
+<!-- END INFRASTRUCTURE_IMPACT -->
+
+<!-- BEGIN IMPLEMENTATION_ORDER -->
+## Implementation Order
+1. Phase 3b: spec edit (demo-backend new endpoint).
+2. Phase 5a: backend (read-only join service + controller).
+3. Phase 5b: frontend Modal primitive + ContractDetailModal.
+4. Phase 5c: mock.
+<!-- END IMPLEMENTATION_ORDER -->
+
+<!-- BEGIN RISKS -->
+## Risks & Trade-offs
+- **Permission scoping** for the join endpoint: must enforce the same caller-can-see-this-contract rule the list endpoint uses. Risk if the join service forgets the ownership filter.
+- **Modal accessibility** is load-bearing for the workspace's a11y baseline — focus trap is non-negotiable.
+- **Edit-in-modal** explicitly out of scope (RISKS §1) — clicking Edit still navigates to the existing edit page.
+<!-- END RISKS -->
+
+<!-- BEGIN TASK_SKELETON -->
+\`\`\`json
+{
+  "feature_summary": "ALC managers and publishers view contract detail in an inline modal",
+  "tasks": [
+    {
+      "repo_key": "demo-backend",
+      "repo_role": "api-service",
+      "spec_policy": "api-first",
+      "sub_tasks": [
+        { "id_hint": "be-dto", "title": "DTO", "tier": "M", "fr_refs": ["FR-5"], "summary": "ContractDetail response DTO with joined fields" },
+        { "id_hint": "be-service", "title": "Service layer (read-only join)", "tier": "M", "fr_refs": ["FR-5"], "summary": "fetch contract + book + parties; enforce ownership" },
+        { "id_hint": "be-controller", "title": "Controller endpoint", "tier": "M", "fr_refs": ["FR-5"], "summary": "GET /contracts/{id}/detail" },
+        { "id_hint": "be-tests", "title": "Tests", "tier": "M", "fr_refs": ["FR-5"], "summary": "happy path + 404 for non-visible contract" }
+      ]
+    },
+    {
+      "repo_key": "demo-frontend",
+      "repo_role": "frontend",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        { "id_hint": "fe-modal-primitive", "title": "Modal primitive", "tier": "M", "fr_refs": ["FR-3", "UX-1"], "summary": "focus-trap + Escape handler + backdrop" },
+        { "id_hint": "fe-hook", "title": "useContractDetail hook", "tier": "M", "fr_refs": ["FR-2"], "summary": "React Query fetcher" },
+        { "id_hint": "fe-modal", "title": "ContractDetailModal component", "tier": "M", "fr_refs": ["FR-1", "FR-2", "FR-4", "UX-2"], "summary": "role-aware action footer" },
+        { "id_hint": "fe-wireup", "title": "Wire row click → modal open", "tier": "M", "fr_refs": ["FR-1"], "summary": "replace navigate call in list" },
+        { "id_hint": "fe-i18n", "title": "i18n keys", "tier": "M", "fr_refs": ["UX-4"], "summary": "en + ar" },
+        { "id_hint": "fe-tests", "title": "Tests", "tier": "M", "fr_refs": ["FR-1", "FR-3", "FR-4"], "summary": "open + close + role-based footer" }
+      ]
+    },
+    {
+      "repo_key": "demo-mock",
+      "repo_role": "mock-server",
+      "spec_policy": "n/a",
+      "sub_tasks": [
+        { "id_hint": "mock-data", "title": "Mock data", "tier": "M", "fr_refs": ["FR-2"], "summary": "ContractDetail fixture with joined book + parties" },
+        { "id_hint": "mock-handler", "title": "Endpoint handler", "tier": "M", "fr_refs": ["FR-5"], "summary": "GET /contracts/{id}/detail" }
+      ]
+    }
+  ]
+}
+\`\`\`
+<!-- END TASK_SKELETON -->
+`,
+};
+
+function generatePhase1Doc(featureName, featureSlug) {
+  return PHASE1_SAMPLES[featureSlug]
+    || `# Feature: ${featureName}\n\nFR-1 through FR-12 + EC-1 through EC-8 (synthesized — sample stub for an unrecognized feature slug).\n`;
+}
+
+function generatePhase2Doc(featureName, featureSlug) {
+  return PHASE2_SAMPLES[featureSlug]
+    || `# Technical Design — ${featureName}\n\nSynthesized stub for an unrecognized feature slug. Real /deliver Phase 2 emits AFFECTED_SERVICES, ARCHITECTURE_DECISION, DATA_MODEL, API_DESIGN, FRONTEND_ARCHITECTURE, INFRASTRUCTURE_IMPACT, IMPLEMENTATION_ORDER, RISKS, and TASK_SKELETON sections.\n`;
+}
+
 // ─── Wipe (unless --keep) ─────────────────────────────────────
 if (!keep && fs.existsSync(WS_DIR)) {
   console.log(`[sim] wiping ${WS_DIR}`);
@@ -635,8 +1125,14 @@ ${withPr ? '| 8. Publish + Wrap-up | COMPLETED | 1m 50s | —    |' : '| 8. Publ
 | 3 | ${featureSlug}-a3 | demo-mock     | mock-endpoint-implementer   | COMPLETED | 2 |
 `);
 
-  // Phase outputs (placeholders that the reporter would have written)
-  write(path.join(runDir, 'outputs', 'phase-1-requirements.md'), `# Phase 1 — Requirements\n\nFR-1 through FR-12 + EC-1 through EC-8 (synthesized).\n`);
+  // Phase outputs — Phase 1 + Phase 2 use realistic sample shapes
+  // (matches what the workspace product-owner / solution-architect produce
+  // in real /deliver runs, including the BEGIN/END section markers and
+  // the REQUIREMENTS_INDEX / TASK_SKELETON / AFFECTED_SERVICES JSON blocks).
+  // Other phase outputs stay as short stubs since they're not the focus
+  // of demo workspace consumers.
+  write(path.join(runDir, 'outputs', 'phase-1-requirements.md'), generatePhase1Doc(featureName, featureSlug));
+  write(path.join(runDir, 'outputs', 'phase-2-architecture.md'), generatePhase2Doc(featureName, featureSlug));
   write(path.join(runDir, 'outputs', 'phase-3-diffs.md'), `# Phase 3 — Spec diffs\n\n+ POST /api/v1/${featureSlug}\n+ GET /api/v1/${featureSlug}/{id}\n`);
   write(path.join(runDir, 'outputs', 'phase-5-5-code-review.md'), `# Phase 5.5 — Review findings\n\n3 critical, 7 non-critical, 11 suggestions across 3 repos. All critical resolved in fix round.\n`);
   write(path.join(runDir, 'outputs', 'phase-6-assess.md'), `# Phase 6 — Cross-repo assessment\n\nVerdict: PASS. Wire shapes match across backend ↔ frontend ↔ mock. No gating asymmetry detected.\n`);
@@ -855,7 +1351,10 @@ ${dispatchSection}`;
   const stalePath = path.join(runDir, 'awaiting_input.json');
   if (fs.existsSync(stalePath)) fs.unlinkSync(stalePath);
 
-  write(path.join(runDir, 'outputs', 'phase-1-requirements.md'), `# Phase 1 — Requirements\n\nFR-1 through FR-12 + EC-1 through EC-8 (synthesized).\n`);
+  // Phase outputs — Phase 1 + Phase 2 use realistic sample shapes (see
+  // the helper definitions near the top of this file).
+  write(path.join(runDir, 'outputs', 'phase-1-requirements.md'), generatePhase1Doc(featureName, featureSlug));
+  write(path.join(runDir, 'outputs', 'phase-2-architecture.md'), generatePhase2Doc(featureName, featureSlug));
   write(path.join(runDir, 'outputs', 'phase-3-diffs.md'),         `# Phase 3 — Spec diffs\n\n+ POST /api/v1/${featureSlug}\n+ GET /api/v1/${featureSlug}/{id}\n`);
   write(path.join(runDir, 'outputs', 'phase-5-5-code-review.md'), `# Phase 5.5 — Review findings\n\n3 critical, 7 non-critical, 11 suggestions across 3 repos. All critical resolved in fix round.\n`);
   write(path.join(runDir, 'outputs', 'phase-6-assess.md'),        `# Phase 6 — Cross-repo assessment\n\nVerdict: PASS. Wire shapes match across backend ↔ frontend ↔ mock. No gating asymmetry detected.\n`);

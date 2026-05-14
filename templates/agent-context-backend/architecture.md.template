@@ -1,0 +1,60 @@
+# Architecture
+
+<!-- human-owned -->
+
+## System Overview
+
+{{SYSTEM_OVERVIEW_PARAGRAPH}}
+
+## Architecture Style
+
+{{ARCHITECTURE_STYLE_BULLETS}}
+
+## Key Architectural Boundaries
+
+{{ARCHITECTURE_DIAGRAM_OR_DESCRIPTION}}
+
+## External Service Dependencies
+
+{{EXTERNAL_DEPENDENCIES_TABLE}}
+
+## Technology Stack
+
+{{TECH_STACK_TABLE}}
+
+## Key Directories
+
+{{KEY_DIRECTORIES_LIST}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{SYSTEM_OVERVIEW_PARAGRAPH}}: 2-3 sentences naming the framework, runtime,
+  and what this service does at a system level (orchestrates X, validates Y,
+  processes Z events).
+- {{ARCHITECTURE_STYLE_BULLETS}}: 3-5 bullets naming architectural choices
+  (API-first vs code-first, layered vs hexagonal, event-driven vs request-
+  response, sync vs async). Each bullet starts with the choice in bold.
+- {{ARCHITECTURE_DIAGRAM_OR_DESCRIPTION}}: prefer an ASCII box diagram if
+  the system has 3+ external boundaries; otherwise a prose description with
+  arrows. Show: client surface, this service, external services, data store.
+- {{EXTERNAL_DEPENDENCIES_TABLE}}: markdown table with Service | Client |
+  Base URL Property | Purpose columns. One row per external HTTP service
+  this service calls. Skip if none.
+- {{TECH_STACK_TABLE}}: markdown table with Layer | Technology columns.
+  Cover: language, framework, DB, ORM, HTTP clients, message broker (if
+  any), API codegen (if any), mapping/serialization, observability, build,
+  container.
+- {{KEY_DIRECTORIES_LIST}}: bulleted tree showing the top 1-2 levels under
+  src/ (or equivalent), with one-line purpose per directory. Include
+  generated-source paths if any.
+- {{WHAT_NOT_TO_DO_BULLETS}}: 3-5 architecture-level prohibitions specific
+  to this service (e.g., "Do NOT edit generated sources", "Do NOT bypass
+  the workflow engine"). Don't repeat conventions.md content.
+-->

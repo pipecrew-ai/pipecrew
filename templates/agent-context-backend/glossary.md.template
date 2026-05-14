@@ -1,0 +1,38 @@
+# Glossary
+
+<!-- agent-updatable -->
+
+## Domain Terms
+
+{{DOMAIN_TERMS_TABLE}}
+
+## Abbreviations
+
+{{ABBREVIATIONS_TABLE}}
+
+## Status Enums Reference
+
+{{STATUS_ENUMS_LIST}}
+
+<!-- /agent-updatable -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This entire file is AGENT-UPDATABLE — it's a catalogue of vocabulary.
+When a new domain term, enum, or abbreviation enters the codebase, the
+agent adds a row here in the same change.
+
+- {{DOMAIN_TERMS_TABLE}}: markdown table with Term | Definition columns.
+  Cover the project's vocabulary an agent needs to understand the code.
+  Definitions should be 1-2 sentences, plain English. NO acronyms left
+  unexpanded.
+- {{ABBREVIATIONS_TABLE}}: markdown table with Abbreviation | Meaning
+  columns. Cover project-specific shorthand AND common tech abbreviations
+  used in the codebase.
+- {{STATUS_ENUMS_LIST}}: one subsection per major enum, naming the fully-
+  qualified type and listing the values. Cite the file/package the enum
+  lives in.
+
+Definitions only — no workflow descriptions (those belong in domains/).
+-->

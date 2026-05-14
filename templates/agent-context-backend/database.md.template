@@ -1,0 +1,59 @@
+# Database
+
+<!-- human-owned -->
+
+## Database Engine
+
+{{DB_ENGINE_AND_DRIVER}}
+
+## Connection Configuration
+
+{{CONNECTION_CONFIG}}
+
+<!-- /human-owned -->
+
+<!-- agent-updatable -->
+
+## Schema
+
+{{TABLE_DEFINITIONS}}
+
+## Migrations
+
+{{MIGRATION_HISTORY_OR_PATTERN}}
+
+<!-- /agent-updatable -->
+
+<!-- human-owned -->
+
+## Repository / Query Patterns
+
+{{REPOSITORY_PATTERNS}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+The Schema and Migrations sections are AGENT-UPDATABLE — when a new table
+or migration is added, agents must add the corresponding row. Everything
+else is human-owned.
+
+- {{DB_ENGINE_AND_DRIVER}}: engine + version, connection pool, ddl-auto
+  setting, migration tool.
+- {{CONNECTION_CONFIG}}: where credentials come from (Secrets Manager,
+  env vars, etc.), per-profile differences.
+- {{TABLE_DEFINITIONS}}: one subsection per table, with markdown table
+  Column | Type | Notes columns. Include indices, constraints, JSONB shapes.
+- {{MIGRATION_HISTORY_OR_PATTERN}}: either a chronological history of
+  migrations (preferred for small repos) or just the master changelog
+  pattern + how to add new migrations (for large repos with 50+ migrations).
+- {{REPOSITORY_PATTERNS}}: ORM-specific repository conventions (interface
+  inheritance, custom query annotations, dynamic query construction).
+- {{WHAT_NOT_TO_DO_BULLETS}}: schema-level prohibitions (no ddl-auto
+  modifications, no tables without migrations, legacy columns to avoid).
+-->

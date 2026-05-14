@@ -1,0 +1,61 @@
+# Internationalization (i18n)
+
+<!-- human-owned -->
+
+## Library
+
+{{I18N_LIBRARY}}
+
+## Languages and Locales
+
+{{LANGUAGES_TABLE}}
+
+## Locale File Layout
+
+{{LOCALE_FILE_STRUCTURE}}
+
+## Translation Key Conventions
+
+{{KEY_NAMING_CONVENTIONS}}
+
+## RTL Mechanics
+
+{{RTL_MECHANICS}}
+
+## Language Switching
+
+{{LANGUAGE_SWITCH_PATTERN}}
+
+## Adding a New Translation Key
+
+{{ADDING_KEY_STEPS}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file should ONLY exist if the repo has actual i18n. If there's no
+i18n library installed (no react-i18next, next-intl, vue-i18n, formatjs,
+etc.), do NOT create this file. Skip it from the AGENT_INDEX too.
+
+- {{I18N_LIBRARY}}: name + version (react-i18next 23.x, next-intl 3.x).
+- {{LANGUAGES_TABLE}}: markdown table Language | Code | Direction columns.
+- {{LOCALE_FILE_STRUCTURE}}: where locale JSON/TS files live, namespacing
+  approach (single file vs per-feature files).
+- {{KEY_NAMING_CONVENTIONS}}: dot-notation, nesting depth, naming pattern
+  ("auth.login.title" vs "AuthLoginTitle").
+- {{RTL_MECHANICS}}: how dir is set on <html>, how Arabic-specific font
+  overrides are applied, the canonical pattern for direction-aware
+  components.
+- {{LANGUAGE_SWITCH_PATTERN}}: the canonical hook + UI for switching
+  language at runtime.
+- {{ADDING_KEY_STEPS}}: numbered checklist (add to en + ar JSON, use
+  with t() or <Trans>, verify both languages render).
+- {{WHAT_NOT_TO_DO_BULLETS}}: prohibitions (no hardcoded strings in JSX,
+  no physical CSS properties, no bypassing the t() function).
+-->

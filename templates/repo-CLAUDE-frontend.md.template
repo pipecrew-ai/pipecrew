@@ -1,0 +1,78 @@
+# CLAUDE.md — {{REPO_NAME}}
+
+{{REPO_TAGLINE}}
+
+{{REPO_PURPOSE_PARAGRAPH}}
+
+## Quick Start
+
+```{{BUILD_LANG}}
+{{QUICK_START_COMMANDS}}
+```
+
+{{DEV_SERVER_URL_LINE}}
+
+## Before You Plan a Change
+
+1. Read `agent-context/AGENT_INDEX.md` — it maps tasks to docs.
+2. For common changes, the required reading is:
+
+{{DECISION_TABLE}}
+
+3. **Follow the conventions you find. Do not invent or "improve" them.**
+   If a convention is unclear, seems to conflict with existing code, or appears
+   outdated based on what you observe — stop, surface the issue, and propose
+   the change. Do NOT edit human-owned sections yourself.
+
+4. Update `agent-context/` ONLY when you added something new to the world:
+   a new feature module, a new API client, a new context, a new design
+   token, a new locale namespace, a new role. Edits go in sections marked
+   `<!-- agent-updatable -->`. Do NOT modify sections marked `<!-- human-owned -->`.
+   The git log is the changelog, not these docs — don't record routine
+   fixes, refactors, or version bumps.
+
+## Inviolable Rules
+
+These cause silent damage — the build / linter will not catch them.
+
+{{INVIOLABLE_RULES}}
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{REPO_NAME}}: short repo name (e.g., "abvi-pms-frontend").
+- {{REPO_TAGLINE}}: one-line stack + role (e.g., "React 18 / TypeScript /
+  Vite frontend for the Publisher Management System.").
+- {{REPO_PURPOSE_PARAGRAPH}}: 1-2 sentences naming the portals/surfaces
+  and the user audience.
+- {{BUILD_LANG}}: code-fence language (`bash`, `powershell`).
+- {{QUICK_START_COMMANDS}}: install + dev server + lint + test + storybook
+  (if applicable). 4-6 lines.
+- {{DEV_SERVER_URL_LINE}}: one-line where the dev server runs (e.g.,
+  "Dev server: http://localhost:5173"). Optional — omit for SSR-only setups
+  where the URL is environment-dependent.
+- {{DECISION_TABLE}}: markdown table with columns "About to..." and
+  "Read first". 4-7 rows covering THIS repo's most common change types.
+  Examples to draw from:
+  | About to... | Read first |
+  |---|---|
+  | Add or change a UI component | `ui-components.md`, `design-system.md` |
+  | Add a new feature module | study a sibling under `features/` first |
+  | Add an API call | `api-clients/{service}.md`, `architecture.md` |
+  | Touch role gating or auth state | `state-management.md` |
+  | Add a translation or RTL change | `i18n.md` |
+  | Touch an error boundary or API error path | `error-handling.md` |
+  | Add or change tests | `testing.md` |
+- {{INVIOLABLE_RULES}}: numbered list of 4-7 rules. EACH must pass ALL
+  three tests:
+  1. Violating it causes SILENT damage (no build/lint/test failure).
+  2. It applies broadly.
+  3. It is NOT obvious from reading code in the surrounding area.
+  Frontend examples that pass: API client factory must be used (not raw
+  axios), role checks must use the central hook (not inline string compare),
+  user state goes in AuthContext (not localStorage), use logical CSS
+  properties for RTL safety, hardcoded API URLs are forbidden.
+
+Total file: aim for ≤60 lines after stripping these comments. Hard ceiling
+(validator-enforced): 200 lines.
+-->

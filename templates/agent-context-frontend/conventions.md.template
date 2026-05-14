@@ -1,0 +1,71 @@
+# Conventions
+
+<!-- human-owned -->
+
+## Naming Conventions
+
+### Files
+
+{{FILE_NAMING_CONVENTIONS}}
+
+### Components / Hooks / Types / Services
+
+{{SYMBOL_NAMING_CONVENTIONS}}
+
+## Imports
+
+{{IMPORT_CONVENTIONS}}
+
+## Component Structure
+
+{{COMPONENT_STRUCTURE_PATTERN}}
+
+## TypeScript Conventions
+
+{{TS_CONVENTIONS}}
+
+## Styling Conventions
+
+{{STYLING_CONVENTIONS}}
+
+## Storage Conventions
+
+{{STORAGE_CONVENTIONS}}
+
+## Environment Variables
+
+{{ENV_VAR_CONVENTIONS}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file is the rule book agents read before writing UI code. It is
+HUMAN-OWNED — agents do not edit it after generation.
+
+- {{FILE_NAMING_CONVENTIONS}}: components (PascalCase.tsx), hooks
+  (useCamelCase.ts), types (kebab-case.types.ts), services (kebab-case.ts),
+  tests (xxx.test.tsx). Adapt to actual conventions in repo.
+- {{SYMBOL_NAMING_CONVENTIONS}}: how exports are named, default vs named
+  export rules.
+- {{IMPORT_CONVENTIONS}}: path aliases (@/*, ~/, etc.), barrel imports,
+  prohibited deep imports.
+- {{COMPONENT_STRUCTURE_PATTERN}}: the canonical order inside a component
+  (Hooks → State → Effects → Handlers → Render). Show with a sample
+  skeleton if helpful.
+- {{TS_CONVENTIONS}}: tsconfig stance (strict vs relaxed), `any` policy,
+  type vs interface preference, generics conventions.
+- {{STYLING_CONVENTIONS}}: Tailwind / CSS modules / CSS-in-JS / etc.,
+  className composition pattern (cn(), clsx(), classnames()), and any
+  RTL-safety rules (logical properties, dir-aware selectors).
+- {{STORAGE_CONVENTIONS}}: localStorage / sessionStorage / cookie usage
+  rules — what's allowed where, what's NOT.
+- {{ENV_VAR_CONVENTIONS}}: VITE_*, NEXT_PUBLIC_*, etc. — the prefix
+  convention and how env vars flow into the app.
+- {{WHAT_NOT_TO_DO_BULLETS}}: 5-10 frontend-specific prohibitions.
+-->

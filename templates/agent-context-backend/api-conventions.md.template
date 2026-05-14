@@ -1,0 +1,91 @@
+# API Conventions
+
+<!-- human-owned -->
+
+## API Style
+
+{{API_STYLE_OVERVIEW}}
+
+{{SPEC_FILES_TABLE}}
+
+### Adding a New Endpoint
+
+{{ADDING_ENDPOINT_STEPS}}
+
+### Generated Code Notes
+
+{{GENERATED_CODE_NOTES}}
+
+## Base Path
+
+{{BASE_PATH_DESCRIPTION}}
+
+## API Doc Surfaces (Swagger / Redoc / etc.)
+
+{{API_DOC_GROUPS}}
+
+<!-- /human-owned -->
+
+## Endpoint Catalog
+
+<!-- agent-updatable -->
+
+{{ENDPOINT_CATALOG}}
+
+<!-- /agent-updatable -->
+
+<!-- human-owned -->
+
+## Request/Response Patterns
+
+{{REQUEST_RESPONSE_PATTERNS}}
+
+## Error Responses
+
+{{ERROR_RESPONSE_FORMAT}}
+
+See `error-handling.md` for the complete exception-to-HTTP mapping.
+
+## Authentication
+
+{{AUTH_OVERVIEW}}
+
+See `authentication.md` for the full flow.
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+For api-first repos: this file is the source of truth for which endpoints
+exist and how they're shaped. Endpoint Catalog is agent-updatable — add
+rows when endpoints are added. Conventions are human-owned.
+
+- {{API_STYLE_OVERVIEW}}: api-first vs code-first; if api-first, name the
+  spec format (OpenAPI, AsyncAPI, gRPC). If hybrid (some endpoints generated,
+  some hand-written), call out the divergence.
+- {{SPEC_FILES_TABLE}}: for api-first, table of Spec File | Generated
+  Package | Purpose. Skip if not api-first.
+- {{ADDING_ENDPOINT_STEPS}}: numbered list of how to add a new endpoint in
+  THIS repo. Be concrete — name the actual files to touch and commands to run.
+- {{GENERATED_CODE_NOTES}}: anything an agent must know about the codegen
+  (where output lives, what to NEVER edit, post-processors, conflicts).
+- {{BASE_PATH_DESCRIPTION}}: the URL prefix all endpoints live under, and
+  where it's configured.
+- {{API_DOC_GROUPS}}: Swagger UI / Redoc / etc. URLs and any group splits.
+- {{ENDPOINT_CATALOG}}: nested by resource group, with markdown tables
+  Method | Path | Operation | Description. THIS section is the agent-
+  updatable catalog — agents add rows when adding endpoints.
+- {{REQUEST_RESPONSE_PATTERNS}}: list-wrapper shapes, pagination conventions,
+  ID types, timestamp formats, optional-field handling.
+- {{ERROR_RESPONSE_FORMAT}}: error response shape (code, message, details).
+- {{AUTH_OVERVIEW}}: 1-2 sentences naming the auth scheme + which endpoints
+  are public.
+- {{WHAT_NOT_TO_DO_BULLETS}}: API-shape prohibitions specific to this repo
+  (e.g., "Do NOT use request bodies for filtering", "Do NOT return raw
+  entities from controllers").
+-->

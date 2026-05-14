@@ -1,0 +1,59 @@
+# Error Handling
+
+<!-- human-owned -->
+
+## Error Response Format
+
+{{ERROR_RESPONSE_SHAPE}}
+
+## Global Exception Handler
+
+{{GLOBAL_HANDLER_LOCATION}}
+
+<!-- /human-owned -->
+
+<!-- agent-updatable -->
+
+## Exception Mapping Table
+
+{{EXCEPTION_HTTP_MAPPING_TABLE}}
+
+## Custom Exception Classes
+
+{{CUSTOM_EXCEPTION_LIST}}
+
+<!-- /agent-updatable -->
+
+<!-- human-owned -->
+
+## Conventions for New Exceptions
+
+{{NEW_EXCEPTION_CONVENTIONS}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+The Exception Mapping Table and Custom Exception Classes are AGENT-UPDATABLE
+— when a new exception is added, agents must add the row. Conventions for
+how to write new exceptions are human-owned.
+
+- {{ERROR_RESPONSE_SHAPE}}: code block showing the JSON shape clients
+  receive. Note generated vs hand-written model.
+- {{GLOBAL_HANDLER_LOCATION}}: file path of the central handler.
+- {{EXCEPTION_HTTP_MAPPING_TABLE}}: markdown table with Exception | HTTP
+  Status | Error Code | Notes columns. One row per mapping in the central
+  handler.
+- {{CUSTOM_EXCEPTION_LIST}}: bulleted list of repo-specific exception
+  classes with one-line purpose each.
+- {{NEW_EXCEPTION_CONVENTIONS}}: the recipe for adding a new exception
+  (where to put the class, how to wire it into the handler, status code
+  rules).
+- {{WHAT_NOT_TO_DO_BULLETS}}: error-handling prohibitions (no raw
+  RuntimeException, no controller-level catch-and-re-wrap).
+-->

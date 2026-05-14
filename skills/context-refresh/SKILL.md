@@ -15,7 +15,7 @@ description: "Audit or refresh PipeCrew context docs at three scopes: a single r
 
 | Scope | Selector | What's audited / refreshed |
 |---|---|---|
-| Single repo | `<repo-key-or-path>` | That repo's `agent-context/`, `CLAUDE.md`, and `agent-context/common/DESIGN_SYSTEM.md` (if frontend) |
+| Single repo | `<repo-key-or-path>` | That repo's `agent-context/`, `CLAUDE.md`, and the design system file (if frontend — `agent-context/design-system.md` for new bundle, `agent-context/common/DESIGN_SYSTEM.md` for legacy) |
 | Workspace | `--workspace=<slug>` | `{workspace_root}/{slug}/context/platform.md` |
 | Everything | `--all` | Workspace scope + every repo in the config |
 
@@ -113,20 +113,27 @@ Where `<comparison_sha>` is `state.head_sha` (or the value from `--since=<ref>` 
 
 **Bail-out check**: if the combined list has more than 200 entries, switch this repo to full audit (faster than per-file analysis at that scale).
 
-**Classify each changed file** to derive a per-doc impact list — pass this to `context-manager` as the `files_changed` input in `refresh` mode:
+**Classify each changed file** to derive a per-doc impact list — pass this to `context-manager` as the `files_changed` input in `refresh` mode. The mapping depends on whether the repo uses the legacy template (single `agent-context/common/` subdir) or one of the new role-specific bundles (backend / frontend, with `domains/` / `features/` / `integrations/` / `api-clients/` plural folders). The agent should read what's present on disk and choose the matching column.
 
-| File pattern | Likely doc impact |
-|---|---|
-| `src/.../controller/*` / `views.py` / `routes/*.ts` / `pages/*.tsx` | `agent-context/api-conventions.md` (backend) or AGENT_INDEX.md feature catalogue (frontend) |
-| New top-level directory under `src/` | `agent-context/architecture.md` |
-| `db/changelog/*` / `migrations/*` | `agent-context/architecture.md` data-model section |
-| Files importing `software.amazon.awssdk.*` / `boto3` / `@aws-sdk/*` | `agent-context/common/AWS_INTEGRATION.md` (create if missing and the AWS-multi-resource trigger now applies) |
-| Test files | `agent-context/common/TESTING.md` |
-| Frontend components / pages | AGENT_INDEX.md feature catalogue + possibly DESIGN_SYSTEM.md |
-| `package.json` / `pom.xml` / `pyproject.toml` | platform.md (workspace scope) — flag for next workspace refresh |
-| Deleted files | every doc that referenced them — full grep across `agent-context/` |
+| File pattern | Backend (new bundle) doc impact | Frontend (new bundle) doc impact | Legacy doc impact |
+|---|---|---|---|
+| `src/.../controller/*` / `views.py` / `routes/*.ts` | `agent-context/api-conventions.md` (Endpoint Catalog row) | n/a | `agent-context/api-conventions.md` |
+| `pages/*.tsx` / `app/*/page.tsx` | n/a | `agent-context/features/{feature}.md` (Pages table) + AGENT_INDEX feature catalogue | AGENT_INDEX feature catalogue |
+| New top-level directory under `src/` | `agent-context/architecture.md` | `agent-context/architecture.md` + new `agent-context/features/{feature}.md` if it's a feature module | `agent-context/architecture.md` |
+| `db/changelog/*` / `migrations/*` | `agent-context/database.md` (Schema + Migrations sections) | n/a | `agent-context/architecture.md` data-model section |
+| Files importing `software.amazon.awssdk.*` / `boto3` / `@aws-sdk/*` | `agent-context/integrations/aws.md` (create from `_template.md` if missing and the AWS-multi-resource trigger applies) | n/a | `agent-context/common/AWS_INTEGRATION.md` |
+| New external integration (Kafka, Stripe, Datadog, etc.) | `agent-context/integrations/{name}.md` (create from `_template.md`) | n/a (frontend integrations are typically API consumers) | n/a |
+| New Spring/Django/etc. service introducing a new bounded context | `agent-context/domains/{name}.md` (create from `_template.md`) + row in `business-context.md` | n/a | per-feature doc under `agent-context/features/` |
+| `src/api/services/*` / `src/api/clients/*` (frontend) | n/a | `agent-context/api-clients/{service}.md` (Endpoints Used table) | `agent-context/services/{SERVICE}_API.md` |
+| `src/features/*` (frontend) | n/a | `agent-context/features/{feature}.md` | per-feature doc under `agent-context/features/` |
+| Component / token changes (frontend) | n/a | `agent-context/ui-components.md` and/or `agent-context/design-system.md` | `agent-context/common/UI_COMPONENTS.md` / `DESIGN_SYSTEM.md` |
+| Locale file changes (frontend i18n) | n/a | `agent-context/features/{feature}.md` (Translation Keys table) | `agent-context/common/I18N.md` |
+| New exception class | `agent-context/error-handling.md` (Exception Mapping Table) | `agent-context/error-handling.md` (API Error Types) | same paths |
+| Test files | `agent-context/testing.md` | `agent-context/testing.md` | `agent-context/common/TESTING.md` |
+| `package.json` / `pom.xml` / `pyproject.toml` | platform.md (workspace scope) — flag for next workspace refresh | platform.md (workspace scope) | platform.md |
+| Deleted files | every doc that referenced them — full grep across `agent-context/` | same | same |
 
-The agent does the actual mapping by reading the changed files; the table above is a hint set, not a hard contract.
+The agent does the actual mapping by reading the changed files; the table above is a hint set, not a hard contract. **HARD RULE**: a refresh that would touch a `<!-- human-owned -->` section must surface the change as a finding (with file:line evidence and proposed wording) — the agent does not edit human-owned sections. Only `<!-- agent-updatable -->` sections are edited automatically.
 
 **No state file or `--full` selected** → skip Step 1.6 entirely; fall through to full audit in Step 2/3.
 
@@ -220,9 +227,15 @@ Verify `{repo_path}/agent-context/` exists. If not:
 
 **Frontend repos — additional check**:
 
-- Verify `{repo_path}/agent-context/common/DESIGN_SYSTEM.md` exists.
-- If present: audit its §-anchor structure against `{plugin_dir}/templates/DESIGN_SYSTEM.md.template`. Stale sections / missing required anchors / reference files that no longer exist → findings.
-- If missing: propose bootstrap via `/discover --resume` Phase B3 (not auto-fixed by context-refresh — B3 is the canonical bootstrap path).
+Design system can live at one of two paths depending on which template
+generated this repo:
+- **New bundle**: `{repo_path}/agent-context/design-system.md` (top-level)
+- **Legacy**: `{repo_path}/agent-context/common/DESIGN_SYSTEM.md`
+
+Probe both, in that order, and use whichever is present.
+
+- If present: audit its §-anchor structure against `{plugin_dir}/templates/agent-context-frontend/design-system.md.template` (new) or `{plugin_dir}/templates/DESIGN_SYSTEM.md.template` (legacy fallback). Stale sections / missing required anchors / reference files that no longer exist → findings.
+- If missing on BOTH paths: propose bootstrap via `/discover --resume` Phase B3 (not auto-fixed by context-refresh — B3 is the canonical bootstrap path).
 
 Dispatch the `context-manager` agent for the repo's agent-context + CLAUDE.md, plus — for frontend — an additional pass that refreshes DESIGN_SYSTEM.md against current feature code:
 
@@ -254,7 +267,15 @@ Scope: full (no prior state OR --full was passed OR branch changed)
 Read the agent-context docs at {repo_path}/agent-context/.
 Scan the codebase for stale references, missing coverage, and contradictions.
 {if role == "frontend":}
-Additionally audit {repo_path}/agent-context/common/DESIGN_SYSTEM.md against the PipeCrew template at {plugin_dir}/templates/DESIGN_SYSTEM.md.template:
+Additionally audit the repo's design system file. Probe in this order and use the first one that exists:
+  1. {repo_path}/agent-context/design-system.md (new frontend bundle)
+  2. {repo_path}/agent-context/common/DESIGN_SYSTEM.md (legacy)
+
+Audit it against the matching PipeCrew template:
+  - For path #1: {plugin_dir}/templates/agent-context-frontend/design-system.md.template
+  - For path #2: {plugin_dir}/templates/DESIGN_SYSTEM.md.template (legacy)
+
+Checks:
 - Required §-anchors present?
 - Reference files for each §-subsection still exist?
 - Known Inconsistencies: any entries that should be removed because the inconsistency was fixed?
@@ -270,11 +291,14 @@ If any agent-context/common/ topic files were added or removed, update CLAUDE.md
 Fix any validator errors before finishing. Do not touch CLAUDE.md's stable sections.
 
 {if role == "frontend":}
-Additionally refresh {repo_path}/agent-context/common/DESIGN_SYSTEM.md:
+Additionally refresh the design system file at whichever of these exists:
+  1. {repo_path}/agent-context/design-system.md (new frontend bundle)
+  2. {repo_path}/agent-context/common/DESIGN_SYSTEM.md (legacy)
+
+For the chosen file:
 - For each §-subsection, verify reference files still exist; if not, replace with the nearest still-existing exemplar.
-- If Known Inconsistencies lists an entry that the current code no longer exhibits, remove the row.
-- If a new anti-pattern is visible in the code that the doc doesn't list, add a row.
-- Leave hand-curated sections (canonical code blocks, DON'T examples) untouched unless they reference code that no longer exists.
+- The Known Inconsistencies table is `<!-- agent-updatable -->` (in the new template) — if an entry that the current code no longer exhibits, remove the row; if a new inconsistency is visible, add a row.
+- All other sections are `<!-- human-owned -->` (in the new template) — leave them untouched. If you observe drift, surface it as a finding instead of editing.
 
 Report what you changed.
 ```

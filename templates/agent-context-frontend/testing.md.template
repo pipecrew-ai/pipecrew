@@ -1,0 +1,68 @@
+# Testing
+
+<!-- human-owned -->
+
+## Test Types
+
+{{TEST_TYPES}}
+
+## Frameworks
+
+{{TESTING_FRAMEWORKS_TABLE}}
+
+## Test Layout
+
+{{TEST_DIRECTORY_LAYOUT}}
+
+## Mocking Rules
+
+### API Mocking
+
+{{API_MOCKING_PATTERN}}
+
+### Component Mocking
+
+{{COMPONENT_MOCKING_PATTERN}}
+
+## Browser-Mode Tests (Playwright / etc.)
+
+{{BROWSER_TEST_PATTERN}}
+
+## Naming and Conventions
+
+{{TEST_NAMING_CONVENTIONS}}
+
+## Running Tests
+
+```{{TEST_LANG}}
+{{TEST_COMMANDS}}
+```
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{TEST_TYPES}}: bulleted list of test types in this app (unit, component,
+  integration, e2e, visual). For each, name the framework + when to use it.
+- {{TESTING_FRAMEWORKS_TABLE}}: markdown table Framework | Version | Used For
+  columns.
+- {{TEST_DIRECTORY_LAYOUT}}: where tests live (co-located vs centralized
+  src/test/), folder structure, file naming.
+- {{API_MOCKING_PATTERN}}: which library (MSW, axios-mock-adapter, fetch-mock),
+  the canonical setup, where mocks live.
+- {{COMPONENT_MOCKING_PATTERN}}: when to mock children, when to use
+  shallow rendering (or NOT — RTL discourages it).
+- {{BROWSER_TEST_PATTERN}}: if Playwright or Vitest browser mode is used,
+  the canonical test pattern.
+- {{TEST_NAMING_CONVENTIONS}}: file naming (xxx.test.tsx), test name format
+  ("when X then Y" vs "should X").
+- {{TEST_LANG}}: code-fence language.
+- {{TEST_COMMANDS}}: actual commands (watch, run, single file, coverage).
+- {{WHAT_NOT_TO_DO_BULLETS}}: prohibitions (no shallow rendering, no real
+  network calls in unit tests, no test that depends on user-specific env).
+-->

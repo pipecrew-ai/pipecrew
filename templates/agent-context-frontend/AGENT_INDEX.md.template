@@ -1,0 +1,132 @@
+# Agent Index — {{REPO_NAME}}
+
+This file is the router for all agent-facing context. Stable rules and the
+quick start live in the root `CLAUDE.md`. Detail lives in the files below.
+
+---
+
+## Section Markers (read this once)
+
+Inside every doc, sections are marked for who owns them:
+
+- `<!-- agent-updatable -->` ... `<!-- /agent-updatable -->`
+  Catalogs and inventories of things that exist (feature catalogue,
+  endpoint quick-reference, design tokens table, glossary entries). Add
+  rows when you add new things. Do not rewrite existing rows for routine
+  changes.
+
+- `<!-- human-owned -->` ... `<!-- /human-owned -->`
+  Conventions, patterns, "What NOT to Do" sections. Agents must read these
+  and follow them. **Never edit human-owned sections.** If something needs
+  to change, see the workflow below.
+
+Anything unmarked defaults to **human-owned**.
+
+### When you think a human-owned section needs to change
+
+Three cases, same workflow:
+
+- **Confused** — the rule is unclear. → Ask before acting.
+- **Outdated** — the rule no longer matches what the code does. → Flag it as
+  a finding with file:line evidence, propose the new wording, wait for the human.
+- **In conflict** — your task seems to require violating the rule. → Stop and
+  surface the conflict; ask whether to comply, refactor to comply, or change
+  the rule first.
+
+The agent surfaces, the human decides. Never silently edit a human-owned
+section, never silently ignore a convention, never silently violate a rule.
+
+---
+
+## Directory Tree (agent-context/)
+
+```
+agent-context/
+├── AGENT_INDEX.md              <- this file
+├── business-context.md         <- product, parent platform, this app's role
+├── architecture.md             <- routing, lazy-loading, feature decomposition
+├── conventions.md              <- naming, hooks order, path aliases, file org
+├── design-system.md            <- tokens, typography, spacing, RTL
+├── ui-components.md            <- component library usage, wrappers
+├── state-management.md         <- contexts, hooks, query patterns
+├── error-handling.md           <- ErrorBoundary, API errors, 5xx handling
+├── i18n.md                     <- locales, RTL mechanics  (omit if no i18n)
+├── testing.md                  <- test types, framework setup, mocking rules
+├── infrastructure.md           <- build (Vite/Next/etc.), env vars, deploy
+├── glossary.md                 <- domain terminology
+├── api-clients/                <- one file per backend service consumed
+│   └── {service}.md            <- e.g., publisher.md, backoffice.md
+└── features/                   <- one file per UI feature module
+    └── {feature}.md            <- e.g., auth.md, publisher-dashboard.md
+```
+
+---
+
+## Topic → File Mapping
+
+{{TOPIC_FILE_MAPPING}}
+
+---
+
+## Boundary Rules (where new docs go)
+
+The structure follows one mechanical rule: **top-level files are universal
+singletons (one per app); plural folders hold variable-count items
+(zero, one, or many per app)**.
+
+- **`api-clients/`** — one file per backend service consumed. Naming:
+  lowercase, short (`publisher.md`, `backoffice.md`). Documents the
+  endpoints used, request/response shapes, error handling specific to
+  that service, and known divergences in how the service's contract is
+  used. Cross-cutting client concerns (interceptors, token refresh,
+  factory pattern) belong in `architecture.md` and `error-handling.md`.
+
+- **`features/`** — one file per UI feature module (typically aligns
+  with a top-level directory under `src/features/`). Naming: lowercase,
+  short. Documents the routes, key components, hooks, state, and i18n
+  keys for that feature. Create a new file when a new feature module
+  is added; extend an existing file when adding a view inside an
+  existing feature.
+
+- **`business-context.md`** — exactly one per app. Product framing only;
+  no code maps, no design tokens, no per-feature details.
+
+- **Every api-client doc** ends with a `## Known Divergences (Do Not
+  Replicate)` section listing real footguns in how this service is
+  currently consumed.
+
+---
+
+## Feature Catalogue
+
+<!-- agent-updatable -->
+
+{{FEATURE_CATALOGUE}}
+
+<!-- /agent-updatable -->
+
+## Quick Reference
+
+<!-- agent-updatable -->
+
+{{API_QUICK_REFERENCE}}
+
+{{KEY_FILES_QUICK_REFERENCE}}
+
+<!-- /agent-updatable -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{REPO_NAME}}: short repo name.
+- {{TOPIC_FILE_MAPPING}}: a markdown table mapping common topics to files.
+  Adapt based on what was actually generated. Include rows for each
+  {api-client} and {feature} sub-file generated.
+- {{FEATURE_CATALOGUE}}: markdown table with Feature | Module Path | Doc.
+  One row per feature module under src/features/ (or equivalent).
+- {{API_QUICK_REFERENCE}}: small markdown table of Service | Base URL |
+  Config Key columns. Lifted from src/api/config.ts (or equivalent).
+- {{KEY_FILES_QUICK_REFERENCE}}: small markdown table of Purpose | File
+  columns. Cover routing, auth, API config, role checks, error UI, key
+  hooks. ~8-12 entries, the things a new agent reaches for first.
+-->

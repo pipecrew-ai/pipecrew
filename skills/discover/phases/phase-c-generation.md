@@ -181,9 +181,18 @@ Repo: {repo_path}
 Repo type: {type}
 Repo role: {role}
 
-Read {repo_path}/CLAUDE.md if it exists, and any existing agent-context/ directory (non-empty → use refresh semantics for that directory; do not destroy-and-rewrite). Then follow the `full` mode instructions in your system prompt to produce:
-1. agent-context/ first (AGENT_INDEX.md + architecture.md + conventions.md + api-conventions.md if api-service, plus common/ topic files as complexity warrants)
-2. CLAUDE.md second, using the template at {plugin_dir}/templates/repo-CLAUDE.md.template, referencing agent-context
+Read {repo_path}/CLAUDE.md if it exists, and any existing agent-context/ directory (non-empty → use refresh semantics for that directory; do not destroy-and-rewrite). Then follow the `full` mode instructions in your system prompt.
+
+Template dispatch (per your system prompt):
+- role = api-service OR worker → use templates/agent-context-backend/ + templates/repo-CLAUDE-backend.md.template
+- role = frontend             → use templates/agent-context-frontend/ + templates/repo-CLAUDE-frontend.md.template
+- role = mock-server / infrastructure / contract / other → downgrade to claude-only mode (use templates/repo-CLAUDE.md.template)
+
+Output order:
+1. agent-context/ first — fill every *.md.template in the chosen bundle (AGENT_INDEX, business-context, architecture, conventions, plus role-specific singletons). Strip the <!-- AGENT INSTRUCTIONS --> blocks. Preserve <!-- agent-updatable --> / <!-- human-owned --> markers verbatim.
+2. For each bounded context (backend) or feature module (frontend) that warrants its own file (see triggers in the bundle's domains/_template.md or features/_template.md), copy the template, rename, and fill.
+3. For each external system the repo integrates with (backend) or backend service the repo consumes (frontend), copy the matching _template.md and fill.
+4. CLAUDE.md second, using the role-specific template, referencing agent-context.
 
 Validate CLAUDE.md with: node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/CLAUDE.md
 On exit 1, fix the flagged issues and re-validate. On exit 2, record warnings but continue.

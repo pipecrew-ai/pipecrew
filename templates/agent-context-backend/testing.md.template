@@ -1,0 +1,53 @@
+# Testing
+
+<!-- human-owned -->
+
+## Test Types
+
+{{TEST_TYPES}}
+
+## Test Profile Guards
+
+{{TEST_PROFILE_GUARDS}}
+
+## Mocking Rules
+
+{{MOCKING_RULES}}
+
+## Naming and Layout
+
+{{TEST_NAMING_LAYOUT}}
+
+## Running Tests
+
+```{{TEST_LANG}}
+{{TEST_COMMANDS}}
+```
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file is human-owned. It encodes the testing philosophy of the repo.
+Agents follow it; they do not change it.
+
+- {{TEST_TYPES}}: bulleted list of test types in this repo (unit, slice/MVC,
+  integration, contract, e2e). For each, name the framework + when to use it.
+- {{TEST_PROFILE_GUARDS}}: markdown table with Setting | Value | Why columns.
+  Cover the test-profile config that disables real external dependencies.
+- {{MOCKING_RULES}}: which collaborators get mocked (Feign clients, AWS
+  clients, message senders) and which DO NOT (real DB for repository tests).
+- {{TEST_NAMING_LAYOUT}}: file naming pattern, package mirror, method-name
+  conventions.
+- {{TEST_LANG}}: code-fence language for the run-tests block.
+- {{TEST_COMMANDS}}: actual commands to run all tests, a single class, and
+  with the test profile.
+- {{WHAT_NOT_TO_DO_BULLETS}}: testing prohibitions (no real AWS, no full-
+  context Spring boot for unit tests, no test that requires per-developer
+  credentials).
+-->

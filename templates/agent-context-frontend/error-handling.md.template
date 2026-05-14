@@ -1,0 +1,53 @@
+# Error Handling
+
+<!-- human-owned -->
+
+## Layers
+
+{{ERROR_HANDLING_LAYERS}}
+
+## Error Boundary
+
+{{ERROR_BOUNDARY_OVERVIEW}}
+
+## API Errors
+
+{{API_ERROR_TYPES}}
+
+## Server Errors (5xx)
+
+{{SERVER_ERROR_HANDLING}}
+
+## Form Validation Errors
+
+{{FORM_ERROR_DISPLAY}}
+
+## Toast / Notification Patterns
+
+{{TOAST_PATTERNS}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{ERROR_HANDLING_LAYERS}}: the layer model — React ErrorBoundary for
+  render errors, API client interceptors for HTTP errors, form lib for
+  validation errors, global toast for transient errors. Numbered list.
+- {{ERROR_BOUNDARY_OVERVIEW}}: where the boundary lives, what it catches,
+  what fallback UI it renders.
+- {{API_ERROR_TYPES}}: the typed error classes thrown by the API layer
+  (AuthError, NotFoundError, ServerError) and where they're caught.
+- {{SERVER_ERROR_HANDLING}}: how 5xx responses surface to the user
+  (global modal, page-level banner, toast).
+- {{FORM_ERROR_DISPLAY}}: the canonical pattern for showing field-level
+  validation errors and form-level submit errors.
+- {{TOAST_PATTERNS}}: which library, when to use a toast vs inline error
+  vs blocking modal.
+- {{WHAT_NOT_TO_DO_BULLETS}}: prohibitions (no swallowed errors, no
+  console.error in production code, no alert()).
+-->

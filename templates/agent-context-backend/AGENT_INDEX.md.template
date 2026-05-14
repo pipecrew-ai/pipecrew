@@ -1,0 +1,129 @@
+# Agent Index — {{REPO_NAME}}
+
+This file is the router for all agent-facing context. Stable rules and the
+quick start live in the root `CLAUDE.md`. Detail lives in the files below.
+
+---
+
+## Section Markers (read this once)
+
+Inside every doc, sections are marked for who owns them:
+
+- `<!-- agent-updatable -->` ... `<!-- /agent-updatable -->`
+  Catalogs and inventories of things that exist (endpoint tables, schema
+  tables, exception mapping, integration queue lists). Add a row when you
+  add a new thing. Do not rewrite existing rows for routine changes.
+
+- `<!-- human-owned -->` ... `<!-- /human-owned -->`
+  Conventions, patterns, "What NOT to Do" sections. Agents must read these
+  and follow them. **Never edit human-owned sections.** If something needs
+  to change, see the workflow below.
+
+Anything unmarked defaults to **human-owned**.
+
+### When you think a human-owned section needs to change
+
+Three cases, same workflow:
+
+- **Confused** — the rule is unclear. → Ask before acting.
+- **Outdated** — the rule no longer matches what the code does. → Flag it as
+  a finding with file:line evidence, propose the new wording, wait for the human.
+- **In conflict** — your task seems to require violating the rule. → Stop and
+  surface the conflict; ask whether to comply, refactor to comply, or change
+  the rule first.
+
+The agent surfaces, the human decides. Never silently edit a human-owned
+section, never silently ignore a convention, never silently violate a rule.
+
+---
+
+## Directory Tree (agent-context/)
+
+```
+agent-context/
+├── AGENT_INDEX.md              <- this file
+├── business-context.md         <- product, parent platform, this service's role
+├── architecture.md             <- modules, layers, data flow, key abstractions
+├── conventions.md              <- naming, DI, logging, transactions
+├── api-conventions.md          <- API style + endpoint catalog
+├── database.md                 <- schema, migrations, query patterns
+├── authentication.md           <- authn flow, authz model
+├── error-handling.md           <- exception hierarchy + HTTP status mapping
+├── testing.md                  <- test types, framework setup, mocking rules
+├── infrastructure.md           <- build, deploy, profiles, observability
+├── glossary.md                 <- domain terminology
+├── integrations/               <- one file per external system
+│   └── {provider}.md           <- e.g., aws.md, kafka.md, stripe.md
+└── domains/                    <- one file per bounded context
+    └── {context}.md            <- e.g., book-review.md, contracts.md
+```
+
+---
+
+## Topic → File Mapping
+
+{{TOPIC_FILE_MAPPING}}
+
+---
+
+## Boundary Rules (where new docs go)
+
+The structure follows one mechanical rule: **top-level files are universal
+singletons (one per service); plural folders hold variable-count items
+(zero, one, or many per service)**.
+
+- **`integrations/`** — one file per external system this service talks to
+  (cloud provider, message broker, third-party SaaS). Naming: lowercase,
+  short (`aws.md`, `kafka.md`, `stripe.md`). Cross-cutting concerns that
+  are NOT integrations (logging, security, observability) belong in the
+  matching top-level file (`infrastructure.md`, `authentication.md`).
+
+- **`domains/`** — one file per bounded context with real workflow
+  complexity. Naming: lowercase, short. Create a new file when a context
+  has 3+ states with non-trivial transitions, multiple roles with different
+  permissions, load-bearing invariants not obvious from code, or external
+  workflow wiring. Don't create one for plain CRUD — extend `database.md`
+  instead.
+
+- **`business-context.md`** — exactly one per service. Product framing
+  only; no code maps, no schema, no workflow specifics.
+
+- **Every integration doc** ends with a `## Known Divergences (Do Not
+  Replicate)` section listing real footguns in the existing code that
+  agents must not copy.
+
+---
+
+## Feature Catalogue
+
+<!-- agent-updatable -->
+
+{{FEATURE_CATALOGUE}}
+
+<!-- /agent-updatable -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{REPO_NAME}}: short repo name.
+- {{TOPIC_FILE_MAPPING}}: a markdown table mapping common topics to the
+  file that owns them. Adapt the file list above based on what was actually
+  generated for this repo. Example rows:
+  | Topic | File |
+  |---|---|
+  | What is this product, who uses it | `business-context.md` |
+  | Module boundaries, package layout | `architecture.md` |
+  | Naming, DI, transaction patterns | `conventions.md` |
+  | REST endpoints, OpenAPI specs | `api-conventions.md` |
+  | Schema, migrations, JSONB | `database.md` |
+  | JWT/auth flow, current-user access | `authentication.md` |
+  | Exception types, HTTP error responses | `error-handling.md` |
+  | Test types, profile guards | `testing.md` |
+  | Build, deploy, profiles | `infrastructure.md` |
+  | Domain terms | `glossary.md` |
+  | <each external system> | `integrations/<name>.md` |
+  | <each bounded context> | `domains/<name>.md` |
+- {{FEATURE_CATALOGUE}}: a markdown table catalogue of major features.
+  Columns: Feature | Key Files | Doc. Examples drawn from observed code.
+  Aim for 5-12 rows. Skip if the repo is essentially a single feature.
+-->

@@ -1,0 +1,38 @@
+# Glossary
+
+<!-- agent-updatable -->
+
+## Domain Terms
+
+{{DOMAIN_TERMS_TABLE}}
+
+## Abbreviations
+
+{{ABBREVIATIONS_TABLE}}
+
+## UI Vocabulary
+
+{{UI_VOCABULARY_TABLE}}
+
+## Status Enums Reference
+
+{{STATUS_ENUMS_LIST}}
+
+<!-- /agent-updatable -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This entire file is AGENT-UPDATABLE — it's a catalogue of vocabulary.
+
+- {{DOMAIN_TERMS_TABLE}}: markdown table Term | Definition. Cover the
+  product vocabulary (publisher, request, contract, etc.). Should mostly
+  match the backend's glossary.md — the same terms describe the same
+  concepts on both sides.
+- {{ABBREVIATIONS_TABLE}}: markdown table Abbreviation | Meaning.
+- {{UI_VOCABULARY_TABLE}}: UI-specific vocabulary the codebase uses
+  (e.g., "portal", "dashboard tab", "side rail", "stat card") so agents
+  use consistent words for consistent things.
+- {{STATUS_ENUMS_LIST}}: one subsection per major enum used in the UI,
+  with values. Cite the type or constant.
+-->

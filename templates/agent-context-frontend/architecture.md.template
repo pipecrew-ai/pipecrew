@@ -1,0 +1,79 @@
+# Architecture
+
+<!-- human-owned -->
+
+## System Overview
+
+{{SYSTEM_OVERVIEW_PARAGRAPH}}
+
+## Architecture Style
+
+{{ARCHITECTURE_STYLE_BULLETS}}
+
+## Directory Structure
+
+{{DIRECTORY_TREE}}
+
+## Feature Module Decomposition Rules
+
+{{FEATURE_DECOMPOSITION_RULES}}
+
+## Routing Architecture
+
+{{ROUTING_OVERVIEW}}
+
+{{ROUTES_TABLE}}
+
+### Lazy Loading Pattern
+
+{{LAZY_LOADING_PATTERN}}
+
+### Feature Barrel Imports
+
+{{BARREL_IMPORT_PATTERN}}
+
+### New Route Checklist
+
+{{NEW_ROUTE_CHECKLIST}}
+
+## API Client Architecture
+
+{{API_CLIENT_OVERVIEW}}
+
+For per-service detail, see `api-clients/{service}.md`.
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{SYSTEM_OVERVIEW_PARAGRAPH}}: 2-3 sentences naming the framework, build
+  tool, and the apps' user-facing surfaces.
+- {{ARCHITECTURE_STYLE_BULLETS}}: 3-5 bullets covering rendering model
+  (CSR / SSR / SSG / RSC), routing approach, state management style,
+  data fetching pattern.
+- {{DIRECTORY_TREE}}: ASCII tree of src/ down to 1-2 levels with one-line
+  purpose per folder.
+- {{FEATURE_DECOMPOSITION_RULES}}: when to create a new top-level feature
+  module vs extending an existing one. THIS IS LOAD-BEARING — without it,
+  agents over-create modules.
+- {{ROUTING_OVERVIEW}}: 1-2 sentences on the routing approach (file-based,
+  imperative, code-split).
+- {{ROUTES_TABLE}}: markdown table Route | Component | Feature | Role.
+  Lifted from the actual router config.
+- {{LAZY_LOADING_PATTERN}}: code block showing the canonical lazy-import
+  + Suspense pattern used here.
+- {{BARREL_IMPORT_PATTERN}}: code block showing the canonical
+  `import { X, Y } from "@/features/foo"` pattern.
+- {{NEW_ROUTE_CHECKLIST}}: numbered list of steps to add a new route end-
+  to-end (component, lazy import, role gate, i18n key, test).
+- {{API_CLIENT_OVERVIEW}}: 2-3 sentences naming the client factory pattern,
+  the Axios/fetch wrapper, and the global error/refresh interceptors.
+- {{WHAT_NOT_TO_DO_BULLETS}}: architecture-level prohibitions specific to
+  this app (e.g., "Do NOT create top-level modules for sub-views",
+  "Do NOT bypass the API client factory").
+-->

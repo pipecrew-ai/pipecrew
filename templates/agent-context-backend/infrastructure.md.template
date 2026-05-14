@@ -1,0 +1,95 @@
+# Infrastructure
+
+<!-- human-owned -->
+
+## Build
+
+{{BUILD_OVERVIEW}}
+
+### Annotation Processor / Codegen Ordering
+
+{{CODEGEN_ORDERING_NOTES}}
+
+## Profiles
+
+{{PROFILES_TABLE}}
+
+## Containerization
+
+{{CONTAINERIZATION_DETAILS}}
+
+## Deployment
+
+{{DEPLOYMENT_DETAILS}}
+
+## Local Development
+
+{{LOCAL_DEV_STEPS}}
+
+## Observability
+
+### Health and Metrics
+
+{{HEALTH_METRICS_OVERVIEW}}
+
+### Custom Method Timing (if applicable)
+
+{{METHOD_TIMING_OVERVIEW}}
+
+### Logging
+
+{{LOGGING_INFRA_OVERVIEW}}
+
+<!-- /human-owned -->
+
+<!-- agent-updatable -->
+
+## External Services Used
+
+{{EXTERNAL_SERVICES_TABLE}}
+
+<!-- /agent-updatable -->
+
+<!-- human-owned -->
+
+## CI/CD
+
+{{CICD_OVERVIEW}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+External Services Used is AGENT-UPDATABLE — when a new external integration
+is wired up, the row is added here AND a detailed file is created under
+integrations/. Everything else is human-owned.
+
+- {{BUILD_OVERVIEW}}: build tool, language version, build command, what
+  the build produces.
+- {{CODEGEN_ORDERING_NOTES}}: if there's annotation processor or codegen
+  ordering that matters (Lombok before MapStruct, etc.), document it.
+  Skip the section if not applicable.
+- {{PROFILES_TABLE}}: markdown table with Profile | Usage | Differences
+  columns (DB source, AWS, etc.).
+- {{CONTAINERIZATION_DETAILS}}: Dockerfile pattern, base image, JVM/runtime
+  flags, exposed port.
+- {{DEPLOYMENT_DETAILS}}: cloud provider, registry, orchestration platform,
+  deploy script.
+- {{LOCAL_DEV_STEPS}}: numbered steps to run locally on a fresh checkout.
+- {{HEALTH_METRICS_OVERVIEW}}: actuator/equivalent endpoints, metrics
+  destination.
+- {{METHOD_TIMING_OVERVIEW}}: if the repo has custom AOP timing, document
+  it. Skip if not applicable.
+- {{LOGGING_INFRA_OVERVIEW}}: log destination, format, per-package levels.
+- {{EXTERNAL_SERVICES_TABLE}}: markdown table with Service | Purpose |
+  Config Properties columns. One row per external system used.
+- {{CICD_OVERVIEW}}: pipeline file location, branches that trigger deploys.
+  If absent, say so.
+- {{WHAT_NOT_TO_DO_BULLETS}}: infra prohibitions (don't change codegen
+  ordering, don't push without building, don't hardcode secrets).
+-->

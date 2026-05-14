@@ -1,0 +1,78 @@
+# Business Context
+
+<!-- human-owned -->
+
+## Parent Product
+
+{{PARENT_PRODUCT_PARAGRAPH}}
+
+## This Service's Role
+
+`{{REPO_NAME}}` is the {{SERVICE_ROLE_DESCRIPTION}}. It owns:
+
+{{OWNED_RESPONSIBILITIES}}
+
+It does NOT own:
+
+{{NON_OWNED_RESPONSIBILITIES}}
+
+## Actors
+
+{{ACTORS_TABLE}}
+
+## Bounded Contexts in This Service
+
+{{BOUNDED_CONTEXTS_TABLE}}
+
+## High-Level Vocabulary
+
+For full domain glossary, see `glossary.md`. The bare minimum to understand
+this service:
+
+{{HIGH_LEVEL_TERMS}}
+
+## Why This Matters for Agents
+
+{{LOAD_BEARING_INVARIANTS}}
+
+When in doubt about whether a change is permissible, check whether it
+preserves these invariants.
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file is product framing — NOT architecture, NOT code maps, NOT schema.
+A new agent reading this should understand WHAT the product is and WHY this
+service exists, not HOW it's built.
+
+- {{PARENT_PRODUCT_PARAGRAPH}}: 2-4 sentences naming the parent product,
+  what it does, who uses it. Plain English, no acronyms unexpanded.
+- {{SERVICE_ROLE_DESCRIPTION}}: one sentence describing this service's
+  position in the broader system (e.g., "internal operations backend used
+  by the X team", "public-facing API for Y customers", "background event
+  processor for Z workflows").
+- {{OWNED_RESPONSIBILITIES}}: bulleted list of 3-6 things this service is
+  the authority for. Be specific — name the workflows, entities, or
+  surfaces it owns. Skip generic items like "REST endpoints".
+- {{NON_OWNED_RESPONSIBILITIES}}: bulleted list of 3-6 adjacent
+  responsibilities owned by OTHER services. This is critical for agents —
+  it tells them when they should be looking elsewhere. Name the owning
+  service (e.g., "Publisher onboarding — owned by Publisher Service").
+- {{ACTORS_TABLE}}: a markdown table with Actor | Who | Interaction
+  columns. Cover human users, system actors (schedulers, workers), and
+  external entities that interact with the service.
+- {{BOUNDED_CONTEXTS_TABLE}}: a markdown table mapping bounded contexts
+  in this service to their domain doc. Skip if there's only one context
+  (just say so in prose).
+- {{HIGH_LEVEL_TERMS}}: bulleted list of 4-8 essential terms — just enough
+  to read the rest of the docs. Defer detailed terms to glossary.md.
+- {{LOAD_BEARING_INVARIANTS}}: a numbered list of 1-3 product invariants
+  that explain WHY recurring patterns exist (e.g., "every status change
+  must be auditable" → that's why the lifecycle service exists). These
+  trace product requirements to code patterns.
+
+Total file: aim for 50-150 lines. This file should rarely change after
+initial generation — it's product framing, which moves slowly.
+-->

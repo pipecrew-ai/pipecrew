@@ -1,0 +1,64 @@
+# Infrastructure
+
+<!-- human-owned -->
+
+## Build
+
+{{BUILD_OVERVIEW}}
+
+## Dev Server
+
+{{DEV_SERVER_CONFIG}}
+
+## Environment Variables
+
+{{ENV_VARS_TABLE}}
+
+## Bundling
+
+{{BUNDLING_NOTES}}
+
+## Static Assets
+
+{{STATIC_ASSETS_PATTERN}}
+
+## Containerization (if applicable)
+
+{{CONTAINERIZATION_DETAILS}}
+
+## Deployment
+
+{{DEPLOYMENT_DETAILS}}
+
+## CI/CD
+
+{{CICD_OVERVIEW}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{BUILD_OVERVIEW}}: build tool (Vite, Webpack, Next, Turbopack), build
+  command, output directory, what the production build produces.
+- {{DEV_SERVER_CONFIG}}: dev server port, HMR behavior, proxy config (if
+  proxying API calls).
+- {{ENV_VARS_TABLE}}: markdown table Var Name | Required? | Used For
+  columns. Cover every VITE_*/NEXT_PUBLIC_* env var the app reads.
+- {{BUNDLING_NOTES}}: code-splitting strategy, chunk naming, dynamic
+  imports.
+- {{STATIC_ASSETS_PATTERN}}: where images / fonts / icons live, how
+  they're imported, optimization handling.
+- {{CONTAINERIZATION_DETAILS}}: Dockerfile if any, base image, build
+  stage; OR "served as static files" if not containerized.
+- {{DEPLOYMENT_DETAILS}}: hosting platform (Vercel, Netlify, S3+CF,
+  static-on-Nginx), deploy command/flow.
+- {{CICD_OVERVIEW}}: pipeline file location, branch triggers. Say "absent"
+  if there is no pipeline.
+- {{WHAT_NOT_TO_DO_BULLETS}}: infra prohibitions (no hardcoded URLs,
+  no committing .env files, no skipping the build before deploying).
+-->

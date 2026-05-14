@@ -1,0 +1,131 @@
+# Design System — {{REPO_NAME}}
+
+> **Purpose**: Single source of truth for UI patterns, tokens, and component
+> conventions used across the app. The contract between this repo and any
+> UI-authoring agent (or human contributor).
+>
+> **Section anchors with numeric prefixes (§1, §2, §3.1, …) are stable** —
+> agent prompts cite them by number. You may add sections; do not renumber
+> the existing ones.
+
+<!-- human-owned -->
+
+---
+
+## 1. Tokens
+
+### 1.1 Colors
+
+{{COLOR_TOKENS}}
+
+### 1.2 Typography
+
+{{TYPOGRAPHY_TOKENS}}
+
+### 1.3 Spacing
+
+{{SPACING_TOKENS}}
+
+### 1.4 Shadows / Radii / Misc
+
+{{MISC_TOKENS}}
+
+---
+
+## 2. Page Shell
+
+The outermost wrapper every full-page route renders inside.
+
+{{PAGE_SHELL_EXAMPLE}}
+
+**Reference files**: {{PAGE_SHELL_REFS}}
+
+---
+
+## 3. Components
+
+### 3.1 Buttons
+
+{{BUTTON_PATTERNS}}
+
+### 3.2 Forms / Inputs
+
+{{FORM_PATTERNS}}
+
+### 3.3 Tables / Lists
+
+{{TABLE_PATTERNS}}
+
+### 3.4 Modals / Dialogs
+
+{{MODAL_PATTERNS}}
+
+### 3.5 Status / Badges
+
+{{STATUS_BADGE_PATTERNS}}
+
+### 3.6 Cards / Containers
+
+{{CARD_PATTERNS}}
+
+---
+
+## 4. RTL / Bi-Directional Support
+
+{{RTL_RULES}}
+
+---
+
+## 5. Loading / Empty / Error States
+
+{{STATE_PATTERNS}}
+
+---
+
+## 6. Accessibility
+
+{{A11Y_RULES}}
+
+---
+
+## 7. Known Inconsistencies
+
+<!-- /human-owned -->
+
+<!-- agent-updatable -->
+
+{{KNOWN_INCONSISTENCIES_TABLE}}
+
+<!-- /agent-updatable -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file is mostly HUMAN-OWNED — design decisions are made by humans.
+The Known Inconsistencies table is AGENT-UPDATABLE — when you spot an
+inconsistency in the code (e.g., two different status-badge color schemes
+used in different features), record it here. When the inconsistency is
+fixed, remove the row.
+
+- {{COLOR_TOKENS}}: markdown table Token | Light | Dark | Meaning columns.
+  Pull from the actual CSS variables / Tailwind config / theme tokens.
+- {{TYPOGRAPHY_TOKENS}}: font families, heading sizes, body sizes.
+- {{SPACING_TOKENS}}: spacing scale (Tailwind defaults, CSS var ladder,
+  spacer enum).
+- {{MISC_TOKENS}}: shadows, border radii, gradient definitions.
+- {{PAGE_SHELL_EXAMPLE}}: code block showing the canonical page shell
+  (navbar/sidebar + main + footer + direction handling).
+- {{PAGE_SHELL_REFS}}: file paths of representative pages using the shell.
+- {{BUTTON_PATTERNS}} ... {{CARD_PATTERNS}}: each subsection lists the
+  canonical component, its variants, and DON'T examples. Pull from
+  Storybook stories if available.
+- {{RTL_RULES}}: rules for RTL safety (logical properties, dir attributes,
+  Arabic font overrides).
+- {{STATE_PATTERNS}}: skeletons, empty states, error displays — the
+  canonical patterns for each.
+- {{A11Y_RULES}}: ARIA labeling rules, keyboard navigation patterns,
+  contrast minimums.
+- {{KNOWN_INCONSISTENCIES_TABLE}}: AGENT-UPDATABLE table Where | Pattern A |
+  Pattern B | Canonical columns. List spots in the codebase where two
+  patterns coexist and which one is the right one going forward.
+-->

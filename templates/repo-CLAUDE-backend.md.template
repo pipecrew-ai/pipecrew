@@ -1,0 +1,80 @@
+# CLAUDE.md — {{REPO_NAME}}
+
+{{REPO_TAGLINE}}
+
+{{REPO_PURPOSE_PARAGRAPH}}
+
+## Quick Start
+
+```{{BUILD_LANG}}
+{{QUICK_START_COMMANDS}}
+```
+
+{{ENDPOINT_BASE_PATH_LINE}}
+
+## Before You Plan a Change
+
+1. Read `agent-context/AGENT_INDEX.md` — it maps tasks to docs.
+2. For common changes, the required reading is:
+
+{{DECISION_TABLE}}
+
+3. **Follow the conventions you find. Do not invent or "improve" them.**
+   If a convention is unclear, seems to conflict with existing code, or appears
+   outdated based on what you observe — stop, surface the issue, and propose
+   the change. Do NOT edit human-owned sections yourself.
+
+4. Update `agent-context/` ONLY when you added something new to the world:
+   a new endpoint, table, column, queue, integration, role, or domain term —
+   OR when you discovered a non-obvious invariant the next agent would miss.
+   Edits go in sections marked `<!-- agent-updatable -->`. Do NOT modify
+   sections marked `<!-- human-owned -->`. The git log is the changelog,
+   not these docs — don't record routine fixes, refactors, or version bumps.
+
+## Inviolable Rules
+
+These cause silent damage — the build will not catch them.
+
+{{INVIOLABLE_RULES}}
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{REPO_NAME}}: short repo name (e.g., "abvi-backoffice-service").
+- {{REPO_TAGLINE}}: one-line stack + role (e.g., "Spring Boot 3.5 / Java 21
+  backend for the Arabookverse backoffice team.").
+- {{REPO_PURPOSE_PARAGRAPH}}: 1-2 sentences naming what this service owns
+  and what makes it distinct (e.g., the workflow it orchestrates, the
+  domain it serves).
+- {{BUILD_LANG}}: code-fence language for the quick-start block (`bash`,
+  `powershell`, etc.).
+- {{QUICK_START_COMMANDS}}: minimum viable "get this running" — typically
+  3-5 commands (deps, build, run). No explanation.
+- {{ENDPOINT_BASE_PATH_LINE}}: one-line context — for HTTP services list
+  the base path + Swagger URL; for workers, the queue/topic + DLQ; omit
+  the line entirely for non-network services.
+- {{DECISION_TABLE}}: a markdown table with columns "About to..." and
+  "Read first". 4-7 rows covering THIS repo's most common change types.
+  Each row maps a task shape to specific agent-context file(s). Examples
+  to draw from (only include if applicable):
+  | About to... | Read first |
+  |---|---|
+  | Add/change an endpoint | `api-conventions.md`, `conventions.md` |
+  | Touch a domain workflow | `domains/{name}.md` |
+  | Add a DB column / migration | `database.md` |
+  | Add/change an external integration | `integrations/{name}.md` |
+  | Add or change tests | `testing.md` |
+- {{INVIOLABLE_RULES}}: a numbered list of 4-7 rules. EACH rule must pass
+  ALL three tests:
+  1. Violating it causes SILENT damage (no build / test / lint failure).
+  2. It applies broadly (not a niche edge-case).
+  3. It is NOT obvious from reading code in the surrounding area.
+  Style rules ("don't use var", "no @Autowired") usually FAIL test #1 —
+  they belong in conventions.md, not here. Examples that pass all three:
+  audit-trail invariants, transaction patterns that span systems, code
+  generation contracts, credential sources.
+
+Total file: aim for ≤60 lines after stripping these comments. Hard ceiling
+(validator-enforced): 200 lines. Anything more is leaking content that
+belongs in agent-context/.
+-->

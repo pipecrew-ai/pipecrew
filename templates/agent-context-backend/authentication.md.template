@@ -1,0 +1,65 @@
+# Authentication & Authorization
+
+<!-- human-owned -->
+
+## Authentication Model
+
+{{AUTH_MODEL_OVERVIEW}}
+
+### Flow
+
+{{AUTH_FLOW_STEPS}}
+
+### Key Files
+
+{{AUTH_KEY_FILES_LIST}}
+
+## Security Configuration
+
+{{SECURITY_CONFIG}}
+
+## Internal Service-to-Service Authentication
+
+{{INTERNAL_AUTH_PATTERN}}
+
+## Public Endpoints (No Auth Required)
+
+{{PUBLIC_ENDPOINTS_LIST}}
+
+## Getting the Current User
+
+{{CURRENT_USER_ACCESS_PATTERN}}
+
+## Authorization Enforcement
+
+{{AUTHZ_ENFORCEMENT_MODEL}}
+
+## What NOT to Do
+
+{{WHAT_NOT_TO_DO_BULLETS}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+This file is human-owned in full. Auth changes rarely and silent breakage
+is severe — agents read this, they don't update it.
+
+- {{AUTH_MODEL_OVERVIEW}}: 1-2 sentences naming the scheme (JWT, OAuth,
+  session, mTLS) and where validation lives (in-process vs delegated).
+- {{AUTH_FLOW_STEPS}}: numbered list, request → filter → context →
+  authority mapping.
+- {{AUTH_KEY_FILES_LIST}}: bulleted list of files implementing the flow.
+- {{SECURITY_CONFIG}}: framework security config (CSRF, session policy,
+  filter ordering).
+- {{INTERNAL_AUTH_PATTERN}}: how this service authenticates inbound calls
+  from sibling services (header secret, mTLS, IAM). Include outbound
+  pattern if different.
+- {{PUBLIC_ENDPOINTS_LIST}}: paths that bypass auth.
+- {{CURRENT_USER_ACCESS_PATTERN}}: the canonical helper to get the
+  authenticated user; where it returns null (workers, internal calls).
+- {{AUTHZ_ENFORCEMENT_MODEL}}: declarative (annotation-based) vs
+  programmatic (in-service-code) — which is canonical here?
+- {{WHAT_NOT_TO_DO_BULLETS}}: auth-specific prohibitions.
+-->

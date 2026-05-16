@@ -972,8 +972,8 @@ flowchart LR
   class cf,alb,cog,sm,cw infra
   class sg,fcm,stripe external
 `;
-  write(path.join(WS_DIR, 'context', 'architecture-overview.mmd'), overview);
-  write(path.join(WS_DIR, 'context', 'architecture.mmd'), detailed);
+  write(path.join(WS_DIR, 'context', 'diagrams', 'architecture-overview.mmd'), overview);
+  write(path.join(WS_DIR, 'context', 'diagrams', 'architecture.mmd'), detailed);
 }
 
 function writeLearnLog() {
@@ -1003,7 +1003,7 @@ function writeLearnLog() {
 - Duration: 2:15
 - Learner tokens: ~18k
 `;
-  write(path.join(WS_DIR, 'context', 'learn-log.md'), body);
+  write(path.join(WS_DIR, 'history', 'learn-log.md'), body);
 }
 
 // ─── /discover run ───────────────────────────────────────────
@@ -1831,7 +1831,7 @@ console.log(`\n[sim] demo workspace ready at:\n  ${WS_DIR}\n`);
 console.log(`     /discover runs:    1 (${RUN_IDS.discover})`);
 console.log(`     /deliver runs:     ${usedReal ? '3 (2 synthesized + 1 from real run)' : '2 synthesized'}`);
 console.log(`     /learn runs:       2`);
-console.log(`     diagrams:          architecture.mmd + architecture-overview.mmd`);
+console.log(`     diagrams:          context/diagrams/architecture.mmd + architecture-overview.mmd`);
 if (STEP_MS > 0) {
   console.log(`     live timeline:     deliver_a will animate (${STEP_MS}ms / step)`);
 }

@@ -2568,12 +2568,12 @@ function renderWorkspaceOverview(data) {
   if (data.architecture_overview_mermaid) {
     tabs.architecture.parts.push('<h3>Architecture — high-level blocks</h3>');
     tabs.architecture.parts.push('<div class="arch-diagram" id="arch-overview-container">Loading diagram…</div>');
-    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/architecture-overview.mmd</code> — capability-shaped view (5-8 blocks, sync vs async only)</div>');
+    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/diagrams/architecture-overview.mmd</code> — capability-shaped view (5-8 blocks, sync vs async only)</div>');
   }
   if (data.architecture_mermaid) {
     tabs.architecture.parts.push('<h3>Architecture — detailed topology</h3>');
     tabs.architecture.parts.push('<div class="arch-diagram" id="arch-diagram-container">Loading diagram…</div>');
-    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/architecture.mmd</code> — every service, DB, queue, Lambda, with specific edge labels</div>');
+    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/diagrams/architecture.mmd</code> — every service, DB, queue, Lambda, with specific edge labels</div>');
   }
 
   // ──────────────── Overview tab — domain + repos + services ────────────────

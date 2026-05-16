@@ -11,15 +11,18 @@ Every `/deliver` invocation gets its own dir. Same skeleton for every workspace.
 ```
 {workspace_root}/{workspace-slug}/
 ├── config.json                          ← workspace config (from /discover)
-├── context/
+├── context/                             ← active context (agents read every dispatch)
 │   ├── platform.md                      ← architecture context, read by SA in design mode
 │   ├── audit-findings.md                ← real bugs spotted at onboarding
-│   ├── architecture.mmd                 ← detailed Mermaid diagram
-│   ├── architecture-overview.mmd        ← 4-subgraph overview
-│   ├── learn-log.md                     ← appended by /learn
+│   ├── diagrams/                        ← workspace architecture diagrams
+│   │   ├── architecture.mmd             ← detailed Mermaid diagram
+│   │   ├── architecture-overview.mmd    ← 4-subgraph overview
+│   │   └── {topic}.mmd                  ← optional focused diagrams from /draw-diagram --topic
 │   └── adrs/                            ← architecture decision records (filled by /deliver Phase 2 ADR gate)
 │       ├── INDEX.md                     ← one-line-per-ADR index, read by SA in Step 0
 │       └── ADR-NNN-<slug>.md            ← one file per ADR
+├── history/                             ← durable workspace history (not auto-loaded)
+│   └── learn-log.md                     ← appended by /learn
 ├── agents/                              ← workspace-specific agents (published to ~/.claude/agents)
 │   ├── {slug}-product-owner.md
 │   ├── {slug}-assessor.md

@@ -146,7 +146,7 @@ Checks and updates these files:
 - `{workspace_root}/{slug}/context/platform.md` — architecture, entities, integration patterns, established workspace-wide patterns. Must stay in sync with repo reality.
 - `{workspace_root}/{slug}/context/audit-findings.md` — from onboarding / prior refreshes. Not auto-refreshed; just checked for orphan references.
 
-**Do NOT auto-refresh** `{workspace_root}/{slug}/context/learn-log.md` — that's an append-only learning record owned by `/pipecrew:learn`.
+**Do NOT auto-refresh** `{workspace_root}/{slug}/history/learn-log.md` — that's an append-only learning record owned by `/pipecrew:learn`. It lives under `history/`, not `context/`, because nothing reads it on every dispatch.
 
 #### Step 2a: Audit pass (always runs, regardless of mode)
 
@@ -386,7 +386,7 @@ These files are owned by other skills and have their own refresh/update paths:
 |---|---|---|
 | `{workspace_root}/{slug}/config.json` | `/discover` | `/discover --resume` |
 | `{workspace_root}/{slug}/agents/*.md` | `/discover` Phase C | `/discover --resume` + manual edit |
-| `{workspace_root}/{slug}/context/learn-log.md` | `/pipecrew:learn` | Append-only; no refresh |
+| `{workspace_root}/{slug}/history/learn-log.md` | `/pipecrew:learn` | Append-only; no refresh |
 | `{workspace_root}/{slug}/context/audit-findings.md` | `/discover` Phase C | `/discover --resume` |
 | `{workspace_root}/{slug}/runs/context-refresh/state.json` | this skill (Step 4.5) | Auto-managed; delete an entry to force full audit on next run for that repo |
 | Repo `package.json` / `pom.xml` / `pyproject.toml` | Repo owner | Manual |

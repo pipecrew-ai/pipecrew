@@ -1003,7 +1003,7 @@ function writeLearnLog() {
 - Duration: 2:15
 - Learner tokens: ~18k
 `;
-  write(path.join(WS_DIR, 'context', 'learn-log.md'), body);
+  write(path.join(WS_DIR, 'history', 'learn-log.md'), body);
 }
 
 // ─── /discover run ───────────────────────────────────────────

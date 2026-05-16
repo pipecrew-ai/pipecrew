@@ -21,8 +21,10 @@ Every command operates against a **workspace** — a directory under a configura
 ├── context/                 ← active context (read by agents every dispatch)
 │   ├── platform.md          domain + architecture (the "memory" all agents read)
 │   ├── audit-findings.md    real bugs spotted during onboarding
-│   ├── architecture.mmd     two canonical Mermaid diagrams
-│   ├── architecture-overview.mmd
+│   ├── diagrams/            workspace architecture diagrams
+│   │   ├── architecture.mmd          detailed Mermaid topology
+│   │   ├── architecture-overview.mmd 4-subgraph C4-style overview
+│   │   └── {topic}.mmd               optional focused diagrams (auth-flow, event-flow, etc.) from /draw-diagram --topic
 │   └── adrs/                architecture decision records (INDEX.md + ADR-NNN-<slug>.md, filled by /deliver Phase 2 ADR gate)
 ├── history/                 ← durable workspace history (not auto-loaded; human / next-/learn audit trail)
 │   └── learn-log.md         append-only record of every /learn invocation

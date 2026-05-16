@@ -35,7 +35,7 @@ Fabricates a fully-populated demo workspace AND spawns the site-view so the proj
 Each invocation:
 
 1. Wipes `{workspace_root}/simulate-run-demo/` (unless `--keep`).
-2. Generates the workspace skeleton: `config.json`, `context/platform.md`, `context/audit-findings.md`, `context/architecture.mmd`, `context/architecture-overview.mmd`, `history/learn-log.md`.
+2. Generates the workspace skeleton: `config.json`, `context/platform.md`, `context/audit-findings.md`, `context/diagrams/architecture.mmd`, `context/diagrams/architecture-overview.mmd`, `history/learn-log.md`.
 3. Generates 1 fixed `/discover` run with checkpoints, scratchpad, and report.
 4. Generates 2 fixed `/deliver` runs (one with Phase 8 PRs + `pr_urls.json`, one without).
 5. Generates 2 fixed `/learn` runs (PR-based + run-based source modes).

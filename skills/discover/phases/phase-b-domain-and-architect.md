@@ -107,12 +107,12 @@ TEMPLATE SECTIONS:
 
 For the `## Architecture Diagram` section in platform.md, write EXACTLY this pointer content:
 
-    The architecture is captured as two complementary diagrams in sibling Mermaid files:
+    The architecture is captured as two complementary diagrams under the `diagrams/` subdirectory:
 
-    - [`architecture-overview.mmd`](./architecture-overview.mmd) — **high-level** C4-style
+    - [`diagrams/architecture-overview.mmd`](./diagrams/architecture-overview.mmd) — **high-level** C4-style
       block diagram for a new team member. ~10 nodes grouped into 4 categories
       (Frontends / Backend services / Queues / Data sources). Read this first.
-    - [`architecture.mmd`](./architecture.mmd) — **detailed** topology with every
+    - [`diagrams/architecture.mmd`](./diagrams/architecture.mmd) — **detailed** topology with every
       service, DB, queue, Lambda, and specific edge labels. Read this when you
       need to know which endpoint / Feign client / bucket is involved.
 
@@ -236,8 +236,8 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
 
 **After the architect returns**:
 1. Save the platform.md output (everything except the two mermaid blocks) to `{workspace_root}/{slug}/context/platform.md`.
-2. Extract the block delimited by `<!-- BEGIN architecture-overview.mmd -->` / `<!-- END architecture-overview.mmd -->`. Strip the inner ```` ```mermaid ... ``` ```` fence and save the Mermaid source to `{workspace_root}/{slug}/context/architecture-overview.mmd`.
-3. Extract the block delimited by `<!-- BEGIN architecture.mmd -->` / `<!-- END architecture.mmd -->`. Strip the inner ```` ```mermaid ... ``` ```` fence and save to `{workspace_root}/{slug}/context/architecture.mmd`.
+2. Extract the block delimited by `<!-- BEGIN architecture-overview.mmd -->` / `<!-- END architecture-overview.mmd -->`. Strip the inner ```` ```mermaid ... ``` ```` fence and save the Mermaid source to `{workspace_root}/{slug}/context/diagrams/architecture-overview.mmd` (create `diagrams/` if it doesn't exist).
+3. Extract the block delimited by `<!-- BEGIN architecture.mmd -->` / `<!-- END architecture.mmd -->`. Strip the inner ```` ```mermaid ... ``` ```` fence and save to `{workspace_root}/{slug}/context/diagrams/architecture.mmd`.
 4. Verify the `## Architecture Diagram` section in platform.md contains the pointer stub pointing to BOTH files, not the full mermaid source for either.
 
 **If either `.mmd` file already exists** (re-run or hand-edited): show a diff for that specific file and ask the user whether to overwrite, merge, or keep. Default is **keep** for each — a hand-edited diagram is load-bearing and must not be silently clobbered. The two files are treated independently: the user may choose to regenerate the overview but keep the detailed, or vice versa.

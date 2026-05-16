@@ -16,8 +16,9 @@ After `/discover` completes, you get:
 ├── context/
 │   ├── platform.md                  ← architecture context (read by SA in design mode)
 │   ├── audit-findings.md            ← real bugs spotted opportunistically during onboarding
-│   ├── architecture.mmd             ← detailed Mermaid topology
-│   ├── architecture-overview.mmd    ← 4-subgraph overview
+│   ├── diagrams/                    ← workspace architecture diagrams
+│   │   ├── architecture.mmd         ← detailed Mermaid topology
+│   │   └── architecture-overview.mmd ← 4-subgraph overview
 │   ├── design-system/{component-catalog,tokens,patterns}.md  ← (B3, frontend only)
 │   └── adrs/                        ← architecture decision records (filled by /deliver Phase 2 ADR gate)
 │       ├── INDEX.md                 ← one-line-per-ADR index, read by SA in Step 0

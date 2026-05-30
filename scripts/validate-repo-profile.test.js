@@ -41,6 +41,7 @@ function validProfile() {
     repo_key: 'publisher-service',
     type: 'spring-boot',
     role: 'api-service',
+    description: 'Owns book submission and publication workflow.',
     framework: { name: 'spring-boot', version: '3.5.7' },
     entities: [],
     endpoints: [],
@@ -133,6 +134,49 @@ test('omitted entities key → exit 1 (must be null, not absent)', () => {
   const r = run(writeProfile(p));
   assert(r.status === 1, `expected 1, got ${r.status}`);
   assert(/entities/.test(r.stderr), r.stderr);
+});
+
+test('missing description → exit 1', () => {
+  const p = validProfile(); delete p.description;
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/description/.test(r.stderr), r.stderr);
+});
+
+test('empty-string description → exit 0 (escape hatch when discoverer would guess)', () => {
+  const p = validProfile(); p.description = '';
+  const r = run(writeProfile(p));
+  assert(r.status === 0, `expected 0, got ${r.status}: ${r.stderr}`);
+});
+
+test('non-string description → exit 1', () => {
+  const p = validProfile(); p.description = 42;
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/description.*string/.test(r.stderr), r.stderr);
+});
+
+test('entity missing purpose → exit 1', () => {
+  const p = validProfile();
+  p.entities = [{ name: 'Book', key_states: ['DRAFT'], owning_module: 'publisher' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/entities\[0\]\.purpose/.test(r.stderr), r.stderr);
+});
+
+test('entity with empty-string purpose → exit 0', () => {
+  const p = validProfile();
+  p.entities = [{ name: 'Book', purpose: '', key_states: ['DRAFT'], owning_module: 'publisher' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 0, `expected 0, got ${r.status}: ${r.stderr}`);
+});
+
+test('entity with non-string purpose → exit 1', () => {
+  const p = validProfile();
+  p.entities = [{ name: 'Book', purpose: 123, key_states: [], owning_module: 'publisher' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/entities\[0\]\.purpose.*string/.test(r.stderr), r.stderr);
 });
 
 test('neither endpoints nor event_handlers → exit 1', () => {

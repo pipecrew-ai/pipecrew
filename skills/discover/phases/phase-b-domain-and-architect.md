@@ -143,10 +143,17 @@ Schema for each: {plugin_dir}/templates/blocks/repo-profile.example.json
 Field reference: {plugin_dir}/templates/blocks/block-schemas.md § REPO_PROFILE.
 
 Optionally cross-check each profile against `{repo.path}/CLAUDE.md` (when it
-exists). Read raw source code ONLY when a profile's `notes_for_architect` or
-`constraints_observed` flagged an ambiguity you need to resolve. Don't re-walk
-repos the discoverer already enumerated — the profiles are deliberately
-structured so you don't have to.
+exists). Read raw source code ONLY in these explicitly authorized cases:
+  (a) a profile's `notes_for_architect` or `constraints_observed` flagged an
+      ambiguity you need to resolve;
+  (b) a profile flagged an entity with a non-trivial lifecycle (4+ states or
+      transition-shaped method hints in `notes_for_architect`) AND your
+      `## Status Lifecycles` output for that entity would otherwise be just a
+      bare state list. In that case do ONE targeted read on the named service
+      file to extract transitions. Do not generalize this — read only the
+      flagged file, only for the flagged entity.
+Don't re-walk repos the discoverer already enumerated — the profiles are
+deliberately structured so you don't have to.
 
 DOMAIN CONTEXT FROM USER:
 - Name: {domain.name}
@@ -155,12 +162,14 @@ DOMAIN CONTEXT FROM USER:
 - Languages: {domain.i18n_languages}, RTL: {domain.rtl_support}
 
 CROSS-REPO SYNTHESIS TASKS:
-1. **Entity ownership map.** Aggregate `entities[]` from every profile. Cross-reference with `integrations.outbound_*` to identify which service OWNS each entity vs which CONSUMES it.
+1. **Entity ownership map.** Aggregate `entities[]` from every profile. Cross-reference with `integrations.outbound_*` to identify which service OWNS each entity vs which CONSUMES it. Use the entity-level `purpose` field for the "Description" column when one is present.
 2. **Integration topology.** Build the cross-repo graph from each profile's `integrations.{outbound,inbound}_*` fields. The architecture diagrams render this graph.
-3. **Established patterns.** Cross-tabulate `key_conventions[]` across profiles of the same stack. Patterns observed in ≥2 repos go to `## Established Patterns`. Idiosyncratic single-repo patterns stay in their repo's CLAUDE.md (which Phase C generates separately, not you).
-4. **Known constraints.** Aggregate divergences (different auth styles in two services of the same stack), incomplete coverage gaps, workspace-wide inconsistencies. Each profile's `constraints_observed[]` feeds this.
-5. **Audit findings consolidation.** Aggregate `audit_findings[]` from every profile into a single audit-findings.md, severity-grouped (CRITICAL / HIGH / MEDIUM / LOW), then by repo within each severity.
-6. **Architecture diagrams** (two files — see diagram rules below).
+3. **Service Map descriptions.** The profile's top-level `description` field is a short paragraph (2–4 sentences). For the `## Service Map` table's "Description" column, use the **first sentence** of `description` verbatim — that's the one-liner the discoverer wrote so it stands alone. Then, immediately below the Service Map table, add a `### Service responsibilities` sub-section that renders the **full paragraph** for each service (Service Name as a sub-heading, full description as the body). If a profile's `description` is empty, infer one short sentence from `framework.name` + dominant entity names for the table cell, write a 1-line note for the responsibilities sub-section, and add the entity to `## Open Questions`. Don't fall back to generic stack labels.
+4. **Status Lifecycles.** For each entity whose profile lists `key_states`: write the state list. If the profile flagged a non-trivial lifecycle (per the targeted-read rule above) and you spent a targeted read, render the transitions you extracted. Otherwise list states only and add a one-line note ("Transitions not captured at discovery — see {service-file}"). Do not invent transitions you didn't read.
+5. **Established patterns.** Cross-tabulate `key_conventions[]` across profiles of the same stack. Patterns observed in ≥2 repos go to `## Established Patterns`. Idiosyncratic single-repo patterns stay in their repo's CLAUDE.md (which Phase C generates separately, not you).
+6. **Known constraints.** Aggregate divergences (different auth styles in two services of the same stack), incomplete coverage gaps, workspace-wide inconsistencies. Each profile's `constraints_observed[]` feeds this.
+7. **Audit findings consolidation.** Aggregate `audit_findings[]` from every profile into a single audit-findings.md, severity-grouped (CRITICAL / HIGH / MEDIUM / LOW), then by repo within each severity.
+8. **Architecture diagrams** (two files — see diagram rules below).
 
 OUTPUT FORMAT:
 Produce the platform context document using the section structure from the template below. Fill in every section with what you discovered — leave none blank. If a section has no data (e.g., no infra repo exists), write "Not applicable — no infrastructure repo in the workspace."

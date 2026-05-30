@@ -38,6 +38,25 @@ Read these in order:
 
 If the dependency manifest is malformed or missing, record that in `notes_for_architect` and continue with what you can determine from code structure alone.
 
+**While you have the README / manifest open, capture the top-level `description` field** — a short paragraph of **2–4 sentences (~250–500 chars)** that tells the architect what this repo is for. It must cover:
+
+1. **What domain or boundary the repo owns** — the slice of the business this service is responsible for.
+2. **Its key responsibilities** — the 2–3 things it actually does (accept submissions, drive a workflow, expose an API surface, route events, etc.).
+3. **Optionally, one notable detail** — a key integration, an authoritative-source role, or a non-obvious constraint that shapes how other services interact with it.
+
+Sample sources in this priority order, taking the first that yields a useful paragraph (combine sources when they complement each other):
+
+1. `README.md` opening section — the first paragraph plus the next 1–2 sentences if they describe scope/responsibilities (not setup instructions).
+2. Top-level module Javadoc / docstring on the entry-point file.
+3. `package.json` `"description"` / `pyproject.toml` `description` / `pom.xml` `<description>` / Cargo.toml `description` — these are usually one-liners; pad them out with what you observed in the entity list + entry-point class name.
+4. If none of the above is useful, write one yourself from the framework + dominant entities + endpoint patterns (e.g., "Spring Boot service that owns the Publisher and Book domain. Exposes the submission, review, and approval endpoints; emits `book.uploaded` to SQS for downstream indexing.").
+
+**Rules:**
+- Plain prose, not marketing copy. No "robust", "scalable", "world-class".
+- Source-grounded. If the README claims something the code doesn't show, trust the code.
+- Don't restate what other profile fields already carry — `framework`, `entities`, `endpoints`, and `integrations` are read separately. The description should explain the *intent*, not enumerate the inventory.
+- The architect uses the first sentence for the Service Map table cell and renders the full paragraph in the section below the table — so write so the first sentence stands alone as a one-liner.
+
 ### 2. Detect framework + version
 
 Populate `framework`:
@@ -48,7 +67,14 @@ Populate `framework`:
 
 ### 3. For api-services + workers — list entities and endpoints
 
-**Entities**: walk the model/entity/dto directory and list domain entities (not internal helpers). For each: name, key states (the values an enum/state field can take, if there's a clear lifecycle), owning module (top-level package this entity sits in).
+**Entities**: walk the model/entity/dto directory and list domain entities (not internal helpers). For each:
+
+- `name` — class / model name as written.
+- `purpose` — one sentence (≤120 chars) on what this entity represents in the domain. Pull from the class-level Javadoc / docstring when present; otherwise infer from the field set + entity name (e.g., a `Book` entity with `title`, `author`, `status`, `publishedAt` → "A publication moving through editorial review toward release."). Leave empty string only if the entity is opaque and you'd be guessing.
+- `key_states` — values an enum/state field can take, if there's a clear lifecycle.
+- `owning_module` — top-level package this entity sits in.
+
+You DO NOT extract state transitions (which method triggers DRAFT → REVIEW, under what guard). Those live scattered across service-layer business logic and require deep walking to recover correctly — out of scope for B2.0. If an entity has a complex lifecycle (4+ states) and you noticed transition-shaped methods like `submitForReview` / `approve` / `terminate`, flag it in `notes_for_architect` as "Book has a non-trivial lifecycle; transitions live in BookService.* — architect may want a targeted read". The architect will decide whether to spend a targeted read on it in B2.
 
 **Endpoints**: walk controller/router/handler files. For each: method, path, auth requirement (role / permission scheme — read controller annotations or middleware), one-line purpose. Cap at the 25 most representative endpoints if the repo is huge — the architect doesn't need every CRUD route.
 

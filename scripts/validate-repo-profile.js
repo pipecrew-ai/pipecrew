@@ -65,6 +65,13 @@ function validateProfile(p) {
     if (!nonEmptyString(p[f])) errors.push(`missing or empty string "${f}"`);
   }
 
+  // --- description: present + string (empty allowed as escape hatch) ------
+  if (!('description' in p)) {
+    errors.push('missing key "description" (use "" when the discoverer could not extract a useful sentence, never omit)');
+  } else if (typeof p.description !== 'string') {
+    errors.push('"description" must be a string');
+  }
+
   // --- keys that must be PRESENT (value may be null) ----------------------
   for (const f of ['framework', 'auth', 'persistence', 'tests',
                     'frontend_signals', 'infra_signals']) {
@@ -76,6 +83,17 @@ function validateProfile(p) {
   }
   if (!('entities' in p)) {
     errors.push('missing key "entities" (use null for frontend/infra repos, never omit)');
+  } else if (Array.isArray(p.entities)) {
+    p.entities.forEach((e, i) => {
+      const where = `entities[${i}]`;
+      if (!isPlainObject(e)) { errors.push(`${where} must be an object`); return; }
+      if (!nonEmptyString(e.name)) errors.push(`${where}.name must be a non-empty string`);
+      if (!('purpose' in e)) {
+        errors.push(`${where}.purpose missing (use "" when the discoverer would be guessing, never omit)`);
+      } else if (typeof e.purpose !== 'string') {
+        errors.push(`${where}.purpose must be a string`);
+      }
+    });
   }
 
   // --- required arrays (must be arrays, may be empty) ---------------------

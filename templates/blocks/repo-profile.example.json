@@ -3,6 +3,7 @@
   "repo_key": "publisher-service",
   "type": "spring-boot",
   "role": "api-service",
+  "description": "Owns the editorial workflow for the ABVI catalogue. Accepts publisher submissions, drives each book through review → approval → publication, and manages the contracts that govern royalty terms. The authoritative source for Book and Contract state — every other service consumes its events or HTTP endpoints rather than reading its database directly.",
   "scanned_at": "2026-05-05T10:30:00Z",
   "head_sha": "7066b304bb21829fad3fe9404c3f0f76de866988",
   "branch": "main",
@@ -15,9 +16,9 @@
   },
 
   "entities": [
-    { "name": "Book", "key_states": ["DRAFT", "REVIEW", "PUBLISHED"], "owning_module": "publisher" },
-    { "name": "Publisher", "key_states": [], "owning_module": "publisher" },
-    { "name": "Contract", "key_states": ["PENDING", "ACTIVE", "TERMINATED"], "owning_module": "publisher" }
+    { "name": "Book", "purpose": "A publication moving through editorial review toward release.", "key_states": ["DRAFT", "REVIEW", "PUBLISHED"], "owning_module": "publisher" },
+    { "name": "Publisher", "purpose": "An author or organization that submits books.", "key_states": [], "owning_module": "publisher" },
+    { "name": "Contract", "purpose": "The revenue agreement between a publisher and the platform for a given book.", "key_states": ["PENDING", "ACTIVE", "TERMINATED"], "owning_module": "publisher" }
   ],
 
   "endpoints": [

@@ -2,7 +2,7 @@
 
 **Goal**: cut a typical 4-repo `/discover` run by ~40-50% wall-clock and tokens with no UX change.
 
-> **Status as of 2026-05-05**: Wins #1 and #2 are CLOSED (one rejected, one made moot). Win #3 is being landed now on `feat/split-b2-architect`. Wins #4, #5, #6 still on the queue. See "What shipped / what's open" at the bottom.
+> **Status as of 2026-05-31**: Wins #1, #2, #3, #5, and #6 are CLOSED. Only Win #4 (outline gate) remains open. See "What shipped / what's open" at the bottom.
 
 **Diagnosis** (still accurate post-B2.5 removal):
 
@@ -59,16 +59,23 @@ Currently two `context-manager` dispatches per repo with overlapping inputs (pla
 
 Cheapest remaining win — half a day of work.
 
-### 6. Cache per-repo scan output across runs (head_sha-keyed) — 📋 OPEN
+### 6. Cache per-repo scan output across runs (head_sha-keyed) — ✅ SHIPPED
 
-Hash each repo's `git rev-parse HEAD`. On `/discover --resume` skip repos whose HEAD hasn't moved since the last run; only re-scan changed ones.
+Shipped as `scripts/discover-cache.js` (plan + commit subcommands). Phase B2.0 calls `plan` before any `repo-discoverer` dispatch and `commit` after profiles are validated.
 
-- **Pattern source**: `/context-refresh` already uses `runs/context-refresh/state.json`.
-- **Mechanism**: write `{workspace_root}/{slug}/runs/discover/state.json` recording per-repo `head_sha` + `ran_at`. Decision tree at the top of B2.0.
-- **Saving**: huge for monorepos where most repos are stable but one moves. First-run benefit is zero.
-- **Risk**: low. Read-only optimization that falls back to a full scan on any uncertainty.
+State file: `{workspace_root}/{slug}/runs/discover/state.json` — per-repo `head_sha`, `branch`, `scanned_at`, `profile_path`, `profile_schema_version`.
 
-Pairs naturally with Win #3 (which introduces the per-repo profile that's the cacheable artifact). Cleanest landing order: #3 → #6.
+Invalidation rules (any one triggers rescan):
+- No cache entry for the repo
+- `HEAD` SHA mismatch
+- Branch mismatch (e.g., main → feature branch)
+- Cached `profile_schema_version < schema_version` from the canonical example (bumping the example file's `schema_version` invalidates every cache entry on the next run — automatic schema-drift handling)
+- Cached `profile_path` file missing or unparseable
+- `git rev-parse` fails (detached HEAD, non-git, unreadable) — defensive fallback
+
+User can force-rescan via `/discover --no-cache`; the cache is still written for the next run.
+
+Test coverage: `scripts/discover-cache.test.js` — 17 tests against real ephemeral git repos (no git stubbing). Covers every invalidation rule + the plan/commit round-trip + mixed-fleet scenarios + corrupt-state-file recovery.
 
 ---
 
@@ -96,11 +103,11 @@ After all four: typical `/discover` runs at roughly half the current Opus cost, 
 |---|---|---|---|
 | 1 | Pre-scan manifest | ❌ Rejected | branch dropped |
 | 2 | Parallel B2 + B2.5 | ⚪ Moot (B2.5 deleted) | `65a90e3` (B2.5 removal) |
-| 3 | Split B2 (Sonnet + Opus) | 🟡 In progress | `feat/split-b2-architect` |
-| 4 | Outline gate | 📋 Open | — |
-| 5 | Merge C.4 + C.5 | 📋 Open | — |
-| 6 | head_sha cache | 📋 Open | — |
-| — | B3↔B2 overlap (sub-cleanup) | 📋 Open, blocked on #3 | — |
+| 3 | Split B2 (Sonnet + Opus) | ✅ Shipped | merged in PR #7 (`ec12019`) |
+| 4 | Outline gate | 📋 Open | — pairs naturally with Win #3 |
+| 5 | Merge C.4 + C.5 | ✅ Shipped (pre-dating this plan) | `phase-c-generation.md` Step 2 (likely landed in `7f6b62e`) |
+| 6 | head_sha cache | ✅ Shipped | `feat/discover-head-sha-cache` — `scripts/discover-cache.js` + REPO_PROFILE `schema_version` field + Phase B2.0 plan/commit calls |
+| — | B3↔B2 overlap (sub-cleanup) | 📋 Open, unblocked by #3 | — `frontend_signals` already ships in REPO_PROFILE |
 | — | Phase D reporter agent | 📋 Open, optional | — |
 
 ---

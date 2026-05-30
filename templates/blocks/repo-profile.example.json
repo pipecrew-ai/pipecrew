@@ -1,5 +1,6 @@
 {
   "_comment": "Canonical example for the REPO_PROFILE block emitted by the repo-discoverer agent (Sonnet) during /discover Phase B2.0. ONE file per repo at {run_dir}/outputs/repo-profiles/{repo-key}.json. The solution-architect (Opus) then reads the full set of profiles in Phase B2 to synthesize platform.md + audit-findings.md + the architecture diagrams. Field reference and consumer list live in block-schemas.md. Producers must match this structure; the architect extracts it via direct Read on the file. Stack-specific fields (under `stack` and `integrations`) are filled when relevant for the repo's role. The _comment field is illustrative only — strip it from real output.",
+  "schema_version": 1,
   "repo_key": "publisher-service",
   "type": "spring-boot",
   "role": "api-service",

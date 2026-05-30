@@ -27,6 +27,10 @@ You are an **information-gathering agent**, not an implementer — the implement
 
 ## Process
 
+### 0. Set the schema version
+
+Every profile MUST start with `"schema_version": 1` (or whatever value the canonical example carries today — `cat {plugin_dir}/templates/blocks/repo-profile.example.json | head -3` if you're unsure). The discover-cache (Win #6) reuses cached profiles only when this matches the current canonical version, so this field is what invalidates stale caches the day the REPO_PROFILE shape changes. Do NOT omit it.
+
 ### 1. Orient
 
 Read these in order:

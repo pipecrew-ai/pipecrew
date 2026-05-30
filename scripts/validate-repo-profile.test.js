@@ -38,6 +38,7 @@ function run(arg) {
 // A minimal but fully-valid profile (every required key present).
 function validProfile() {
   return {
+    schema_version: 1,
     repo_key: 'publisher-service',
     type: 'spring-boot',
     role: 'api-service',
@@ -91,6 +92,26 @@ test('canonical example fixture passes (when present)', () => {
 });
 
 // --- structural rejections -------------------------------------------------
+
+test('missing schema_version → exit 1', () => {
+  const p = validProfile(); delete p.schema_version;
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/schema_version/.test(r.stderr), r.stderr);
+});
+
+test('non-integer schema_version → exit 1', () => {
+  const p = validProfile(); p.schema_version = '1';
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/schema_version.*integer/.test(r.stderr), r.stderr);
+});
+
+test('zero schema_version → exit 1', () => {
+  const p = validProfile(); p.schema_version = 0;
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+});
 
 test('missing repo_key → exit 1', () => {
   const p = validProfile(); delete p.repo_key;

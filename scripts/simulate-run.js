@@ -106,27 +106,6 @@ const PHASE1_SAMPLES = {
 - FR-8: Only the publisher who initiated the batch can see its files (ownership enforcement).
 <!-- END FUNCTIONAL_REQUIREMENTS -->
 
-<!-- BEGIN API_CONTRACT -->
-## API Capabilities
-
-### Existing Capabilities (from OpenAPI spec)
-- Single-book upload: \`POST /api/v1/books\` with one PDF — already supports validation and S3 persistence.
-- Search indexing: \`book.uploaded\` SQS event already consumed by search-svc.
-
-### Capability Gaps
-- No batch endpoint exists. Need a new \`POST /api/v1/books/bulk\` accepting multipart with up to 50 files.
-- No per-file failure reporting in the response shape — current single-upload returns 200 or 4xx atomically.
-<!-- END API_CONTRACT -->
-
-<!-- BEGIN UX_REQUIREMENTS -->
-## UX Requirements (HIGH-LEVEL ONLY)
-- UX-1: Publisher must be able to select multiple files at once (drag-and-drop OR file picker with multi-select).
-- UX-2: Per-file progress bar visible during upload.
-- UX-3: Per-file success/failure shown when batch completes; failed files surface the validation error.
-- UX-4: Locale support for ar/en including RTL — error messages translated.
-- UX-5: Loading, empty, and error states for the upload queue.
-<!-- END UX_REQUIREMENTS -->
-
 <!-- BEGIN EDGE_CASES -->
 ## Edge Cases & Error Handling
 - EC-1: Reject files larger than 100MB with HTTP 413 Payload Too Large per file.
@@ -135,14 +114,6 @@ const PHASE1_SAMPLES = {
 - EC-4: Partial S3 upload failure (network drop mid-batch) — retry that file once, mark failed if retry also fails.
 - EC-5: Publisher session expires mid-upload — return HTTP 401, frontend prompts re-login and offers to resume the batch.
 <!-- END EDGE_CASES -->
-
-<!-- BEGIN TESTING_REQUIREMENTS -->
-## Testing Requirements
-- TEST-1: Unit-test the bulk validator (file count, size, format).
-- TEST-2: Integration test of the bulk endpoint with 50 valid + 5 invalid files; assert per-file response shape.
-- TEST-3: E2E test of the search-svc indexing path end-to-end.
-- TEST-4: Frontend unit + integration tests for the multi-file upload component.
-<!-- END TESTING_REQUIREMENTS -->
 
 <!-- BEGIN OUT_OF_SCOPE -->
 ## Out of Scope
@@ -194,38 +165,12 @@ const PHASE1_SAMPLES = {
 - FR-5: Backend exposes \`GET /api/v1/contracts/{id}/detail\` returning the full record needed by the modal.
 <!-- END FUNCTIONAL_REQUIREMENTS -->
 
-<!-- BEGIN API_CONTRACT -->
-## API Capabilities
-
-### Existing Capabilities (from OpenAPI spec)
-- \`GET /api/v1/contracts\` — paginated list (already used by the contracts page).
-- \`GET /api/v1/contracts/{id}\` — minimal contract record (id, type, status, party_ids).
-
-### Capability Gaps
-- Existing \`/contracts/{id}\` doesn't include the linked Book title or party display names — modal would need 3 separate fetches. Need a \`/detail\` endpoint that joins the data server-side.
-<!-- END API_CONTRACT -->
-
-<!-- BEGIN UX_REQUIREMENTS -->
-## UX Requirements (HIGH-LEVEL ONLY)
-- UX-1: Modal opens centered with a backdrop that captures focus.
-- UX-2: ALC Manager sees Edit + Cancel actions in the modal footer; Publisher sees Close only.
-- UX-3: Loading state while detail fetches; error state if the fetch fails.
-- UX-4: Locale support for ar/en, RTL flips the close-button position.
-<!-- END UX_REQUIREMENTS -->
-
 <!-- BEGIN EDGE_CASES -->
 ## Edge Cases & Error Handling
 - EC-1: Contract not found (404) — modal shows "This contract no longer exists" and a Close button.
 - EC-2: User loses permission mid-session — modal closes and the list re-fetches.
 - EC-3: Rapid open/close interactions — debounce so we don't fire 5 detail fetches.
 <!-- END EDGE_CASES -->
-
-<!-- BEGIN TESTING_REQUIREMENTS -->
-## Testing Requirements
-- TEST-1: Backend integration test for the new \`/detail\` endpoint, including the not-found path.
-- TEST-2: Frontend integration test for the modal — open from row, verify content, verify role-based actions, close via all three methods.
-- TEST-3: a11y test — focus trap on the modal, Escape closes.
-<!-- END TESTING_REQUIREMENTS -->
 
 <!-- BEGIN OUT_OF_SCOPE -->
 ## Out of Scope

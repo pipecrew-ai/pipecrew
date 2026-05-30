@@ -334,15 +334,38 @@ The bulk endpoint orchestrates per-file persistence in a synchronous request —
 <!-- END API_DESIGN -->
 
 <!-- BEGIN FRONTEND_ARCHITECTURE -->
-## Frontend Architecture
-New feature module under \`src/features/bulk-upload/\`:
-- \`api/types.ts\` — TS types matching the spec
-- \`api/services.ts\` — \`uploadBulk()\` service method
-- \`hooks/useBulkUpload.ts\` — React Query mutation with per-file progress streamed via XHR upload events
-- \`components/BulkUploadDropzone.tsx\` — drag-and-drop, multi-file picker
-- \`components/BulkUploadProgressList.tsx\` — per-file progress + final status
-- \`pages/BulkUploadPage.tsx\` — page shell + role guard
-- \`__tests__/\` — component + hook tests with msw mocks
+\`\`\`json
+{
+  "components": [
+    { "name": "BulkUploadPage", "path": "src/features/bulk-upload/pages/BulkUploadPage.tsx", "kind": "page", "change_kind": "added", "purpose": "Page shell + role guard for the bulk upload flow", "children": ["BulkUploadDropzone", "BulkUploadProgressList"] },
+    { "name": "BulkUploadDropzone", "path": "src/features/bulk-upload/components/BulkUploadDropzone.tsx", "kind": "component", "change_kind": "added", "purpose": "Drag-and-drop + multi-file picker", "children": [] },
+    { "name": "BulkUploadProgressList", "path": "src/features/bulk-upload/components/BulkUploadProgressList.tsx", "kind": "component", "change_kind": "added", "purpose": "Per-file progress and final success/failure status", "children": [] },
+    { "name": "useBulkUpload", "path": "src/features/bulk-upload/hooks/useBulkUpload.ts", "kind": "hook", "change_kind": "added", "purpose": "React Query mutation streaming per-file progress via XHR upload events", "children": [] }
+  ],
+  "routes": [
+    { "path": "/publisher/books/bulk-upload", "change_kind": "added", "page_component": "BulkUploadPage", "guard": "publisher" }
+  ],
+  "api_integration": [
+    { "service_function": "uploadBulk", "file": "src/features/bulk-upload/api/services.ts", "endpoint": "POST /api/v1/books/bulk", "request_type": "BulkUploadRequest", "response_type": "BulkUploadResponse" }
+  ]
+}
+\`\`\`
+
+## Frontend Architecture — detail (prose)
+
+### State Management
+React Query mutation \`uploadBulk\` with per-file optimistic updates. No global context — per-page \`useBulkUpload\` hook owns the queue state. Form-state via plain React state (file list is the form).
+
+### i18n key additions
+- \`bulk_upload.title\`
+- \`bulk_upload.dropzone_help\`
+- \`bulk_upload.queue.row.progress\`
+- \`bulk_upload.errors.file_too_large\`
+- \`bulk_upload.errors.invalid_type\`
+- \`bulk_upload.errors.batch_too_large\`
+
+### Styling notes
+Reuse the existing design-system primitives. RTL: progress bars fill right-to-left in Arabic; close icons mirror.
 <!-- END FRONTEND_ARCHITECTURE -->
 
 <!-- BEGIN INFRASTRUCTURE_IMPACT -->
@@ -364,10 +387,21 @@ New feature module under \`src/features/bulk-upload/\`:
 <!-- END IMPLEMENTATION_ORDER -->
 
 <!-- BEGIN RISKS -->
-## Risks & Trade-offs
-- **Latency tail** for max-size batches (~30s). Mitigated by per-file streaming progress in the response.
-- **Memory pressure** on the ECS task during 50-file in-flight uploads. Sub-bullet: stream files to S3 directly without buffering — **deferred** to a follow-up if memory metrics show pressure post-launch (RISKS §1).
-- **Failure-mode UX** ambiguity: re-uploading failed files only is a v2 enhancement — **out of scope** for this slice (RISKS §2).
+\`\`\`json
+{
+  "risks": [
+    { "id": "R-1", "summary": "Latency tail for max-size batches around 30 seconds", "severity": "medium", "mitigation": "Per-file streaming progress in the response so the UI stays informative" },
+    { "id": "R-2", "summary": "Memory pressure on the ECS task during 50-file in-flight uploads", "severity": "medium", "mitigation": "Stream files directly to S3 without buffering in the service; alert on container memory >80%" }
+  ],
+  "deferred_items": [
+    { "id": "DEF-1", "tag": "follow-up", "summary": "Auto-stream directly to S3 without intermediate buffering", "rationale": "Land if post-launch memory metrics show pressure; current allocation is sized for the projected load", "owning_repo": "publisher-service" },
+    { "id": "DEF-2", "tag": "v2", "summary": "Re-upload only the failed files from a batch", "rationale": "v1 ships per-file failure surface; the re-upload UX needs its own design pass", "owning_repo": "publisher-frontend" }
+  ]
+}
+\`\`\`
+
+## Risks & Trade-offs — detail (prose)
+Alternative considered: chunked-upload protocol (tus.io) for resumability. Rejected for v1 because the 100 MB per-file cap keeps each upload under typical session lifetime; reconsider if files grow.
 <!-- END RISKS -->
 
 <!-- BEGIN TASK_SKELETON -->
@@ -483,11 +517,32 @@ No schema change. The \`/detail\` endpoint joins existing tables (Contract, Book
 <!-- END API_DESIGN -->
 
 <!-- BEGIN FRONTEND_ARCHITECTURE -->
-## Frontend Architecture
-- New \`Modal\` primitive in \`src/components/ui/Modal.tsx\` (focus-trap + Escape handler).
-- \`ContractDetailModal\` consumer component under \`src/features/contracts/\`.
-- \`useContractDetail(id)\` React Query hook.
-- Wires into the existing contracts list-row click handler — replaces the current \`navigate('/contracts/{id}')\` call.
+\`\`\`json
+{
+  "components": [
+    { "name": "Modal", "path": "src/components/ui/Modal.tsx", "kind": "component", "change_kind": "added", "purpose": "Reusable modal primitive with focus-trap and Escape-to-close", "children": [] },
+    { "name": "ContractDetailModal", "path": "src/features/contracts/ContractDetailModal.tsx", "kind": "component", "change_kind": "added", "purpose": "Renders contract detail inside the Modal primitive; role-aware action footer", "children": ["Modal"] },
+    { "name": "useContractDetail", "path": "src/features/contracts/useContractDetail.ts", "kind": "hook", "change_kind": "added", "purpose": "React Query hook fetching one contract's detail by id", "children": [] }
+  ],
+  "routes": [],
+  "api_integration": [
+    { "service_function": "getContractDetail", "file": "src/api/contracts.ts", "endpoint": "GET /api/v1/contracts/{id}/detail", "request_type": "GetContractDetailParams", "response_type": "ContractDetail" }
+  ]
+}
+\`\`\`
+
+## Frontend Architecture — detail (prose)
+
+### State Management
+React Query \`useContractDetail(id)\` with id-keyed cache. The list-row click handler swaps the existing \`navigate('/contracts/{id}')\` call for opening the modal with the row's id.
+
+### i18n key additions
+- \`contracts.modal.title\`
+- \`contracts.modal.close\`
+- \`contracts.modal.errors.not_found\`
+
+### Styling notes
+Modal primitive sets the workspace a11y baseline (focus trap, Escape, aria-modal). RTL: close button flips to the right.
 <!-- END FRONTEND_ARCHITECTURE -->
 
 <!-- BEGIN INFRASTRUCTURE_IMPACT -->
@@ -504,10 +559,20 @@ None — pure code change.
 <!-- END IMPLEMENTATION_ORDER -->
 
 <!-- BEGIN RISKS -->
-## Risks & Trade-offs
-- **Permission scoping** for the join endpoint: must enforce the same caller-can-see-this-contract rule the list endpoint uses. Risk if the join service forgets the ownership filter.
-- **Modal accessibility** is load-bearing for the workspace's a11y baseline — focus trap is non-negotiable.
-- **Edit-in-modal** explicitly out of scope (RISKS §1) — clicking Edit still navigates to the existing edit page.
+\`\`\`json
+{
+  "risks": [
+    { "id": "R-1", "summary": "Join endpoint must enforce the same caller-can-see-this-contract rule the list endpoint uses", "severity": "high", "mitigation": "Reuse the existing ownership filter in the service layer; reviewer's Pattern Adherence pass catches misuse" },
+    { "id": "R-2", "summary": "Modal accessibility is load-bearing for the workspace's a11y baseline", "severity": "medium", "mitigation": "Focus trap + Escape are non-negotiable; UX consultant must verify against the design-system contract" }
+  ],
+  "deferred_items": [
+    { "id": "DEF-1", "tag": "out-of-scope", "summary": "Edit-in-modal — modal stays read-only", "rationale": "Clicking Edit navigates to the existing edit page; in-modal editing is a separate UX project", "owning_repo": "demo-frontend" }
+  ]
+}
+\`\`\`
+
+## Risks & Trade-offs — detail (prose)
+Alternative considered: render the same modal in a side drawer instead. Rejected because the design system's modal primitive is already standardized and lower-friction to adopt.
 <!-- END RISKS -->
 
 <!-- BEGIN TASK_SKELETON -->

@@ -240,7 +240,7 @@ Pre-flight: load `config.json`, validate, derive which phases auto-run from what
 
 ```
 Phase 1   Requirements        {slug}-product-owner agent  →  WHAT  ──────── user gate
-Phase 2   Architecture        solution-architect          →  HOW + which services + AFFECTED_CONTRACTS + API_DESIGN + INFRASTRUCTURE_IMPACT + TASK_SKELETON  ──────── user gate
+Phase 2   Architecture        solution-architect          →  HOW + AFFECTED_CONTRACTS + AFFECTED_SERVICES + DATA_MODEL + API_DESIGN + FRONTEND_ARCHITECTURE + INFRASTRUCTURE_IMPACT + RISKS + TASK_SKELETON (all JSON-fenced; split-design.js materializes outputs/blocks/*.json)  ──────── user gate
 Phase 3a  Contract edit       schema-implementer (JSON Schema / Avro / Protobuf)  ┐
 Phase 3b  Spec edit           openapi-spec-editor (in-place YAML edits)           ┴── single user gate over both diffs (orchestrator does git checkout to roll back if rejected)
 Phase 4   Spec sync           copy edited specs to repos with `spec_copies`  ──── default OFF — opt-in via follow-up question at the Phase 3 gate

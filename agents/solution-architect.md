@@ -379,18 +379,26 @@ Split by service. For each affected service, look up its `spec_policy` in the wo
 <!-- END API_DESIGN -->
 
 <!-- BEGIN FRONTEND_ARCHITECTURE -->
-## Frontend Architecture
-### Component Tree
-[Key components and hierarchy]
+**Read `{plugin_dir}/templates/blocks/frontend-architecture.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream consumers (Phase 5b `react-feature-implementer` / `nextjs-implementer` — via the task-planner's Architecture context) extract via `node {plugin_dir}/scripts/extract-block.js {this-file} FRONTEND_ARCHITECTURE` (or read `outputs/blocks/frontend-architecture.json` after `split-design.js` runs). Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § FRONTEND_ARCHITECTURE.
+
+```json
+{ ... matches templates/blocks/frontend-architecture.example.json ... }
+```
+
+When the feature has no frontend involvement (`frontend_required: false` in AFFECTED_SERVICES), emit `{"components": [], "routes": [], "api_integration": []}` — do NOT omit the block. The planner's frontend skip-decision reads `components.length`.
+
+## Frontend Architecture — detail (prose)
+
+Use this prose section for the design content the JSON above cannot carry — `components` / `routes` / `api_integration` are the navigable index; the prose carries the *how*:
 
 ### State Management
-[Query keys, contexts, form state approach]
+[Query keys for React Query (caching, invalidation), contexts (scope + purpose), form-state strategy (react-hook-form + zod, Formik, plain controlled inputs). Implementer reads this to pick the right primitives.]
 
-### Page / Route Changes
-[New routes, modified routes]
+### i18n key additions
+[Bullet list of namespaced keys this feature adds (e.g., `bulk_upload.dropzone_help`, `bulk_upload.errors.file_too_large`). The implementer must add them to every configured locale; the per-locale file paths come from the repo's `i18n_signals` profile, not from this section.]
 
-### API Integration
-[New service functions or API clients needed]
+### Styling notes
+[Anything not already implied by the design system: which design-system primitives this feature reuses, any layout that diverges from the existing pattern, accessibility callouts (focus traps, RTL flips, contrast considerations).]
 <!-- END FRONTEND_ARCHITECTURE -->
 
 <!-- BEGIN INFRASTRUCTURE_IMPACT -->
@@ -412,8 +420,22 @@ For each infra repo named in the JSON above, give the configuration detail consu
 <!-- END IMPLEMENTATION_ORDER -->
 
 <!-- BEGIN RISKS -->
-## Risks & Trade-offs
-[Key risks, mitigations, alternatives considered. **Sub-bullets that should ship later** must be tagged with one of: `deferred`, `out of scope`, `follow-up`, `v2`, or `enhancement`. Phase 4.5's task-planner reads these tags to populate the `tier: "D"` entries in TASK_SKELETON, so any deferrable item flagged here MUST also appear as a `D` sub-task in TASK_SKELETON below with a `deferral_reason` that quotes back to the relevant RISKS sub-bullet.]
+**Read `{plugin_dir}/templates/blocks/risks.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the source of truth — Phase 4.5's task-planner extracts it (or reads `outputs/blocks/risks.json` after `split-design.js` runs) to populate per-repo Out-of-Scope sections deterministically. Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § RISKS.
+
+```json
+{ ... matches templates/blocks/risks.example.json ... }
+```
+
+Two arrays inside:
+
+1. **`risks[]`** — narrative risk + mitigation pairs the user reviews at the Phase 2 gate. Each gets a stable `id` (`R-1`, `R-2`, …) so reviewers and later phases can reference them.
+2. **`deferred_items[]`** — items that will NOT ship in the minimum slice. **Each one MUST also appear as a `tier: "D"` sub-task in TASK_SKELETON below**, with `deferral_reason: "RISKS DEF-N — {rationale}"` referencing the corresponding `deferred_items[].id`. The planner uses these ids to map deferred items to per-repo Out-of-Scope sections in the task files. The old prose-tag scan (looking for `deferred` / `out of scope` / `follow-up` / `v2` / `enhancement` keywords in prose) is gone — `deferred_items[].tag` is the structured equivalent and is enum-validated.
+
+If the feature has no risks and no deferred items: emit `{"risks": [], "deferred_items": []}` — do NOT omit the block.
+
+## Risks & Trade-offs — detail (prose)
+
+Use this prose section for context the JSON cannot carry — alternatives considered, cross-cutting trade-offs that don't map to a single `risks[]` entry, and any prose argument the human reviewer needs at the Phase 2 gate. The JSON above is the addressable index; this prose is the discussion.
 <!-- END RISKS -->
 
 <!-- BEGIN TASK_SKELETON -->
@@ -423,10 +445,10 @@ This block is a per-repo, sub-task-shaped projection of AFFECTED_SERVICES + RISK
 
 1. **One `tasks[]` entry per repo touched** — derive `repo_key` from `config.json` (the same keys you used in AFFECTED_SERVICES / AFFECTED_CONTRACTS / INFRASTRUCTURE_IMPACT). `repo_role` mirrors `config.repos[repo_key].role` (`api-service`, `frontend`, `mock-server`, `infrastructure`, `worker`). `spec_policy` mirrors `config.services[svc].spec_policy` for service repos, or `n/a` for frontend / mock / infra.
 2. **Sub-tasks are stack-shaped, not feature-shaped** — backend services break into DTOs / repository / service / controller / tests; frontend into API layer / hooks / components / page+routing / i18n / tests; mock into data + handlers; infra into resources + IAM. Don't invent new categories — Phase 4.5 maps these to the implementer's task-file template.
-3. **Each sub-task has `tier: "M" | "D"`.** `M` = needed for the smallest shippable form. `D` = listed under RISKS as deferrable. Every `D` sub-task MUST have a `deferral_reason` field that quotes the RISKS sub-bullet (e.g., `"RISKS §2 — low v1 usage"`).
+3. **Each sub-task has `tier: "M" | "D"`.** `M` = needed for the smallest shippable form. `D` = listed in RISKS `deferred_items[]`. Every `D` sub-task MUST have a `deferral_reason` field of the form `"RISKS DEF-N — {short rationale}"`, where `DEF-N` is the matching `deferred_items[].id` from the RISKS block above. The planner uses these ids to cross-reference deferred items back to RISKS — a `D` sub-task with a `deferral_reason` that doesn't resolve to a RISKS `deferred_items[].id` is rejected at the planner gate.
 4. **`fr_refs` is required and non-empty for every sub-task.** Pull from AFFECTED_SERVICES `fr_ids` / `ec_ids`; if a sub-task supports an FR/EC the architect didn't yet trace to a service, add it here. The planner uses these to filter the FR list it pastes into each task file.
 5. **`summary` is one short sentence** — what the sub-task delivers, not a full description. The planner uses it as the row caption in the plan summary table.
-6. **No D items?** If RISKS lists nothing as deferrable, every sub-task is `M` and Phase 4.5's gate collapses to a 2-option form. That's fine — don't fabricate `D` items just to balance the slices.
+6. **No D items?** If RISKS `deferred_items[]` is empty, every sub-task is `M` and Phase 4.5's gate collapses to a 2-option form. That's fine — don't fabricate `D` items just to balance the slices.
 
 ```json
 { ... matches templates/blocks/task-skeleton.example.json ... }

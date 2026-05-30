@@ -2,7 +2,7 @@
 
 **Goal**: cut a typical 4-repo `/discover` run by ~40-50% wall-clock and tokens with no UX change.
 
-> **Status as of 2026-05-05**: Wins #1 and #2 are CLOSED (one rejected, one made moot). Win #3 is being landed now on `feat/split-b2-architect`. Wins #4, #5, #6 still on the queue. See "What shipped / what's open" at the bottom.
+> **Status as of 2026-05-31**: Wins #1, #2, #3, and #5 are CLOSED. Wins #4 and #6 remain open. See "What shipped / what's open" at the bottom. (Note: Win #5 was already shipped before this plan was written — the merged `context-manager` flow lives in `phase-c-generation.md` Step 2. The doc previously listed it as open due to a status-tracking lag.)
 
 **Diagnosis** (still accurate post-B2.5 removal):
 
@@ -26,7 +26,7 @@ If we ever want a *lite* version (just a flat file list + parsed dep manifest, n
 
 Phase B2.5 was deleted entirely as a bigger simplification (commit `65a90e3` on 2026-05-05). The discipline that B2.5's per-stack convention docs implicitly enforced is now explicit via R10 in `docs/implementer-common-rules.md` and gate-checked by reviewers via the new Pattern Adherence pass. There's no longer a B2.5 to parallelize against B2.
 
-### 3. Split B2 into Sonnet-discovery + Opus-synthesis — 🟡 IN PROGRESS
+### 3. Split B2 into Sonnet-discovery + Opus-synthesis — ✅ SHIPPED
 
 Same pattern as the recent `/deliver` Phase 2 / 4.5 split. Current B2 = one Opus dispatch reading all repos. Split into:
 
@@ -50,14 +50,11 @@ Sonnet produces a 5k "platform outline" (sections + 1-line each), user approves 
 
 Naturally pairs with Win #3 — once architect synthesis is its own dispatch (post-Win-#3), inserting an outline pass before it is a clean addition.
 
-### 5. Combine Phase C.4 + Phase C.5 into one context-manager dispatch per repo — 📋 OPEN
+### 5. Combine Phase C.4 + Phase C.5 into one context-manager dispatch per repo — ✅ SHIPPED (pre-dating this plan)
 
-Currently two `context-manager` dispatches per repo with overlapping inputs (platform.md + repo scan). One dispatch in `full` mode produces both CLAUDE.md and agent-context.
+Already done. `phase-c-generation.md` Step 2 reads: *"Replaces the former Step 2 (CLAUDE.md generator) + Step 4 (agent-context generator). Both artifacts are now produced by a single `context-manager` dispatch per repo — the deep read happens once, agent-context is written first, CLAUDE.md is written as a thin index that references agent-context."* Likely landed in `7f6b62e` (the role-based agent-context templates commit).
 
-- **Saving**: ~40% of Phase C's most expensive step.
-- **Risk**: low. `context-manager` already supports a `full` mode.
-
-Cheapest remaining win — half a day of work.
+The status was tracked as Open in this doc due to a tracking lag — the actual code shipped before this enhancement plan was written.
 
 ### 6. Cache per-repo scan output across runs (head_sha-keyed) — 📋 OPEN
 
@@ -96,11 +93,11 @@ After all four: typical `/discover` runs at roughly half the current Opus cost, 
 |---|---|---|---|
 | 1 | Pre-scan manifest | ❌ Rejected | branch dropped |
 | 2 | Parallel B2 + B2.5 | ⚪ Moot (B2.5 deleted) | `65a90e3` (B2.5 removal) |
-| 3 | Split B2 (Sonnet + Opus) | 🟡 In progress | `feat/split-b2-architect` |
-| 4 | Outline gate | 📋 Open | — |
-| 5 | Merge C.4 + C.5 | 📋 Open | — |
-| 6 | head_sha cache | 📋 Open | — |
-| — | B3↔B2 overlap (sub-cleanup) | 📋 Open, blocked on #3 | — |
+| 3 | Split B2 (Sonnet + Opus) | ✅ Shipped | merged in PR #7 (`ec12019`) — Phase B2.0 dispatches `repo-discoverer` per repo in parallel; Opus B2 synthesizes from per-repo `REPO_PROFILE` JSON files |
+| 4 | Outline gate | 📋 Open | — pairs naturally with Win #3; cheap Sonnet preview before Opus synthesis |
+| 5 | Merge C.4 + C.5 | ✅ Shipped (pre-dating this plan) | `phase-c-generation.md` Step 2 already merges CLAUDE.md + agent-context into a single `context-manager` dispatch per repo in `mode: full` — likely landed in `7f6b62e` (role-based agent-context templates) |
+| 6 | head_sha cache | 📋 Open | — would key off the now-shipped `REPO_PROFILE` `head_sha` field |
+| — | B3↔B2 overlap (sub-cleanup) | 📋 Open, unblocked by #3 | — `repo-discoverer` already populates `frontend_signals` per repo; B3 could now read those instead of re-walking |
 | — | Phase D reporter agent | 📋 Open, optional | — |
 
 ---

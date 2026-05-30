@@ -138,6 +138,39 @@ If no infra repo is affected, the producer emits `{"infra_changes": []}` rather 
 
 ---
 
+### `FRONTEND_ARCHITECTURE`
+
+**Producer**: `solution-architect` (Phase 2 design output)
+**Consumers**: Phase 4.5 `task-planner` (filters `components[]` / `routes[]` / `api_integration[]` per sub-task when building each frontend task file's Architecture context), Phase 5b `react-feature-implementer` / `nextjs-implementer` (reads via the task file), Phase 5b `{slug}-ux-consultant` (sees the structured component tree at dispatch time).
+**File**: `{run_dir}/outputs/phase-2-architecture.md` (and `{run_dir}/outputs/blocks/frontend-architecture.json` after `split-design.js`).
+**Canonical example**: [`templates/blocks/frontend-architecture.example.json`](./frontend-architecture.example.json) — single source of truth for the structure. Update that file when the schema changes; this doc only carries the field reference table below.
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `components[]` | array | One entry per page / component / hook / provider / layout the implementer must create or modify. Empty `[]` when the feature has no frontend involvement (NOT omitted — the planner's frontend-skip decision reads `components.length`). |
+| `components[].name` | string | PascalCase component name. |
+| `components[].path` | string | Repo-relative file path (e.g., `src/pages/BulkUploadPage.tsx`). |
+| `components[].kind` | enum | `page` / `component` / `hook` / `provider` / `layout`. Defaults to `component` if omitted. |
+| `components[].change_kind` | enum | `added` / `modified` / `removed`. |
+| `components[].purpose` | string | One-line description of what this component does. |
+| `components[].children` | array of strings | Names of child components (must reference entries in `components[].name` or be widely-recognized library primitives). Used by the implementer to build the component tree. |
+| `routes[]` | array | URL routes added/modified/removed. Empty `[]` when no routing change. |
+| `routes[].path` | string | URL path with parameters (e.g., `/publisher/books/bulk-upload`). |
+| `routes[].change_kind` | enum | `added` / `modified` / `removed`. |
+| `routes[].page_component` | string | Name of the top-level page component for this route (must reference an entry in `components[].name`). |
+| `routes[].guard` | string \| null | Auth role or guard name (e.g., `publisher`, `admin`). `null` when the route is public. |
+| `api_integration[]` | array | Service functions in the frontend's API layer that bind to backend endpoints. Empty `[]` when the feature has no API integration (rare for a real feature). |
+| `api_integration[].service_function` | string | Function name in the API layer (e.g., `uploadBookBatch`). |
+| `api_integration[].file` | string | Repo-relative path to the API-layer file where the function lives. |
+| `api_integration[].endpoint` | string | HTTP method + path matching an entry in `API_DESIGN.services[].endpoints[]` (byte-for-byte). |
+| `api_integration[].request_type` / `response_type` | string | TypeScript type names — must match the names generated from the OpenAPI spec for `api-first` services. |
+
+The JSON serves as the addressable index for orchestration (which components to create, which routes to wire, which service functions to add). State-management strategy (query keys, contexts, form-state approach), i18n key additions, and styling notes live in the prose under each frontend feature section in `phase-2-architecture.md` — consumers extract the JSON to enumerate; they read the prose for the state/i18n/styling detail.
+
+---
+
 ### `MAPPER_REPORT`
 
 **Producer**: `architecture-mapper` agent (dispatched by `/draw-diagram --scan` or `/draw-diagram --repos`)
@@ -263,6 +296,33 @@ The summary is pre-computed by the reviewer so the orchestrator's gate decision 
 | `runbooks.index` | string | Repo-relative path to the runbook index file (e.g., `docs/runbooks/README.md`). |
 
 If the workspace has no observability stack (toy or local-only), the producer emits `{"log_destinations": [], "trace": {}, "dashboards": [], "runbooks": {}}` rather than omitting the block — empty arrays preserve the contract for downstream consumers.
+
+---
+
+### `RISKS`
+
+**Producer**: `solution-architect` (Phase 2 design output)
+**Consumers**: Phase 4.5 `task-planner` (reads `deferred_items[]` to populate per-repo Out-of-Scope sections in each task file; uses `deferred_items[].id` to validate `TASK_SKELETON` `D`-tier sub-tasks' `deferral_reason` cross-references), Phase 7 `reporter` (lists risks + deferred items in the run summary).
+**File**: `{run_dir}/outputs/phase-2-architecture.md` (and `{run_dir}/outputs/blocks/risks.json` after `split-design.js`).
+**Canonical example**: [`templates/blocks/risks.example.json`](./risks.example.json) — single source of truth for the structure. Update that file when the schema changes; this doc only carries the field reference table below.
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `risks[]` | array | Narrative risk + mitigation pairs the user reviews at the Phase 2 gate. Empty `[]` when the feature has no notable risks (NOT omitted). |
+| `risks[].id` | string | Stable id `R-1`, `R-2`, … Reviewers and later phases reference risks by id. |
+| `risks[].summary` | string | One-line description of the risk. |
+| `risks[].severity` | enum | `low` / `medium` / `high` / `critical`. Optional — defaults to `medium` when omitted. |
+| `risks[].mitigation` | string | One-line mitigation strategy. |
+| `deferred_items[]` | array | Items that will NOT ship in the minimum slice. Each one MUST also appear as a `tier: "D"` sub-task in `TASK_SKELETON` with `deferral_reason: "RISKS DEF-N — {rationale}"`. Empty `[]` when nothing is deferred. |
+| `deferred_items[].id` | string | Stable id `DEF-1`, `DEF-2`, … The planner cross-references this against `TASK_SKELETON` `D`-tier sub-tasks' `deferral_reason`. |
+| `deferred_items[].tag` | enum | `deferred` / `out-of-scope` / `follow-up` / `v2` / `enhancement`. Replaces the prior prose-keyword scan — the tag is enum-validated. |
+| `deferred_items[].summary` | string | One-line description of the deferred item. |
+| `deferred_items[].rationale` | string | One-line reason for deferral. The planner emits this verbatim in each task file's Out-of-Scope section. |
+| `deferred_items[].owning_repo` | string \| null | `repo_key` of the repo that would own this work. `null` for cross-repo items (the planner adds those to every task file's Out-of-Scope section). |
+
+Discussion content (alternatives considered, cross-cutting trade-offs, narrative argument for the human reviewer at the Phase 2 gate) lives in the prose under the JSON — the JSON is the addressable index for downstream phases.
 
 ---
 

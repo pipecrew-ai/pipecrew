@@ -151,7 +151,11 @@ last_worked_by: ""
 
 ## Architecture context
 {For backend tasks: paste the relevant DATA_MODEL + the service's API_DESIGN block from outputs/blocks/.
- For frontend tasks: paste FRONTEND_ARCHITECTURE (read via extract-block.js --raw).
+ For frontend tasks: read `outputs/blocks/frontend-architecture.json` and emit:
+   - A "## Components to build" sub-section listing every entry in `components[]` filtered to those this sub-task delivers (per sub_task.summary + the implementer's stack pattern). Format: `- {name} ({path}, kind={kind}, change_kind={change_kind}) — {purpose}`. Include `children` as an indented list when non-empty so the implementer sees the tree.
+   - A "## Routes affected" sub-section enumerating `routes[]` entries this sub-task touches (e.g., the page+routing sub-task gets all of them; the components sub-task gets none).
+   - A "## API integration" sub-section listing `api_integration[]` entries this sub-task wires up — implementer uses `service_function` + `file` to know where to add the call, and `request_type` + `response_type` to match the spec-generated types byte-for-byte.
+   - Then append the verbatim prose under FRONTEND_ARCHITECTURE (extract via `extract-block.js --raw FRONTEND_ARCHITECTURE` and trim everything BEFORE the `## Frontend Architecture — detail (prose)` heading) for State Management, i18n keys, and styling notes — material the JSON doesn't carry.
  For mock tasks: paste API_DESIGN.
  For infra tasks: paste INFRASTRUCTURE_IMPACT.
  Pull these from {run_dir}/outputs/blocks/*.json — do NOT re-read the full phase-2-architecture.md.}
@@ -224,7 +228,7 @@ After implementation, report:
 **Out of Scope construction**:
 
 1. Read `{run_dir}/outputs/phase-1-requirements.md` for any `## Out of Scope` or `## Non-goals` section. Filter to bullets relevant to this repo.
-2. Read `{run_dir}/outputs/blocks/risks.json` if present (some workspaces emit RISKS as JSON), else `extract-block.js --raw` the RISKS section. Pull every sub-bullet labelled `deferred`, `out of scope`, `follow-up`, `v2`, or `enhancement`. Filter to this repo.
+2. Read `{run_dir}/outputs/blocks/risks.json` (the architect's RISKS block, materialized by `split-design.js`). Iterate `deferred_items[]` and select entries where `owning_repo === this.repo_key` OR `owning_repo === null` (cross-repo items apply everywhere). For each selected entry, format as: `- [{tag}] {summary} — {rationale}` (e.g., `- [v2] Auto-retry of failed files — User can manually re-attempt via UI in v1`). If `risks.json` is missing, STOP and report `"RISKS block missing or not materialized — re-dispatch the architect"` — do NOT fall back to prose-scanning the markdown (the silent-skip class of bug; see PR history).
 3. Add the deferred sub-tasks for THIS repo (from `deferred_subtasks` if `approved_slice == "minimum-only"`).
 4. If the resulting list is empty, write the section as `*(none — every requirement traced to this repo is in scope)*`.
 

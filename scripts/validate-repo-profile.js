@@ -60,6 +60,16 @@ function validateProfile(p) {
     return ['root is not a JSON object'];
   }
 
+  // --- schema_version: required integer ≥ 1 -------------------------------
+  // The discover-cache (Win #6) uses this to invalidate stale cache entries
+  // when the REPO_PROFILE shape changes. Bumping this in the canonical example
+  // automatically forces a rescan on every workspace's next /discover run.
+  if (!('schema_version' in p)) {
+    errors.push('missing key "schema_version" (integer, set to 1 today; the canonical example carries the current value)');
+  } else if (!Number.isInteger(p.schema_version) || p.schema_version < 1) {
+    errors.push(`"schema_version" must be a positive integer (got ${JSON.stringify(p.schema_version)})`);
+  }
+
   // --- required non-empty strings -----------------------------------------
   for (const f of ['repo_key', 'type', 'role', 'notes_for_architect']) {
     if (!nonEmptyString(p[f])) errors.push(`missing or empty string "${f}"`);

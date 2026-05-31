@@ -26,8 +26,9 @@ After `/discover` completes, you have:
 ### Flags
 | Flag | Effect |
 |------|--------|
-| `--resume` | Resume an interrupted onboarding from the scratchpad |
+| `--resume` | Resume an interrupted onboarding from the scratchpad. Uses the per-repo profile cache (`runs/discover/state.json`) — skips `repo-discoverer` dispatches for any repo whose `HEAD` SHA + branch + REPO_PROFILE `schema_version` haven't moved since the last run. First-run benefit is zero; second-run benefit scales with how many repos are stable. |
 | `--workspace=<slug>` | Required with `--resume` and `--refresh-observability` if multiple workspaces exist |
+| `--refresh-cache` | Force a fresh scan of every repo in Phase B2.0 *and* update the saved cache with the new results. Treats every prior cache entry as a miss; on completion, writes the new profiles back to `state.json`. Use when you've made repo changes the cache can't detect (e.g., test fixture edits that don't move `HEAD`, schema-internal changes). |
 | `--greenfield` | Skip repo scan, start with brainstorm + scaffold (see Phase Greenfield) |
 | `--refresh-observability` | Run only Phase B2.6 against an existing workspace — refreshes (or first-time backfills) the OBSERVABILITY block in `platform.md`. Re-runs the IaC extractor across CDK / Terraform / k8s / docker-compose / Ansible, presents the draft for user curation (trace correlation header, dashboards, runbooks), validates, and writes the result. If the workspace was discovered before B2.6 existed (no OBSERVABILITY block in platform.md), this flag performs a first-time backfill — inserts the section before `## Established Patterns`. Requires `--workspace=<slug>` if more than one workspace exists. Skips Phase A/B1/B2.0/B2/B3/C/D. |
 

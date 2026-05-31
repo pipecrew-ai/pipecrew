@@ -356,7 +356,7 @@ Discussion content (alternatives considered, cross-cutting trade-offs, narrative
 ### `REPO_PROFILE`
 
 **Producer**: `repo-discoverer` agent (Sonnet) during `/discover` Phase B2.0 — one dispatch per repo, fired in parallel.
-**Consumers**: `solution-architect` (Phase B2 synthesis — reads the full set of profiles via direct `Read` + `JSON.parse`), `scripts/validate-repo-profile.js` (required-fields + shape gate run at the end of Phase B2.0, before the architect dispatch).
+**Consumers**: `solution-architect` (Phase B2 synthesis — reads the full set of profiles via direct `Read` + `JSON.parse`), `scripts/validate-repo-profile.js` (required-fields + shape gate run at the end of Phase B2.0, before the architect dispatch), `scripts/discover-cache.js` (Win #6 — reads cached profiles to skip re-scanning unchanged repos on `/discover --resume`; gates on `schema_version` matching the canonical example).
 **File**: `{run_dir}/outputs/repo-profiles/{repo_key}.json` — **one standalone `.json` file per repo**.
 **Canonical example**: [`templates/blocks/repo-profile.example.json`](./repo-profile.example.json) — single source of truth for the structure. Update that file when the schema changes; this doc only carries the field reference table below.
 
@@ -366,11 +366,12 @@ Discussion content (alternatives considered, cross-cutting trade-offs, narrative
 
 | Field | Type | Notes |
 |-------|------|-------|
+| `schema_version` | integer | Schema version of the REPO_PROFILE shape itself. Today: `1`. The `discover-cache.js` plan command reads the canonical example's `schema_version` at runtime and invalidates any cached profile whose `schema_version` is less than the canonical value — so bumping the example file's `schema_version` automatically forces a rescan on every workspace's next `/discover` run. Always emit the value from the canonical example. |
 | `repo_key` | string | Must match a key in `config.repos`. Echoes the dispatch input. |
 | `type` | string | Repo type (`spring-boot` / `react` / `cdk` / …). Echoes the dispatch input. |
 | `role` | string | `api-service` / `frontend` / `mock-server` / `infrastructure` / `worker` / `contract` / `other`. |
 | `description` | string | A short paragraph (2–4 sentences, ~250–500 chars) on what this repo is for, sampled at discovery from `README.md` / dep manifest / module docstring. Must cover: (1) the domain / boundary it owns, (2) its key responsibilities, (3) optionally one notable integration or constraint. The architect uses the first sentence as the Service Map "Description" column and renders the full paragraph below the table. Should NOT restate what other profile fields already carry (`framework`, `entities`, `endpoints`, `integrations`) — describe *intent*, not inventory. Empty string when the discoverer would be guessing. |
-| `scanned_at` | string | ISO-8601 scan time. Optional today; reserved for the incremental-refresh cache (discover-enhancement Win #6). |
+| `scanned_at` | string | ISO-8601 scan time. Required today (the cache reads it back via `state.json`); the agent fills it from the current UTC timestamp at write time. |
 | `head_sha` | string | Repo `HEAD` SHA at scan time. Optional today; reserved for the same cache. |
 | `branch` | string | Branch scanned. Optional today; reserved for the same cache. |
 | `framework` | object\|null | `{ name, version, language_version, key_libs[] }`. `null` only for `type=other` with no recognizable manifest. |

@@ -2,17 +2,18 @@
 
 **Goal**: cut a typical 4-repo `/discover` run by ~40-50% wall-clock and tokens with no UX change.
 
-> **Status as of 2026-05-31**: Wins #1, #2, #3, and #5 are CLOSED. Wins #4 and #6 remain open. See "What shipped / what's open" at the bottom. (Note: Win #5 was already shipped before this plan was written — the merged `context-manager` flow lives in `phase-c-generation.md` Step 2. The doc previously listed it as open due to a status-tracking lag.)
+> **Status as of 2026-05-31**: Wins #1, #2, #3, #5, and #6 are CLOSED. Win #4 (outline gate) and Win #7 (downstream artifact caching) are open. See "What shipped / what's open" at the bottom. (Note: Win #5 was already shipped before this plan was written — the merged `context-manager` flow lives in `phase-c-generation.md` Step 2. The doc previously listed it as open due to a status-tracking lag.)
 
-**Diagnosis** (still accurate post-B2.5 removal):
+**Updated diagnosis** (post-Win-#6):
 
-- Phase B2 is one Opus dispatch reading every repo's code in series (~80–120k Opus tokens). **This is the dominant remaining cost.**
-- Phase C.4 (CLAUDE.md) and Phase C.5 (agent-context) dispatch `context-manager` per repo with mostly overlapping inputs.
-- Re-running `/discover` on a workspace re-scans every repo even when nothing changed.
+- Phase B2.0 cost is now amortized via the head_sha cache (Win #6) — re-runs on unchanged repos pay near-zero.
+- **Phase C is now the dominant remaining cost**. `context-manager` runs in `full` mode per repo on every run, even when inputs are byte-identical to the prior run. With 11 repos, that's ~200-400k tokens spent rewriting CLAUDE.md and agent-context/ docs that should be cache hits.
+- Phase B2 (architect synthesis) is the second remaining cost. ~50-100k Opus per run, also unconditional.
+- Re-running `/discover` on a fully-cached workspace today still pays Phases B2 + C in full. The B2.0 saving alone is partial — the downstream regeneration eats most of the headroom.
 
 ---
 
-## The six wins, with current status
+## The seven wins, with current status
 
 ### 1. Pre-scan repos into a manifest (one JS script, no LLM) — ❌ REJECTED
 
@@ -56,16 +57,72 @@ Already done. `phase-c-generation.md` Step 2 reads: *"Replaces the former Step 2
 
 The status was tracked as Open in this doc due to a tracking lag — the actual code shipped before this enhancement plan was written.
 
-### 6. Cache per-repo scan output across runs (head_sha-keyed) — 📋 OPEN
+### 6. Cache per-repo scan output across runs (head_sha-keyed) — ✅ SHIPPED
 
-Hash each repo's `git rev-parse HEAD`. On `/discover --resume` skip repos whose HEAD hasn't moved since the last run; only re-scan changed ones.
+Shipped as `scripts/discover-cache.js` (plan + commit subcommands). Phase B2.0 calls `plan` before any `repo-discoverer` dispatch and `commit` after profiles are validated.
 
-- **Pattern source**: `/context-refresh` already uses `runs/context-refresh/state.json`.
-- **Mechanism**: write `{workspace_root}/{slug}/runs/discover/state.json` recording per-repo `head_sha` + `ran_at`. Decision tree at the top of B2.0.
-- **Saving**: huge for monorepos where most repos are stable but one moves. First-run benefit is zero.
-- **Risk**: low. Read-only optimization that falls back to a full scan on any uncertainty.
+State file: `{workspace_root}/{slug}/runs/discover/state.json` — per-repo `head_sha`, `branch`, `scanned_at`, `profile_path`, `profile_schema_version`.
 
-Pairs naturally with Win #3 (which introduces the per-repo profile that's the cacheable artifact). Cleanest landing order: #3 → #6.
+Invalidation rules (any one triggers rescan):
+- No cache entry for the repo
+- `HEAD` SHA mismatch
+- Branch mismatch (e.g., main → feature branch)
+- Cached `profile_schema_version < schema_version` from the canonical example (bumping the example file's `schema_version` invalidates every cache entry on the next run — automatic schema-drift handling)
+- Cached `profile_path` file missing or unparseable
+- `git rev-parse` fails (detached HEAD, non-git, unreadable) — defensive fallback
+
+User can force-rescan via `/discover --refresh-cache`; the cache is still written for the next run (the flag name reflects both halves — "rescan now, update saved state").
+
+Test coverage: `scripts/discover-cache.test.js` — 17 tests against real ephemeral git repos (no git stubbing). Covers every invalidation rule + the plan/commit round-trip + mixed-fleet scenarios + corrupt-state-file recovery.
+
+### 7. Cache downstream artifacts (platform.md + per-repo CLAUDE.md + agent-context) — 📋 OPEN
+
+Win #6 made Phase B2.0 cheap on re-runs. But Phases B2 and C still run unconditionally — even when every input is byte-identical to the prior run. With ~11 repos in a typical workspace, Phase C alone burns ~200-400k tokens regenerating context docs that have no reason to change.
+
+**Pattern**: same as Win #6, one layer higher in the pipeline. Hash the inputs that produce each downstream artifact; skip the dispatch when the hash matches.
+
+**Two artifact families to cache**:
+
+1. **`platform.md` (Phase B2 output)** — inputs: all REPO_PROFILE files + B1 domain answers + schema_version. If `inputs_hash` matches the last successful generation, skip architect dispatch and reuse the on-disk `platform.md`.
+2. **Per-repo `CLAUDE.md` + `agent-context/` (Phase C output)** — inputs: that repo's REPO_PROFILE + `platform.md` + schema_version. If hash matches, skip `context-manager` dispatch for that repo.
+
+**State extension** (extends `state.json` from Win #6):
+
+```json
+{
+  "repos": { "...": "Win #6 cache as today" },
+  "platform_md": {
+    "inputs_hash": "<sha256 of profile hashes + b1 answers + schema_version>",
+    "generated_at": "2026-05-31T10:00:00Z",
+    "path": "platform.md"
+  },
+  "context": {
+    "publisher-service": {
+      "inputs_hash": "<sha256>",
+      "generated_at": "...",
+      "claude_md_path": "publisher-service/CLAUDE.md",
+      "agent_context_dir": "publisher-service/agent-context/"
+    },
+    ...
+  }
+}
+```
+
+**Invalidation rules** (any one triggers regeneration of the affected artifact):
+
+- No prior entry
+- `inputs_hash` mismatch (any input changed)
+- Output file/dir missing on disk
+- `schema_version` drift
+- User passed `--force-rescan` (transitively invalidates downstream — changed profile → changed hash → forced regen)
+
+**Estimated saving on a no-change re-run**: ~95% of remaining `/discover` cost. The run becomes "git rev-parse every repo, hash a few JSON files, print 'nothing changed, skipping B2 and C'."
+
+**Risk**: low. Same mechanical pattern as Win #6, same test approach (ephemeral repos, real file ops). The main design choice is *what counts as an input*. Conservative answer: everything in the upstream block + schema_version, no fancier dependency tracking.
+
+**Estimated effort**: ~150 lines of script logic + Phase B2 and Phase C wiring changes. Builds on `discover-cache.js`.
+
+**Naturally pairs with Win #6.** Together they make `/discover --resume` genuinely cheap, not just partially cheap.
 
 ---
 
@@ -76,14 +133,12 @@ Pairs naturally with Win #3 (which introduces the per-repo profile that's the ca
 
 ---
 
-## Updated sequencing (after closing #1 and #2)
+## Updated sequencing (after closing #1, #2, #3, #5, #6)
 
-1. **Win #3 (in progress)**. Biggest single lever. Foundation for #6.
-2. **Win #5**. Cheapest. Independent of #3.
-3. **Win #6**. Compounds with #3 — `state.json` keys per-repo profile reuse.
-4. **Win #4**. Tightens the gate UX once #3 has the synthesis dispatch separated out.
+1. **Win #7** — biggest remaining cost lever. Extends the Win #6 pattern to platform.md and per-repo context output. Without it, `/discover --resume` is only partially cheap.
+2. **Win #4** — outline gate. Lowers the cost of a *rejected* full run (orthogonal to caching).
 
-After all four: typical `/discover` runs at roughly half the current Opus cost, comparable wall-clock (parallel Sonnet covers the new B2.0 step), and a re-run on an unchanged workspace is nearly free.
+After both: a `/discover --resume` on an unchanged workspace runs in seconds and costs near-zero tokens. A re-run after editing one repo pays only for that repo's profile + its single CLAUDE.md + agent-context regeneration; everything else stays cached. A rejected first run costs the outline pass, not the full Opus synthesis.
 
 ---
 
@@ -96,7 +151,8 @@ After all four: typical `/discover` runs at roughly half the current Opus cost, 
 | 3 | Split B2 (Sonnet + Opus) | ✅ Shipped | merged in PR #7 (`ec12019`) — Phase B2.0 dispatches `repo-discoverer` per repo in parallel; Opus B2 synthesizes from per-repo `REPO_PROFILE` JSON files |
 | 4 | Outline gate | 📋 Open | — pairs naturally with Win #3; cheap Sonnet preview before Opus synthesis |
 | 5 | Merge C.4 + C.5 | ✅ Shipped (pre-dating this plan) | `phase-c-generation.md` Step 2 already merges CLAUDE.md + agent-context into a single `context-manager` dispatch per repo in `mode: full` — likely landed in `7f6b62e` (role-based agent-context templates) |
-| 6 | head_sha cache | 📋 Open | — would key off the now-shipped `REPO_PROFILE` `head_sha` field |
+| 6 | head_sha cache | ✅ Shipped | `feat/discover-head-sha-cache` — `scripts/discover-cache.js` + REPO_PROFILE `schema_version` field + Phase B2.0 plan/commit calls; keys off the `REPO_PROFILE` `head_sha` field |
+| 7 | Downstream artifact cache (platform.md + per-repo context) | 📋 Open, builds on #6 | — extends `state.json`/`discover-cache.js`, gates Phase B2 + Phase C dispatch |
 | — | B3↔B2 overlap (sub-cleanup) | 📋 Open, unblocked by #3 | — `repo-discoverer` already populates `frontend_signals` per repo; B3 could now read those instead of re-walking |
 | — | Phase D reporter agent | 📋 Open, optional | — |
 
@@ -104,4 +160,4 @@ After all four: typical `/discover` runs at roughly half the current Opus cost, 
 
 ## Open question
 
-`/discover` doesn't currently dispatch a `reporter` agent at Phase D. The `reporter` could be reused at end-of-run to produce a richer summary + trend comparison across `runs/discover/{run_id}/checkpoints.jsonl` files. This is orthogonal to the six wins but would make `state.json` (Win #6) more useful to a human reader.
+`/discover` doesn't currently dispatch a `reporter` agent at Phase D. The `reporter` could be reused at end-of-run to produce a richer summary + trend comparison across `runs/discover/{run_id}/checkpoints.jsonl` files. This is orthogonal to the seven wins but would make `state.json` (Win #6) more useful to a human reader.

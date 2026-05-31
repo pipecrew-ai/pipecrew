@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Validator for runs/{skill}/{run_id}/checkpoints.jsonl.
- * Enforces the event schema documented in docs/observability.md.
+ * Enforces the event schema documented in rules/observability.md.
  *
  * Usage:  node validate-checkpoints.js <path-to-checkpoints.jsonl>
  * Exit 0 = clean, 1 = hard-fail, 2 = soft warning.

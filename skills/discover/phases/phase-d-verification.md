@@ -120,7 +120,7 @@ Do NOT commit them automatically. The user decides when and how to commit.
 
 ### Step 7: Execution summary (per-phase + per-agent token accounting)
 
-Read `{workspace_root}/{slug}/runs/discover/{run_id}/checkpoints.jsonl` and produce a two-table execution summary. This reads the event log emitted during the run (see the **OBSERVABILITY** section in `SKILL.md` and `{plugin_dir}/docs/observability.md` for the full schema).
+Read `{workspace_root}/{slug}/runs/discover/{run_id}/checkpoints.jsonl` and produce a two-table execution summary. This reads the event log emitted during the run (see the **OBSERVABILITY** section in `SKILL.md` and `{plugin_dir}/rules/observability.md` for the full schema).
 
 Run `node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl` first — on exit 1, surface the schema violation before building the summary; on exit 2, note the warnings in the summary but continue.
 

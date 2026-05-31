@@ -428,7 +428,7 @@ flowchart LR
 ## 13. Failure handling
 
 Same shared rules as `/deliver`:
-- Transient failures (`docs/transient-failures.md`): retry once on 529/503/network, halt on second 429 or non-429 4xx.
+- Transient failures (`rules/transient-failures.md`): retry once on 529/503/network, halt on second 429 or non-429 4xx.
 - Parallel dispatches in C.4 / C.5: retry only the failed agent; let the rest finish.
 - Deferred agents annotated in scratchpad → `--resume` picks them up.
 
@@ -493,7 +493,7 @@ Every artifact has a downstream consumer. Anything onboarding skips, `/deliver` 
 - `pipecrew-vs-agent-teams.md` — comparison with native Claude Code Agent Teams
 - `standalone-usage.md` — running individual skills outside the pipelines
 - `templates/blocks/block-schemas.md` — canonical schema for every JSON block
-- `docs/observability.md` — `checkpoints.jsonl` event spec
-- `docs/transient-failures.md` — retry / halt rules
+- `rules/observability.md` — `checkpoints.jsonl` event spec
+- `rules/transient-failures.md` — retry / halt rules
 - `docs/site-view.md` — gate contract + label catalog
 - `skills/discover/phases/` — per-phase orchestrator instructions

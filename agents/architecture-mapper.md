@@ -17,7 +17,7 @@ You are read-only. No Edit, no Write, no state-mutating Bash.
 Two Mermaid files plus the structured scan report. The **diagram style** depends on the dispatch's `diagram_style` field:
 
 **Default — flowchart style** (`diagram_style: flowchart` or unset):
-1. **`architecture-overview.mmd`** — high-level C4-style block diagram in Mermaid `flowchart TB` syntax. Conventions: read `{plugin_dir}/docs/discovery-diagram-rules.md` first.
+1. **`architecture-overview.mmd`** — high-level C4-style block diagram in Mermaid `flowchart TB` syntax. Conventions: read `{plugin_dir}/rules/discovery-diagrams.md` first.
 2. **`architecture.mmd`** — detailed topology with **confidence levels** encoded as line styles (solid = high, dashed = medium, dotted = low). Same conventions file.
 
 **C4 style** (`diagram_style: c4`):
@@ -25,7 +25,7 @@ Two Mermaid files plus the structured scan report. The **diagram style** depends
 2. **`c4-container.mmd`** — Mermaid `C4Container` syntax. Each container is a deployable unit. Confidence still encoded — use `Rel(...)` for high, add a `%% confidence: medium` or `%% confidence: low` comment line above the relationship for medium/low.
 3. Optionally **`c4-component-{system}.mmd`** when `c4_level: component` or `c4_level: all` is set in the dispatch.
 
-Conventions for C4 mode: read `{plugin_dir}/docs/c4-diagram-rules.md` first **instead of** the flowchart rules. Do NOT read both — they describe different output formats.
+Conventions for C4 mode: read `{plugin_dir}/rules/c4-diagrams.md` first **instead of** the flowchart rules. Do NOT read both — they describe different output formats.
 
 Plus, in every mode, a **`MAPPER_REPORT`** JSON block listing scanned repos, edges discovered (with confidence + evidence), unresolved hosts, and skipped items. The MAPPER_REPORT format is identical across diagram styles.
 
@@ -175,7 +175,7 @@ Emit blocks at the end of your response. The orchestrator extracts each via `scr
 
 #### Block 1: `architecture-overview.mmd`
 
-High-level C4-style in Mermaid `flowchart TB` syntax. Aim for 5–15 nodes. Group services by role (frontend / backend / workers / data / external). Apply the conventions in `{plugin_dir}/docs/discovery-diagram-rules.md` § "Mermaid conventions for `architecture-overview.mmd` (high-level)".
+High-level C4-style in Mermaid `flowchart TB` syntax. Aim for 5–15 nodes. Group services by role (frontend / backend / workers / data / external). Apply the conventions in `{plugin_dir}/rules/discovery-diagrams.md` § "Mermaid conventions for `architecture-overview.mmd` (high-level)".
 
 ```
 <!-- BEGIN architecture-overview.mmd -->
@@ -193,7 +193,7 @@ Detailed. Every service, every queue, every Lambda, every cross-stack ref. **Enc
 - **medium** confidence: dashed arrow `A -.-> B`
 - **low** confidence: dotted arrow `A o-.-o B` (or use a comment annotation like `%% low-confidence` adjacent)
 
-Apply the conventions in `{plugin_dir}/docs/discovery-diagram-rules.md` § "Mermaid conventions for `architecture.mmd` (detailed)".
+Apply the conventions in `{plugin_dir}/rules/discovery-diagrams.md` § "Mermaid conventions for `architecture.mmd` (detailed)".
 
 ```
 <!-- BEGIN architecture.mmd -->
@@ -206,7 +206,7 @@ flowchart TB
 
 ### C4 style (`diagram_style: c4`)
 
-Apply the conventions in `{plugin_dir}/docs/c4-diagram-rules.md`. Use Mermaid C4 syntax (`C4Context`, `C4Container`, `C4Component`).
+Apply the conventions in `{plugin_dir}/rules/c4-diagrams.md`. Use Mermaid C4 syntax (`C4Context`, `C4Container`, `C4Component`).
 
 #### Block 1: `c4-context.mmd`
 
@@ -274,7 +274,7 @@ If `output_mode = audit`, do NOT emit Mermaid. Instead emit a single `<!-- BEGIN
 
 ## Process summary (the order of operations)
 
-1. **Read the diagram rules** at `{plugin_dir}/docs/discovery-diagram-rules.md` once at the start.
+1. **Read the diagram rules** at `{plugin_dir}/rules/discovery-diagrams.md` once at the start.
 2. **For each repo in `repo_paths`**: run Tier A → Tier B → Tier C → Tier D and capture findings.
 3. **Cross-correlate** producer/consumer pairs across repos.
 4. **Render** the Mermaid output (canonical pair, topic, or audit per `output_mode`).
@@ -296,6 +296,6 @@ Keep your overall context bounded: ~38 reads per repo × N repos + the conventio
 
 ## See also
 
-- [`{plugin_dir}/docs/discovery-diagram-rules.md`](../docs/discovery-diagram-rules.md) — Mermaid conventions for both canonical diagrams
+- [`{plugin_dir}/rules/discovery-diagrams.md`](../rules/discovery-diagrams.md) — Mermaid conventions for both canonical diagrams
 - [`{plugin_dir}/agents/solution-architect.md`](./solution-architect.md) — the workspace-mode counterpart that uses platform.md instead of code-scan
 - [`{plugin_dir}/skills/draw-diagram/SKILL.md`](../skills/draw-diagram/SKILL.md) — the skill that dispatches this agent

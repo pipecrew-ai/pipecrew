@@ -1,18 +1,18 @@
-# The `docs/*.md` shared-instruction pattern
+# The `rules/*.md` shared-instruction pattern
 
-**Status**: investigation notes (saved 2026-06-01) — reference for future doc edits and any work on resume semantics.
+**Status**: investigation notes (saved 2026-06-01) — reference for future doc edits and any work on resume semantics. Original investigation pre-dated PR #19, which moved the agent-facing instruction files from `docs/` into a dedicated `rules/` directory; paths below reflect the post-PR-#19 layout.
 
 ---
 
 ## The pattern
 
-Most files in `docs/*.md` are **agent-facing instruction docs**, not human reading material. They get cited by reference from skill markdown files using language like *"Apply the shared rules at `{plugin_dir}/docs/X.md` — A, B, and C are defined there."*
+Files in `rules/*.md` are **agent-facing instruction docs**, not human reading material. They get cited by reference from skill markdown files using language like *"Apply the shared rules at `{plugin_dir}/rules/X.md` — A, B, and C are defined there."*
 
 When Claude is executing a skill and hits a scenario the shared doc covers (interruption, retry, diagram authoring, etc.), it reads the referenced doc and applies its rules.
 
 **Why this exists**: DRY. Instead of duplicating identical rules into every skill/agent, the rules live in one canonical doc. Skills *include by reference*, the same way code imports a shared helper.
 
-**Why it's load-bearing, not optional**: if you delete `docs/interruption-and-resume.md`, `/discover --resume` and `/deliver --resume` lose their behavioral contract. The skills would still parse, but Claude would have to improvise when interruption happens — inconsistent behavior across sessions and across skills.
+**Why it's load-bearing, not optional**: if you delete `rules/interruption-and-resume.md`, `/discover --resume` and `/deliver --resume` lose their behavioral contract. The skills would still parse, but Claude would have to improvise when interruption happens — inconsistent behavior across sessions and across skills.
 
 ---
 
@@ -24,9 +24,9 @@ When Claude is executing a skill and hits a scenario the shared doc covers (inte
 | `transient-failures.md` | Skills/agents that retry — confirm citations before edits | Retry/backoff behavior, what counts as transient vs. non-retryable |
 | `observability.md` | Every skill that writes `checkpoints.jsonl` | Event schema (run_start, phase_start/end, agent_start/end, run_end), required fields, JSON encoding |
 | `flag-conventions.md` | Skills defining CLI flags | Flag naming (`--kebab-case`), defaults, `--resume` / `--workspace=<slug>` conventions |
-| `implementer-common-rules.md` | Every per-stack implementer agent (R1-R10) | The rules every implementer follows regardless of stack: no inventing conventions, no overwriting human files, etc. |
-| `discovery-diagram-rules.md` | `/discover` Phase B2 architect | How to author the discovery (C4 context + component) diagrams |
-| `c4-diagram-rules.md` | `/discover` Phase B2 architect, possibly others | C4 syntax and convention rules |
+| `implementer-common.md` | Every per-stack implementer agent (R1-R10) | The rules every implementer follows regardless of stack: no inventing conventions, no overwriting human files, etc. |
+| `discovery-diagrams.md` | `/discover` Phase B2 architect | How to author the discovery (C4 context + component) diagrams |
+| `c4-diagrams.md` | `/discover` Phase B2 architect, possibly others | C4 syntax and convention rules |
 | `site-view-notifications.md` | Skills emitting UI events | What events trigger which site-view UI states |
 
 `docs/PIPECREW-DISCOVERY.md` is the **only** human-facing doc in this directory — it's the high-level pipeline overview.
@@ -87,9 +87,9 @@ Pulled from `interruption-and-resume.md` for context; the doc itself is the cano
 
 ## When editing shared docs — checklist
 
-Before changing any `docs/*.md`:
+Before changing any `rules/*.md`:
 
-1. Grep for citations: `grep -rn "docs/<filename>" skills/ agents/`
+1. Grep for citations: `grep -rn "rules/<filename>" skills/ agents/`
 2. Review every caller — your edit changes their behavior.
 3. If a rule changes shape (not just wording), bump the skills/agents that cite it to mention the new behavior in their own prose.
 4. Tests don't catch this — there's no compile-time check that the citation contract holds. Manual review only.

@@ -68,7 +68,7 @@
 
 ## Changes Made
 
-### `docs/implementer-common-rules.md` (209 → 183 lines)
+### `rules/implementer-common.md` (209 → 183 lines)
 - **R0**: Trimmed from ~280 words to ~50 words. Core message preserved: read task file first, trust it, don't re-ask, update metrics on completion.
 - **R3**: Trimmed 9-artifact bullet list to a 4-line principle: stage only what you intentionally changed; fix `.gitignore` for noise.
 
@@ -164,7 +164,7 @@ This principle applies to the design phase. The SA was updated (this session) to
 
 **Problem**: Implementers ran tests and reported done without walking every functional requirement (FR-X) and edge case (EC-X) to confirm each had an enforcement point. The reviewer caught this in Phase 5.5, but that costs a full dispatch-and-fix-round.
 
-**Fix — `docs/implementer-common-rules.md`**
+**Fix — `rules/implementer-common.md`**
 - Added terminology glossary at the top: `FR-X` = functional requirement, `EC-X` = edge case. Defined once in the doc every agent reads.
 - Added **R9** (HARD RULE): before reporting done, walk every FR-X / EC-X in the task file, identify the `file:line` that enforces each, and include a `## Requirement coverage` table in the report. If any requirement has no enforcement point, fix it before reporting.
 

@@ -206,7 +206,7 @@ If the file is missing on disk (someone deleted it mid-run), log a warning and c
 
 ### INTERRUPTION HANDLING
 
-Apply the shared rules at `{plugin_dir}/docs/interruption-and-resume.md` — the user commands (`skip`, `stop`, `restart from phase X`), automatic interruption triggers (parallel fail, context limit, non-retryable error), scratchpad `Status` vocabulary (IN_PROGRESS / INTERRUPTED / COMPLETED / FAILED), and the required `checkpoints.jsonl` events (`run_end` / `phase_end`) are all defined there.
+Apply the shared rules at `{plugin_dir}/rules/interruption-and-resume.md` — the user commands (`skip`, `stop`, `restart from phase X`), automatic interruption triggers (parallel fail, context limit, non-retryable error), scratchpad `Status` vocabulary (IN_PROGRESS / INTERRUPTED / COMPLETED / FAILED), and the required `checkpoints.jsonl` events (`run_end` / `phase_end`) are all defined there.
 
 `/deliver` specifics: if a parallel Phase 5 agent defers after retry, the pipeline blocks on advancing to Phase 5.5 until the user resumes or explicitly approves continuing without the deferred agent.
 

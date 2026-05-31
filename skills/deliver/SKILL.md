@@ -124,7 +124,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
    {workspace_root}/{slug}/runs/deliver/
    └── {run_id}/                    ← THIS run's {run_dir}  (run_id = {YYYY-MM-DD-HHMMSS}-{feature-slug})
        ├── scratchpad.md            lean phase index
-       ├── checkpoints.jsonl        unified event log (see docs/observability.md)
+       ├── checkpoints.jsonl        unified event log (see rules/observability.md)
        ├── outputs/
        ├── tasks/
        ├── review/                  per-repo code-review reports
@@ -149,7 +149,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 12. **Agent naming** — name agents by their role, not their phase number. E.g., "Backend implementer — publisher-service" not "Phase 5a: Backend implementation".
 13. **SendMessage for follow-ups** — if an agent returns incomplete output, use `SendMessage` to continue the existing agent rather than spawning a new one.
 14. **Execution tracking + task management** — see `phases/dispatch-rules.md` for the full tracking protocol (per-phase, per-dispatch, per-task metrics) and the task file contract (frontmatter schema, CRUD operations, context-lean rules). Load that file before Phase 4.5.
-15. **Transient failures** — every Agent dispatch in every phase follows the shared retry rules at `{plugin_dir}/docs/transient-failures.md`. Retry once on 529/503/network per the table, wait per `retry-after` on 429, halt on a second 429 or any non-429 4xx. Emit `retry` + follow-up `agent_end` events per `docs/observability.md`. On parallel dispatch, retry only the failed agent — let the rest of the batch finish. Deferred agents block advancing to the next gating phase until the user resumes or approves continuing without them.
+15. **Transient failures** — every Agent dispatch in every phase follows the shared retry rules at `{plugin_dir}/rules/transient-failures.md`. Retry once on 529/503/network per the table, wait per `retry-after` on 429, halt on a second 429 or any non-429 4xx. Emit `retry` + follow-up `agent_end` events per `rules/observability.md`. On parallel dispatch, retry only the failed agent — let the rest of the batch finish. Deferred agents block advancing to the next gating phase until the user resumes or approves continuing without them.
 16. **Emit a one-line phase-done status in chat** — immediately after `phase_end` and scratchpad update, print exactly one line in the format:
 
     ```

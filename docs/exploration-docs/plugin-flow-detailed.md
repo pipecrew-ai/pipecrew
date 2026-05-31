@@ -383,7 +383,7 @@ Within 5a, multiple services dispatch in parallel too (one Agent call per affect
 
 ## 9. Observability — `checkpoints.jsonl`
 
-Append-only event log per run. One JSON object per line. Authoritative spec: `docs/observability.md`.
+Append-only event log per run. One JSON object per line. Authoritative spec: `rules/observability.md`.
 
 Common fields on every event: `ts` (ISO8601 UTC), `event`, `skill`, `run_id`. Phase events also have `phase`, `stage`.
 
@@ -465,7 +465,7 @@ Logged on entry: `"Auto-detected phases: {list}. Skipped: {list with reasons}."`
 
 ### Transient failures (529, 503, network)
 
-Per `docs/transient-failures.md`:
+Per `rules/transient-failures.md`:
 - Retry once on 529/503/network. Wait per `retry-after` on 429.
 - Halt on a second 429 or any non-429 4xx.
 - Emit `retry` then `agent_end` events.
@@ -552,6 +552,6 @@ flowchart LR
 - `pipecrew-vs-agent-teams.md` — comparison with Claude Code's native Agent Teams
 - `standalone-usage.md` — using individual skills/agents outside `/deliver`
 - `templates/blocks/block-schemas.md` — the canonical schema for every JSON block
-- `docs/observability.md` — `checkpoints.jsonl` event spec
-- `docs/transient-failures.md` — retry / halt rules
+- `rules/observability.md` — `checkpoints.jsonl` event spec
+- `rules/transient-failures.md` — retry / halt rules
 - `docs/site-view.md` — gate contract + label catalog

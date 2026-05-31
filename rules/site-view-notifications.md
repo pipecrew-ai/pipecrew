@@ -763,4 +763,4 @@ Queued chars (judge, mira, scribe, sage) correctly render an empty `phases[]` (t
 
 - `skills/site-view/server.js` — added helpers (`extractRepoFromAgent`, `repoMatches`, `pushPhaseChip`); replaced `latestPhaseByRole` / `fixRoundByRole` with per-character `phasesByCharId` / `fixRoundByCharId`; rewired dispatch-log loop to resolve target char by repo, push ordered phase chips; emits `phases`, `phaseCategories`, `activePhaseIndex` (and keeps `phaseLabel` / `phaseCategory` for backward compat).
 - `skills/site-view/public/index.html` — added `.phase-chip-list` container CSS + `.phase-chip.active` modifier (outline using `var(--accent)` + subtle box-shadow); swapped the single phase chip for a list in `ensureCard`; rewrote `applyState` per-char block to iterate `phases[]`, apply category classes, and highlight the active chip when `status === 'working'`. Signature cache prevents per-tick DOM thrash.
-- `docs/site-view-notifications.md` — this section.
+- `rules/site-view-notifications.md` — this section.

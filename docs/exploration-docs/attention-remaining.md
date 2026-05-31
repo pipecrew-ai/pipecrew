@@ -31,7 +31,7 @@
 **Effort**: 1–2 hours
 **Risk**: Medium (could lose teaching if too aggressive)
 
-`docs/implementer-common-rules.md` was trimmed in the Karpathy pass and again lightly in C3. The agent system prompts that DON'T live in common-rules haven't been through the same lens:
+`rules/implementer-common.md` was trimmed in the Karpathy pass and again lightly in C3. The agent system prompts that DON'T live in common-rules haven't been through the same lens:
 
 - `agents/solution-architect.md` — 334 lines + the new D1/D2/D3 block templates added
 - `agents/spring-boot-code-reviewer.md` — 247 lines (longest reviewer)

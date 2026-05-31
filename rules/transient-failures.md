@@ -20,7 +20,7 @@ On retry failure, **continue with the rest of the batch** (do not block the whol
 
 ## Event emission during retries
 
-Every retry produces the following sequence in `checkpoints.jsonl` (see `docs/observability.md` for the full schema):
+Every retry produces the following sequence in `checkpoints.jsonl` (see `rules/observability.md` for the full schema):
 
 1. `agent_end` with `status: "failed"` and whatever usage was returned (often none).
 2. `retry` with `retry_reason` = the HTTP status code or transport error string.

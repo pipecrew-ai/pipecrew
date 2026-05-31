@@ -2,7 +2,7 @@
 
 The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `{workspace_root}/{slug}/runs/deliver/{run_id}/`. Per-run isolation — each feature gets its own directory so two features can run in parallel on the same workspace without token accounting bleeding.
 
-`{run_id}` format: `{YYYY-MM-DD-HHMMSS}-{feature-slug}` (see `{plugin_dir}/docs/observability.md`). The timestamp provides uniqueness; the feature slug provides readability. On same-second collision, append `-2`, `-3`, …
+`{run_id}` format: `{YYYY-MM-DD-HHMMSS}-{feature-slug}` (see `{plugin_dir}/rules/observability.md`). The timestamp provides uniqueness; the feature slug provides readability. On same-second collision, append `-2`, `-3`, …
 
 #### Directory Structure
 ```

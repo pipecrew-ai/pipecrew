@@ -850,7 +850,7 @@ function writeStacks() {
 }
 
 function writeArchitectureDiagrams() {
-  // Overview — follows docs/discovery-diagram-rules.md exactly:
+  // Overview — follows rules/discovery-diagrams.md exactly:
   // 4 mandatory subgraphs (Frontends, Backend services, Queues / Topics, Data sources),
   // init directive on line 1, exact classDef palette, subroutine shape for queues.
   const overview = `%%{init: {"flowchart": {"nodeSpacing": 55, "rankSpacing": 70, "curve": "basis", "padding": 15, "htmlLabels": true}}}%%
@@ -1355,7 +1355,7 @@ ${dispatchSection}`;
   //  14: context-manager        (phase 7)
   //  15: run_end
   // All events conform to templates/checkpoints-event.schema.json + the
-  // canonical examples in docs/observability.md:
+  // canonical examples in rules/observability.md:
   //   - skill: 'deliver'
   //   - stage: Title Case prose (matches the doc's "Architect Discovery",
   //     "Backend implementation" examples — NOT lowercase slugs)

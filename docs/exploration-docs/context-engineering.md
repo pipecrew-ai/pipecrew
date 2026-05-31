@@ -103,7 +103,7 @@ Phase status lives in a small structured file, not a chat log. The orchestrator 
 
 ### 11. Karpathy pass — explicit noise removal
 
-The recent refactor trimmed `docs/implementer-common-rules.md` R0 from ~280 words to ~50 and R3 from a 9-bullet list to a 4-line principle. Same teaching, less context cost, every implementer dispatch. See [`karpathy-assessment-v3.md`](./karpathy-assessment-v3.md).
+The recent refactor trimmed `rules/implementer-common.md` R0 from ~280 words to ~50 and R3 from a 9-bullet list to a 4-line principle. Same teaching, less context cost, every implementer dispatch. See [`karpathy-assessment-v3.md`](./karpathy-assessment-v3.md).
 
 ### The pattern
 

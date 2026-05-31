@@ -1,6 +1,6 @@
 ---
 name: draw-diagram
-description: Generate or refresh architecture diagrams for a workspace. Default mode regenerates the two canonical Mermaid files (architecture-overview.mmd + architecture.mmd) for an onboarded workspace by re-dispatching the solution-architect in discovery mode. Optional --topic flag produces a focused diagram on a specific concern (auth flow, event flow, deploy topology, etc.) without touching the canonical files. Reuses the same conventions documented in docs/discovery-diagram-rules.md that /discover uses. Standalone — does not run the rest of /discover.
+description: Generate or refresh architecture diagrams for a workspace. Default mode regenerates the two canonical Mermaid files (architecture-overview.mmd + architecture.mmd) for an onboarded workspace by re-dispatching the solution-architect in discovery mode. Optional --topic flag produces a focused diagram on a specific concern (auth flow, event flow, deploy topology, etc.) without touching the canonical files. Reuses the same conventions documented in rules/discovery-diagrams.md that /discover uses. Standalone — does not run the rest of /discover.
 ---
 
 # /draw-diagram
@@ -54,7 +54,7 @@ Standalone skill for generating or refreshing architecture diagrams. The two can
 - `--workspace=<slug>` — workspace slug (matches `{workspace_root}/{slug}/`). Auto-detected when only one workspace exists. Triggers **workspace mode**.
 - `--scan=<dir>` — directory containing one or more repos to auto-detect. The skill walks the dir, identifies repos (presence of `.git`, `package.json`, `pom.xml`, etc.), passes them to the mapper. Triggers **code-scan mode**.
 - `--repos="<a>,<b>,<c>"` — explicit comma-separated list of absolute repo paths. Triggers **code-scan mode**. Use this when `--scan` would pick up too much.
-- `--c4` — emit Mermaid C4 syntax instead of flowchart. Produces `c4-context.mmd` + `c4-container.mmd` (additive — does NOT overwrite the flowchart pair). Conventions: `{plugin_dir}/docs/c4-diagram-rules.md`.
+- `--c4` — emit Mermaid C4 syntax instead of flowchart. Produces `c4-context.mmd` + `c4-container.mmd` (additive — does NOT overwrite the flowchart pair). Conventions: `{plugin_dir}/rules/c4-diagrams.md`.
 - `--c4-level=<level>` — only meaningful with `--c4`. Values: `default` (Context + Container — the default), `component` (also produce component-level for every container — verbose), `all` (same as `component` today), `component:<system>` (component diagram for one specific container, e.g., `--c4-level=component:order-service`).
 - `--topic=<name>` — produces `{output-base}/diagrams/{topic}.mmd` for a focused concern (`auth-flow`, `event-flow`, `deploy-topology`, etc.). Default output base is workspace-context-dir in workspace mode, or current working directory in code-scan mode. Compatible with `--c4` — emits C4-style topic diagram.
 - `--output=<path>` — overrides default output path. Only meaningful with `--topic`.
@@ -70,7 +70,7 @@ Output paths:
 - `{workspace_root}/{slug}/context/diagrams/architecture-overview.mmd` — high-level C4-style for new team members
 - `{workspace_root}/{slug}/context/diagrams/architecture.mmd` — detailed topology with every service, DB, queue, Lambda
 
-The conventions live in `{plugin_dir}/docs/discovery-diagram-rules.md`. The architect reads that file at the start of the run.
+The conventions live in `{plugin_dir}/rules/discovery-diagrams.md`. The architect reads that file at the start of the run.
 
 ### Topic diagram (`--topic=<name>`)
 
@@ -113,8 +113,8 @@ When the user invokes `/draw-diagram`:
    **Workspace mode** — `solution-architect` in discovery mode:
    - **subagent_type**: `pipecrew:solution-architect`
    - **prompt** must include: this is a **diagram-only** invocation (no `platform.md` rewrite), the mode (canonical / topic / audit), the **diagram style** (`flowchart` default, or `c4` if `--c4` was passed), the **C4 level** if applicable, and instruct the architect to **read the right rules file**:
-     - flowchart style → `{plugin_dir}/docs/discovery-diagram-rules.md`
-     - C4 style → `{plugin_dir}/docs/c4-diagram-rules.md`
+     - flowchart style → `{plugin_dir}/rules/discovery-diagrams.md`
+     - C4 style → `{plugin_dir}/rules/c4-diagrams.md`
 
    **Code-scan mode** — `architecture-mapper`:
    - **subagent_type**: `pipecrew:architecture-mapper`
@@ -137,7 +137,7 @@ When the user invokes `/draw-diagram`:
 ```
 Use the pipecrew:solution-architect agent in discovery mode for workspace
 {slug}. Diagram-only refresh — do NOT rewrite platform.md. Read
-{plugin_dir}/docs/discovery-diagram-rules.md first. Produce both
+{plugin_dir}/rules/discovery-diagrams.md first. Produce both
 architecture-overview.mmd and architecture.mmd inside the documented
 delimiters.
 ```
@@ -146,7 +146,7 @@ delimiters.
 ```
 Use the pipecrew:architecture-mapper agent. Repo paths: /path/to/repo1,
 /path/to/repo2, /path/to/repo3. Workspace name: {dir-name}. Output mode:
-canonical. Read {plugin_dir}/docs/discovery-diagram-rules.md first, then
+canonical. Read {plugin_dir}/rules/discovery-diagrams.md first, then
 follow your four-tier scan process.
 ```
 
@@ -172,7 +172,7 @@ Code-scan mode is **honest about uncertainty** — unresolved hosts emit `(unkno
 
 ## See also
 
-- [`docs/discovery-diagram-rules.md`](../../docs/discovery-diagram-rules.md) — Mermaid conventions for both canonical diagrams (used by both modes)
+- [`rules/discovery-diagrams.md`](../../rules/discovery-diagrams.md) — Mermaid conventions for both canonical diagrams (used by both modes)
 - [`skills/discover/phases/phase-b-domain-and-architect.md`](../discover/phases/phase-b-domain-and-architect.md) — the original Phase B logic workspace mode re-uses
 - [`agents/solution-architect.md`](../../agents/solution-architect.md) — workspace-mode agent (discovery mode)
 - [`agents/architecture-mapper.md`](../../agents/architecture-mapper.md) — code-scan-mode agent

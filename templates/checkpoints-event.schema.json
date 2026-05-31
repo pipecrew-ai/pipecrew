@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pipecrew/checkpoints-event.schema.json",
   "title": "Feature-pipeline checkpoint event",
-  "description": "One line in runs/{skill}/{run_id}/checkpoints.jsonl. See docs/observability.md for prose spec.",
+  "description": "One line in runs/{skill}/{run_id}/checkpoints.jsonl. See rules/observability.md for prose spec.",
   "type": "object",
   "required": ["ts", "event", "skill", "run_id"],
   "properties": {

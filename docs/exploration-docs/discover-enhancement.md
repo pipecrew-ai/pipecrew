@@ -25,7 +25,7 @@ If we ever want a *lite* version (just a flat file list + parsed dep manifest, n
 
 ### 2. Run B2.5 in parallel with B2 — ⚪ MOOT
 
-Phase B2.5 was deleted entirely as a bigger simplification (commit `65a90e3` on 2026-05-05). The discipline that B2.5's per-stack convention docs implicitly enforced is now explicit via R10 in `docs/implementer-common-rules.md` and gate-checked by reviewers via the new Pattern Adherence pass. There's no longer a B2.5 to parallelize against B2.
+Phase B2.5 was deleted entirely as a bigger simplification (commit `65a90e3` on 2026-05-05). The discipline that B2.5's per-stack convention docs implicitly enforced is now explicit via R10 in `rules/implementer-common.md` and gate-checked by reviewers via the new Pattern Adherence pass. There's no longer a B2.5 to parallelize against B2.
 
 ### 3. Split B2 into Sonnet-discovery + Opus-synthesis — ✅ SHIPPED
 

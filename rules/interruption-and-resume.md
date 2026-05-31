@@ -57,7 +57,7 @@ Continue?
 ### Step 4: Re-enter
 
 - **Do NOT create a new `run_id` or new run directory.** Resume writes to the existing `runs/{skill}/{run_id}/`.
-- Append to the existing `checkpoints.jsonl` — do not truncate. The reporter derives resume boundaries by spotting gaps in `ts` values > 1 hour (see `docs/observability.md`).
+- Append to the existing `checkpoints.jsonl` — do not truncate. The reporter derives resume boundaries by spotting gaps in `ts` values > 1 hour (see `rules/observability.md`).
 - Do NOT re-run completed phases. Start from the current phase as listed in scratchpad.
 - If the current phase has partial artifacts under `outputs/` (e.g., half-written `phase-2-architecture.md`), back them up to `outputs/phase-2.v{N}.md` before re-entering the phase and rewriting them.
 

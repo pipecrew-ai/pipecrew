@@ -156,8 +156,8 @@ In those cases: target reads, not full repo walks. The discoverer was thorough; 
 ### Diagram style
 
 **Diagram rules — pick the right file based on the dispatch's diagram style:**
-- **Default (flowchart style)** — read `{plugin_dir}/docs/discovery-diagram-rules.md`. Produces `architecture-overview.mmd` + `architecture.mmd` using Mermaid `flowchart TB` syntax.
-- **C4 style** (when the dispatch sets `diagram_style: c4`) — read `{plugin_dir}/docs/c4-diagram-rules.md` *instead*. Produces `diagrams/c4-context.mmd` + `diagrams/c4-container.mmd` (and optionally `diagrams/c4-component-{system}.mmd`) using Mermaid `C4Context` / `C4Container` / `C4Component` syntax.
+- **Default (flowchart style)** — read `{plugin_dir}/rules/discovery-diagrams.md`. Produces `architecture-overview.mmd` + `architecture.mmd` using Mermaid `flowchart TB` syntax.
+- **C4 style** (when the dispatch sets `diagram_style: c4`) — read `{plugin_dir}/rules/c4-diagrams.md` *instead*. Produces `diagrams/c4-context.mmd` + `diagrams/c4-container.mmd` (and optionally `diagrams/c4-component-{system}.mmd`) using Mermaid `C4Context` / `C4Container` / `C4Component` syntax.
 
 Read whichever rules file applies at the start of every discovery run before drawing. Do NOT load both — they describe different output formats. Do NOT read either in design mode — it wastes context.
 

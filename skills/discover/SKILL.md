@@ -75,7 +75,7 @@ After `/discover` completes, you have:
 
 ### OBSERVABILITY — unified run directory + event schema
 
-**Authoritative spec**: `{plugin_dir}/docs/observability.md`. The event schema, enum values, and field semantics below are a summary — on any conflict, the observability doc wins.
+**Authoritative spec**: `{plugin_dir}/rules/observability.md`. The event schema, enum values, and field semantics below are a summary — on any conflict, the observability doc wins.
 
 **Run directory** — every onboarding run gets its own dir under the workspace:
 
@@ -95,7 +95,7 @@ Stable workspace-level outputs (`config.json`, `context/platform.md`, `agents/`,
 
 **Common fields** (every event): `ts` (ISO8601 UTC), `event`, `skill: "discover"`, `run_id`. Phase-scoped events also include `phase` and `stage`.
 
-**Event types** — /discover emits the following (full schema in `docs/observability.md`):
+**Event types** — /discover emits the following (full schema in `rules/observability.md`):
 
 | Event | When | Notable extras |
 |---|---|---|
@@ -200,7 +200,7 @@ Both are kept; neither replaces the other.
 
 ### RESUME FLOW (`--resume`)
 
-Apply the shared resume rules at `{plugin_dir}/docs/interruption-and-resume.md` — how to find interrupted runs, pick a target, confirm with the user, and re-enter without creating a new run dir.
+Apply the shared resume rules at `{plugin_dir}/rules/interruption-and-resume.md` — how to find interrupted runs, pick a target, confirm with the user, and re-enter without creating a new run dir.
 
 `/discover`-specific state to restore from scratchpad: the `## Discovered Repos` table (Phase A output) and the `## Domain Answers` block (Phase B1 output). Both must already be populated before Phase C can resume cleanly.
 
@@ -258,7 +258,7 @@ mkdir -p {workspace_root}/{slug}/runs/discover/{run_id}/outputs
 
 If `runs/discover/{run_id}/` already exists (same-second collision), append `-2`, `-3`, … to `{run_id}` until unique.
 
-Emit the first `run_start` event to `{run_dir}/checkpoints.jsonl` (see `docs/observability.md`). Then write the initial scratchpad from the template below. Then proceed to Phase A.
+Emit the first `run_start` event to `{run_dir}/checkpoints.jsonl` (see `rules/observability.md`). Then write the initial scratchpad from the template below. Then proceed to Phase A.
 
 ### PIPELINE
 

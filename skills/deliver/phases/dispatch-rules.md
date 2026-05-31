@@ -109,9 +109,9 @@ Starting at Phase 4.5, implementation sub-tasks and reviewer findings are persis
 
 ### Checkpoint event emission
 
-All events go to `{run_dir}/checkpoints.jsonl` in the unified schema defined at `{plugin_dir}/docs/observability.md`. The schema is shared with `/discover`, `/review`, and `/assess` so the reporter can consume every skill the same way.
+All events go to `{run_dir}/checkpoints.jsonl` in the unified schema defined at `{plugin_dir}/rules/observability.md`. The schema is shared with `/discover`, `/review`, and `/assess` so the reporter can consume every skill the same way.
 
-**Agent dispatches** → emit `agent_end` after every `Agent` tool call returns. Parse the `<usage>` block from the tool result, copy the token/tool_uses/duration fields into the event, include `agent_type`, `description`, `phase`, `stage`, `status`. See `docs/observability.md` for the exact shape.
+**Agent dispatches** → emit `agent_end` after every `Agent` tool call returns. Parse the `<usage>` block from the tool result, copy the token/tool_uses/duration fields into the event, include `agent_type`, `description`, `phase`, `stage`, `status`. See `rules/observability.md` for the exact shape.
 
 **Retries** → emit `retry` between a failed `agent_end` and the redispatch.
 

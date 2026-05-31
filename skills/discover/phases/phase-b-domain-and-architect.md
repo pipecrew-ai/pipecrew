@@ -127,7 +127,7 @@ Keep the file under ~3 KB. Sample representative endpoints/entities — don't en
 Per critical rule #13: parse each agent's `<usage>` block, append a Dispatch Log row with phase `B2.0`, agent `repo-discoverer`, tokens + duration. Capture each agent's status line for the phase-done emit.
 
 **Wait for ALL profiles to land** before advancing to B2. If any agent fails:
-- Apply the standard transient-failure retry policy (`docs/transient-failures.md`).
+- Apply the standard transient-failure retry policy (`rules/transient-failures.md`).
 - If a repo's profile is still missing after retry, emit a `⚠ Deferred` line and proceed to B2 with the available profiles. The architect will note the missing profile and recommend `/discover --resume` to re-attempt.
 
 **Validate the profiles (deterministic gate — runs BEFORE the B2 architect dispatch):**
@@ -265,7 +265,7 @@ You produce **two diagrams** in this phase, with DIFFERENT rules per diagram.
 **Read the full rules file FIRST**, before producing either diagram:
 
 ```
-{plugin_dir}/docs/discovery-diagram-rules.md
+{plugin_dir}/rules/discovery-diagrams.md
 ```
 
 This file contains: the 4-block taxonomy for the overview, the node shape conventions per category, the classDef palette with exact hex codes, the init directive, the 12-item self-check checklist, the lexical-safety rules, and the detailed-diagram conventions. It is the single source of truth for diagramming. Do not rely on memory or reconstruct from examples — read the file at the start of this phase.

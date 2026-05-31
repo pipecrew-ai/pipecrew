@@ -138,7 +138,7 @@ This is rarely worth doing manually — `/deliver` exists precisely because the 
 
 ## Common gotchas if you go standalone
 
-1. **Implementers expect their task file to exist.** R0 (HARD RULE in `docs/implementer-common-rules.md`) is "task file is your source of truth." Without one, they'll error out or produce thin output.
+1. **Implementers expect their task file to exist.** R0 (HARD RULE in `rules/implementer-common.md`) is "task file is your source of truth." Without one, they'll error out or produce thin output.
 
 2. **`{plugin_dir}` references inside agent prompts** assume the plugin is installed. If you copy-paste an agent prompt elsewhere, you'd need to substitute paths. Inside Claude Code with the plugin installed, this resolves automatically.
 
@@ -167,5 +167,5 @@ Practical heuristic: **if you have a workspace already onboarded (`/discover` ha
 - [`pipecrew-vs-agent-teams.md`](./pipecrew-vs-agent-teams.md) — comparison with Claude Code's experimental Agent Teams feature
 - [`context-engineering.md`](./context-engineering.md) — design principles for the agents and dispatches
 - [`README.md`](./README.md) — the plugin's primary entry point
-- [`docs/implementer-common-rules.md`](./docs/implementer-common-rules.md) — R0–R9 that implementers follow regardless of caller
+- [`rules/implementer-common.md`](./rules/implementer-common.md) — R0–R9 that implementers follow regardless of caller
 - [`templates/blocks/block-schemas.md`](../../templates/blocks/block-schemas.md) — structured-block schemas the agents emit/consume

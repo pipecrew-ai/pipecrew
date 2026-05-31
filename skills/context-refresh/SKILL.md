@@ -374,7 +374,7 @@ For `--mode=refresh`: print a concise summary — files modified, sections touch
 
 - If a scanner agent fails on a single file, record it in the report, continue with the others.
 - `--all` with many files: dispatch in batches (~5) to avoid token-flood; sequential batches, parallel within.
-- Always emit observability events (`run_start`, `phase_start/end`, `agent_end`) per `{plugin_dir}/docs/observability.md`. Run directory: `{workspace_root}/{slug}/runs/context-refresh/{run_id}/`.
+- Always emit observability events (`run_start`, `phase_start/end`, `agent_end`) per `{plugin_dir}/rules/observability.md`. Run directory: `{workspace_root}/{slug}/runs/context-refresh/{run_id}/`.
 
 ---
 

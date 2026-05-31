@@ -6,7 +6,7 @@ Generate all workspace-layer files. This phase creates the config, CLAUDE.md fil
 
 ### Transient failure handling (applies to every Agent dispatch in this phase)
 
-Apply the shared retry rules at `{plugin_dir}/docs/transient-failures.md`. Every retry and deferred outcome is also recorded as `retry` / `agent_end` events in `checkpoints.jsonl` per `docs/observability.md`. In the scratchpad, annotate `## Phase Status` notes with any deferrals so `/discover --resume` can pick them up.
+Apply the shared retry rules at `{plugin_dir}/rules/transient-failures.md`. Every retry and deferred outcome is also recorded as `retry` / `agent_end` events in `checkpoints.jsonl` per `rules/observability.md`. In the scratchpad, annotate `## Phase Status` notes with any deferrals so `/discover --resume` can pick them up.
 
 ---
 

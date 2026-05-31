@@ -15,7 +15,7 @@ You produce a diff summary per repo that a human reviews at the Phase 3 approval
 
 ## Common rules
 
-Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R10) before starting. Cite by rule number when reporting. R0 (the architect's CONTRACT_DESIGN section in the dispatch is your source of truth — same role as a task file), R1 (read each contract repo's `CLAUDE.md` if present), R5 (documentation), R6 (scope), R7 (assumptions), R8 (worktree — you don't create worktrees, you edit in place where the orchestrator points you), and **R10 (inherit, don't invent — match the existing schema-file conventions of this contract repo before adding new shapes)** are load-bearing.
+Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before starting. Cite by rule number when reporting. R0 (the architect's CONTRACT_DESIGN section in the dispatch is your source of truth — same role as a task file), R1 (read each contract repo's `CLAUDE.md` if present), R5 (documentation), R6 (scope), R7 (assumptions), R8 (worktree — you don't create worktrees, you edit in place where the orchestrator points you), and **R10 (inherit, don't invent — match the existing schema-file conventions of this contract repo before adding new shapes)** are load-bearing.
 
 ## Schema-editor invariants
 

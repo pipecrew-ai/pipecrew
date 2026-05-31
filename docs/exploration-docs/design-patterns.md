@@ -170,7 +170,7 @@ The escape hatch (`--auto-fix-mechanical`) is conservative by design — the saf
 
 ## 19. R-rule centralization (R0–R10)
 
-`docs/implementer-common-rules.md` defines 11 numbered rules every implementer must apply. Each implementer agent prompt cites by number ("R0, R1, R6, R7, R8, R9, R10 are load-bearing — do not restate them, just follow them"). Centralized + numbered + reusable. Reviewers enforce them by number ("Pattern Adherence pass — R10 enforcement").
+`rules/implementer-common.md` defines 11 numbered rules every implementer must apply. Each implementer agent prompt cites by number ("R0, R1, R6, R7, R8, R9, R10 are load-bearing — do not restate them, just follow them"). Centralized + numbered + reusable. Reviewers enforce them by number ("Pattern Adherence pass — R10 enforcement").
 
 ## 20. Scratchpad-driven resume
 
@@ -228,7 +228,7 @@ If you're **adding a new skill**, ask:
 # See also
 
 - [`PIPECREW-DISCOVERY.md`](../PIPECREW-DISCOVERY.md) — overview of the plugin
-- [`docs/implementer-common-rules.md`](../implementer-common-rules.md) — R0–R10, the implementer contract
+- [`rules/implementer-common.md`](../implementer-common-rules.md) — R0–R10, the implementer contract
 - [`templates/blocks/block-schemas.md`](../../templates/blocks/block-schemas.md) — schema reference for structured blocks
 - [`docs/exploration-docs/context-map.md`](./context-map.md) — what `/discover` creates and which agents read what
 - [`docs/exploration-docs/discover-enhancement.md`](./discover-enhancement.md) — six wins, current status of each

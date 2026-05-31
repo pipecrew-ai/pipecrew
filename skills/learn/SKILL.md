@@ -624,7 +624,7 @@ If `--run` was not supplied (PR / branch / free-form modes), this step is a no-o
 
 ### Observability
 
-Every `/pipecrew:learn` run emits the same event schema as `/deliver` / `/discover` runs (see `{plugin_dir}/docs/observability.md`):
+Every `/pipecrew:learn` run emits the same event schema as `/deliver` / `/discover` runs (see `{plugin_dir}/rules/observability.md`):
 
 - `run_start` — with `skill: "learn"`, source mode, identifier.
 - `agent_end` — after the learner returns, with token usage. Also emitted after each fix-round implementer returns (one per dispatched bundle), with `agent_type` set to the resolved implementer (e.g., `react-feature-implementer`) and `phase: "6.5"`.

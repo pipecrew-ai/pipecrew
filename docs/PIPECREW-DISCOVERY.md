@@ -235,7 +235,7 @@ Phase D     verify, validate checkpoints, write report.md
 
 Each phase emits a one-line `[phase X ✔] ...` status. Scratchpad updated after every phase so `--resume` can pick up exactly where an interruption left off. Targeted refresh flag: `--refresh-observability`.
 
-> **Note**: a previous version of `/discover` had a Phase B2.5 that produced per-stack convention docs (`stacks/{type}.md`). That phase was dropped; workspace-wide patterns now live in `platform.md § Established Patterns`, per-repo conventions live in each repo's `CLAUDE.md`, and generic stack-conventional pitfalls are pre-injected into per-task files by the task-planner from `{plugin_dir}/docs/pitfalls/{type}.md`. The discipline that B2.5's docs implicitly enforced is now explicit via **R10 (Inherit, don't invent)** in `docs/implementer-common-rules.md` and is gate-checked by reviewers via a Pattern Adherence pass.
+> **Note**: a previous version of `/discover` had a Phase B2.5 that produced per-stack convention docs (`stacks/{type}.md`). That phase was dropped; workspace-wide patterns now live in `platform.md § Established Patterns`, per-repo conventions live in each repo's `CLAUDE.md`, and generic stack-conventional pitfalls are pre-injected into per-task files by the task-planner from `{plugin_dir}/docs/pitfalls/{type}.md`. The discipline that B2.5's docs implicitly enforced is now explicit via **R10 (Inherit, don't invent)** in `rules/implementer-common.md` and is gate-checked by reviewers via a Pattern Adherence pass.
 
 ---
 

@@ -11,7 +11,7 @@ You do NOT make architectural decisions. The skeleton is the source of truth for
 
 ## Common rules
 
-Read and apply `{plugin_dir}/docs/implementer-common-rules.md` (R1–R8) before starting. R0 (the dispatch's `mode` + skeleton are your source of truth), R5 (no documentation outside `{run_dir}/tasks/`), R6 (scope is the skeleton — don't add tasks the architect didn't list), R7 (assumptions explicit), R8 (you don't touch git or worktrees) are load-bearing.
+Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R8) before starting. R0 (the dispatch's `mode` + skeleton are your source of truth), R5 (no documentation outside `{run_dir}/tasks/`), R6 (scope is the skeleton — don't add tasks the architect didn't list), R7 (assumptions explicit), R8 (you don't touch git or worktrees) are load-bearing.
 
 ## Three modes — same agent, different outputs
 

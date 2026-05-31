@@ -232,6 +232,28 @@ The implementer's job is faithful continuation of an existing system, not greenf
 
 ---
 
+## When the existing pattern is itself a documented anti-pattern
+
+R10 prevents *unmotivated* invention — adding a new approach when an established one already exists. It does NOT force you to copy a documented bug.
+
+If the existing pattern in this repo matches a bullet in your task file's `## Known Anti-Patterns` section (or in `audit-findings.md` for the files you touch), the anti-pattern wins. Deviating from the existing shape in that case is *motivated* — not invention.
+
+**Priority when patterns conflict** (most specific wins):
+
+1. **Workspace audit findings** (`audit-findings.md`) — bugs the architect identified in this codebase during `/discover`. Strongest signal because evidence-based and workspace-specific.
+2. **Stack anti-patterns** (`{plugin_dir}/anti-patterns/{type}.md`, pre-injected into your task file by Phase 4.5) — common failure modes for this stack.
+3. **Existing repo pattern** (R10) — what the code does today.
+4. **Your training** — fallback when none of the above pin the decision.
+
+**After deviating**:
+
+- Name the trigger in your `## Assumptions` block — which audit-finding ID or anti-pattern bullet drove the deviation, and what you chose instead. The reviewer recognises that as deliberate correction, not invention.
+- **R5 governs what happens next.** A deviation that changes an "established pattern" or touches a "documented pattern" (R5's triggers) requires updating the relevant `agent-context/` doc to reflect the new convention. If the new convention should propagate workspace-wide, surface it as a `## Doc-update candidate` so a `/learn` run can promote it to `platform.md § Established Patterns`.
+
+If you find what looks like an anti-pattern in this repo but it is **not** listed in audit-findings or your task's Known Anti-Patterns, default to R10 (follow the pattern) and flag the concern in your report. Implementer dispatches are not the right place to relitigate decisions the architect didn't surface — that's a `/learn` or `/context-refresh` job.
+
+---
+
 ## When the repo CLAUDE.md and broader workspace patterns disagree
 
 The repo's `CLAUDE.md` wins for that repo. If the architect's `platform.md § Established Patterns` documents a workspace-wide rule that THIS repo doesn't follow, that's a divergence — the implementer follows the repo's actual pattern, but flags the divergence in the report so it can be either reconciled or explicitly recorded.

@@ -93,9 +93,9 @@ For tweaks the adversarial pass is usually short; for greenfield it carries most
 
 You produce three files (the orchestrator splits your output and saves them):
 
-1. `{workspace_root}/{slug}/context/platform.md` — prose context (Domain, Entities, Service Map, Integration Patterns, **Established Patterns**, OBSERVABILITY block, etc.). The `## Architecture Diagram` section points to the `.mmd` files; do not embed Mermaid source in the markdown.
-2. `{workspace_root}/{slug}/context/architecture-overview.mmd` — high-level C4-style block diagram for new team members.
-3. `{workspace_root}/{slug}/context/architecture.mmd` — detailed topology.
+1. `{workspace_root}/{slug}/context/platform.md` — prose context (Domain, Entities, Service Map, Integration Patterns, **Established Patterns**, OBSERVABILITY block, etc.). The `## Architecture Diagram` section points to the `.mmd` files under `diagrams/`; do not embed Mermaid source in the markdown.
+2. `{workspace_root}/{slug}/context/diagrams/architecture-overview.mmd` — high-level C4-style block diagram for new team members.
+3. `{workspace_root}/{slug}/context/diagrams/architecture.mmd` — detailed topology.
 
 Plus one consolidated audit file:
 
@@ -157,7 +157,7 @@ In those cases: target reads, not full repo walks. The discoverer was thorough; 
 
 **Diagram rules — pick the right file based on the dispatch's diagram style:**
 - **Default (flowchart style)** — read `{plugin_dir}/docs/discovery-diagram-rules.md`. Produces `architecture-overview.mmd` + `architecture.mmd` using Mermaid `flowchart TB` syntax.
-- **C4 style** (when the dispatch sets `diagram_style: c4`) — read `{plugin_dir}/docs/c4-diagram-rules.md` *instead*. Produces `c4-context.mmd` + `c4-container.mmd` (and optionally `c4-component-{system}.mmd`) using Mermaid `C4Context` / `C4Container` / `C4Component` syntax.
+- **C4 style** (when the dispatch sets `diagram_style: c4`) — read `{plugin_dir}/docs/c4-diagram-rules.md` *instead*. Produces `diagrams/c4-context.mmd` + `diagrams/c4-container.mmd` (and optionally `diagrams/c4-component-{system}.mmd`) using Mermaid `C4Context` / `C4Container` / `C4Component` syntax.
 
 Read whichever rules file applies at the start of every discovery run before drawing. Do NOT load both — they describe different output formats. Do NOT read either in design mode — it wastes context.
 

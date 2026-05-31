@@ -383,8 +383,8 @@ function readWorkspaceOverview() {
   const configPath = path.join(wsDir, 'config.json');
   const platformPath = path.join(wsDir, 'context', 'platform.md');
   const auditPath = path.join(wsDir, 'context', 'audit-findings.md');
-  const architectureMmdPath = path.join(wsDir, 'context', 'architecture.mmd');
-  const architectureOverviewMmdPath = path.join(wsDir, 'context', 'architecture-overview.mmd');
+  const architectureMmdPath = path.join(wsDir, 'context', 'diagrams', 'architecture.mmd');
+  const architectureOverviewMmdPath = path.join(wsDir, 'context', 'diagrams', 'architecture-overview.mmd');
   const discoverRunsDir = path.join(wsDir, 'runs', 'discover');
   const deliverRunsDir = path.join(wsDir, 'runs', 'deliver');
   const learnRunsDir = path.join(wsDir, 'runs', 'learn');

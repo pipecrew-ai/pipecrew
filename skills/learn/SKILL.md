@@ -1,6 +1,6 @@
 ---
 name: learn
-description: "Learn from user feedback about a shipped feature — from a merged PR, a recorded /deliver run, a branch diff, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md § Established Patterns, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to context/learn-log.md for institutional memory."
+description: "Learn from user feedback about a shipped feature — from a merged PR, a recorded /deliver run, a branch diff, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md § Established Patterns, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to history/learn-log.md for institutional memory."
 ---
 
 ## Description
@@ -76,7 +76,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 1. **Never silently rewrite workspace / repo docs.** Every proposed change is presented as a before/after diff; the user approves per finding or rejects. `--apply-all` still shows a summary and requires one confirmation.
 2. **Never auto-apply plugin-level findings.** The target would be the plugin's own prompts/templates, which are shared across all workspaces. Plugin-level findings are logged with the flag `plugin-level-review-needed` so the maintainer can assess.
 3. **Tier classification is the first filter.** Run-local findings are visible in the summary but don't become proposals. Only repo-scope, workspace-scope, and plugin-scope findings become actionable items.
-4. **Log every invocation.** Append to `{workspace_root}/{slug}/context/learn-log.md` — even if every finding was rejected. The record matters.
+4. **Log every invocation.** Append to `{workspace_root}/{slug}/history/learn-log.md` — even if every finding was rejected. The record matters.
 5. **Be explicit about source reliability.** PR review comments from a human reviewer are strong signal. Post-merge fix commits are strong signal (the truth shipped). Free-form user text is strong signal but filtered through the user's recall. Run corrections are moderate signal (may have been one-off decisions).
 6. **Never dispatch a fix-round implementer without explicit user consent.** The fix round modifies real code on a real branch — it is the only step in `/learn` that touches anything outside the workspace docs. Default behavior is to ask the user (per repo, with the resolved branch named) before each dispatch. Only `--auto-fix` skips that gate, and only after the standard per-finding doc-approval gate has already run. `--dry-run` always implies `--no-fix`. Plugin-level findings never become fix-round dispatches (their target is the plugin, not workspace code).
 
@@ -377,7 +377,7 @@ After all applies complete, run a quick sanity check:
 
 ### Step 6: Write the learn-log entry
 
-Append to `{workspace_root}/{slug}/context/learn-log.md` (create if missing). Format:
+Append to `{workspace_root}/{slug}/history/learn-log.md` (create if missing). Format:
 
 ```markdown
 ## {ISO-date} — {source-mode} {identifier}

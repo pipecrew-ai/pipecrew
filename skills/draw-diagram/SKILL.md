@@ -67,8 +67,8 @@ Standalone skill for generating or refreshing architecture diagrams. The two can
 Re-runs the same logic `/discover` Phase B uses to produce the two canonical files. Existing diagrams are **rewritten** (not merged) — the architect produces a fresh view of the current code.
 
 Output paths:
-- `{workspace_root}/{slug}/context/architecture-overview.mmd` — high-level C4-style for new team members
-- `{workspace_root}/{slug}/context/architecture.mmd` — detailed topology with every service, DB, queue, Lambda
+- `{workspace_root}/{slug}/context/diagrams/architecture-overview.mmd` — high-level C4-style for new team members
+- `{workspace_root}/{slug}/context/diagrams/architecture.mmd` — detailed topology with every service, DB, queue, Lambda
 
 The conventions live in `{plugin_dir}/docs/discovery-diagram-rules.md`. The architect reads that file at the start of the run.
 
@@ -122,7 +122,7 @@ When the user invokes `/draw-diagram`:
 
 4. **Extract the agent's output:**
    - **Canonical mode, flowchart style**: extract `<!-- BEGIN architecture-overview.mmd -->` and `<!-- BEGIN architecture.mmd -->` blocks, strip inner `\`\`\`mermaid` fences, save:
-     - Workspace mode → `{workspace_root}/{slug}/context/`
+     - Workspace mode → `{workspace_root}/{slug}/context/diagrams/` (create the directory if it doesn't exist)
      - Code-scan mode → current working directory (or `--output` directory)
    - **Canonical mode, C4 style**: extract `<!-- BEGIN c4-context.mmd -->` and `<!-- BEGIN c4-container.mmd -->` blocks (and any `<!-- BEGIN c4-component-{system}.mmd -->` blocks if `--c4-level=component` or `all`), save to the same locations as flowchart canonical files. **Does NOT overwrite the flowchart pair** — they coexist.
    - Topic mode: extract single `<!-- BEGIN {topic}.mmd -->` block, save to the resolved output path. With `--c4`, the topic block uses C4 syntax internally.

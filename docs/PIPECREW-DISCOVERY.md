@@ -23,22 +23,24 @@ Every command operates against a **workspace** — a directory under a configura
 ├── config.json                                    workspace metadata: repos · services · domain · spec files · spec_copies
 │                                                    (validated by scripts/validate-config.js; read by every skill's pre-flight)
 │
-├── context/                                       durable workspace docs
+├── context/                                       active workspace context (read by orchestration-tier agents every dispatch)
 │   ├── platform.md                                domain · architecture · Established Patterns · OBSERVABILITY block ·
 │   │                                                Known Constraints (workspace-wide reference; read by orchestration-tier
 │   │                                                agents — architect, planner, UX, assessor, learner, context-manager,
 │   │                                                troubleshooter — NOT loaded per implementer dispatch)
 │   ├── audit-findings.md                          real bugs / code smells from B2 scan, by severity + repo
-│   ├── architecture-overview.mmd                  high-level C4 block diagram (~10 nodes, 4 subgraphs)
-│   ├── architecture.mmd                           detailed topology with every service / DB / queue / Lambda + edge labels
-│   ├── learn-log.md                               append-only — populated by /learn over time as institutional memory
 │   ├── adrs/                                      architecture decision records (team-visible — written at the optional ADR gate after /deliver Phase 2)
 │   │   ├── INDEX.md                               one line per ADR with bracketed tags + decision summary (capped at 200 lines for cheap scanning)
 │   │   └── ADR-NNN-<slug>.md                      one file per decision (read by solution-architect's Step 0 when index tags match)
-│   └── diagrams/                                  (only when /draw-diagram --topic was used)
-│       ├── auth-flow.mmd                          example focused topic diagram
+│   └── diagrams/                                  workspace architecture diagrams (Mermaid)
+│       ├── architecture-overview.mmd              high-level C4 block diagram (~10 nodes, 4 subgraphs)
+│       ├── architecture.mmd                       detailed topology with every service / DB / queue / Lambda + edge labels
+│       ├── auth-flow.mmd                          example focused topic diagram (from /draw-diagram --topic)
 │       ├── event-flow.mmd                         example focused topic diagram
 │       └── audit-{YYYY-MM-DD}.md                  (only from /draw-diagram --audit)
+│
+├── history/                                       durable workspace history (NOT auto-loaded — humans + next /learn dedup)
+│   └── learn-log.md                               append-only — populated by /learn over time as institutional memory
 │
 ├── agents/                                        workspace-tailored agent definitions
 │   ├── {slug}-product-owner.md                    dispatched in /deliver Phase 1

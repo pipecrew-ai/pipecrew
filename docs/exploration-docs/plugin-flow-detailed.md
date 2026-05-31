@@ -328,7 +328,7 @@ status: PENDING | IN_PROGRESS | COMPLETED | FAILED | DEFERRED
 ---
 ```
 
-Body has fixed sections: `## Feature Summary`, `## Requirements`, `## Spec Excerpt`, `## Data Model Excerpt`, `## Known Pitfalls`, `## Acceptance Criteria`. Each section is the relevant slice of architect output, NOT the full design.
+Body has fixed sections: `## Feature Summary`, `## Requirements`, `## Spec Excerpt`, `## Data Model Excerpt`, `## Known Anti-Patterns`, `## Acceptance Criteria`. Each section is the relevant slice of architect output, NOT the full design.
 
 ### Parallel execution
 

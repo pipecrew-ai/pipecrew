@@ -83,7 +83,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
      • context/platform.md   — architecture context for Phase 2 (hard requirement)
      • CLAUDE.md per repo    — implementer orientation (soft; skip → 3-5× token cost per dispatch)
      • agent-context/ per repo — deep architecture docs (soft; skip → implementer re-reads code each run)
-     • context/audit-findings.md — real bugs spotted during onboarding (soft; skip → Phase 4.5 has fewer pitfalls to inject)
+     • context/audit-findings.md — real bugs spotted during onboarding (soft; skip → Phase 4.5 has fewer anti-patterns to inject)
      • Workspace agents ({slug}-product-owner, assessor, ux-consultant) — tailored to your domain
 
    You can hand-write config.json + context/platform.md and run /deliver
@@ -92,7 +92,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 
      - No CLAUDE.md → implementers guess conventions per dispatch; PRs become less consistent
      - No agent-context → no "similar feature" catalog; implementers re-derive architecture
-     - No audit-findings.md → Phase 4.5 `## Known Pitfalls` uses plugin stack catalog only, not your workspace's observed bugs
+     - No audit-findings.md → Phase 4.5 `## Known Anti-Patterns` uses plugin stack catalog only, not your workspace's observed bugs
      - No workspace agents → falls back to generic agents with a preamble; product-owner loses domain context
 
    If your workspace has zero existing repos (greenfield): run

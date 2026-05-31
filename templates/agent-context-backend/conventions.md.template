@@ -82,7 +82,7 @@ than it is.
 - {{ERROR_HANDLING_OVERVIEW}}: 2-3 sentences pointing to the global handler
   + the canonical "throw a typed exception, let it propagate" pattern.
 - {{QUERY_PATTERNS}}: ORM-specific gotchas (N+1 prevention, JPQL/SQL
-  patterns, dynamic query construction). Name pitfalls observed in code.
+  patterns, dynamic query construction). Name anti-patterns observed in code.
 - {{WHAT_NOT_TO_DO_BULLETS}}: convention-level prohibitions distinct from
   architecture's. Style violations live here. Examples: "Do NOT use field
   injection", "Do NOT add hand-written classes to generated packages".

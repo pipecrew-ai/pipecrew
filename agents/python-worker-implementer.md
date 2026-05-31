@@ -21,7 +21,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read each event schema file from the contract repos and 2–3 existing handlers in the target repo to absorb the concrete patterns: handler signature, event-parsing library (aws-lambda-powertools, schema-parser decorators, plain boto3), logging, error-handler wrapping, DLQ config, idempotency helper, client reuse (e.g., boto3 clients at module scope). If THIS repo has no analog, scan sibling python-worker repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read each event schema file from the contract repos and 2–3 existing handlers in the target repo to absorb the concrete patterns: handler signature, event-parsing library (aws-lambda-powertools, schema-parser decorators, plain boto3), logging, error-handler wrapping, DLQ config, idempotency helper, client reuse (e.g., boto3 clients at module scope). If THIS repo has no analog, scan sibling python-worker repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify. For fix rounds, use the file:line targets. Identify where each new handler lives, the deployment descriptor that must be updated (SAM `template.yaml`, `serverless.yml`, CDK stack), and any IAM permissions the handler will need. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

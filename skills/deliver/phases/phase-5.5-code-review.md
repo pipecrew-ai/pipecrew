@@ -90,7 +90,7 @@ INSTRUCTIONS:
 3. Get the diff: cd into the worktree and run git diff against the appropriate base (merge-base with main or dev).
 4. Walk each FR/EC and identify its enforcement point; flag any that are not enforced as Critical.
 5. Run the craft, security, and test passes described in your system prompt.
-6. **Verify each bullet in the task file's `## Known Pitfalls` section was actively avoided.** Treat the section as a checklist: for each pitfall, either cite the file:line where the implementation handled it, or flag the bullet as a Critical or Non-critical finding depending on severity. If the section is missing, flag that itself as a process issue.
+6. **Verify each bullet in the task file's `## Known Anti-Patterns` section was actively avoided.** Treat the section as a checklist: for each anti-pattern, either cite the file:line where the implementation handled it, or flag the bullet as a Critical or Non-critical finding depending on severity. If the section is missing, flag that itself as a process issue.
 7. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
 8. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
 9. Produce the report in the Output Format from your system prompt. Every finding must have file:line and a citation.

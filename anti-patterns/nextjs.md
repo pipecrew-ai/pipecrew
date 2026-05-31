@@ -1,4 +1,4 @@
-# Next.js — Known Pitfalls
+# Next.js — Known Anti-Patterns
 
 Seed list for `type: nextjs` repos.
 

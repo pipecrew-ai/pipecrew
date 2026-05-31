@@ -1,4 +1,4 @@
-# NestJS — Known Pitfalls
+# NestJS — Known Anti-Patterns
 
 Seed list for `type: nestjs` repos.
 

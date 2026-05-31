@@ -64,7 +64,7 @@ Rows = artifact. Columns = agent. ✓ = primary read. • = optional / condition
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **config.json** | • (passes repo_key + path in dispatch) | ✓ | ✓ | • | • | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | **platform.md** | — | ✓ | ✓ (§ Established Patterns) | — | — | ✓ | ✓ | ✓ | ✓ | ✓ (OBSERVABILITY block) | — | • |
-| **audit-findings.md** | (writes its own slice into its profile) | ✓ (aggregates from every profile, writes the file) | ✓ (filters → injects into task file Known Pitfalls) | (via task file) | (via task file) | — | • | • | • | — | — | — |
+| **audit-findings.md** | (writes its own slice into its profile) | ✓ (aggregates from every profile, writes the file) | ✓ (filters → injects into task file Known Anti-Patterns) | (via task file) | (via task file) | — | • | • | • | — | — | — |
 | **outputs/repo-profiles/{key}.json** (per-run, B2.0) | ✓ (it IS this agent — writes one per dispatch) | ✓ (reads ALL profiles in B2 — primary input for synthesis) | — | — | — | — | — | — | — | — | — | — |
 | **architecture.mmd / architecture-overview.mmd** | — | • (cross-check) | — | — | — | — | — | — | — | — | — | — |
 | **learn-log.md** | — | — | — | — | — | — | — | ✓ | — | — | — | — |
@@ -99,7 +99,7 @@ These agents synthesize across the workspace. They load multiple artifacts and r
 - platform.md § Established Patterns (workspace-wide policies)
 - Each affected repo's CLAUDE.md (just the slice the task targets)
 - audit-findings.md (filters per repo)
-- `{plugin_dir}/docs/pitfalls/{type}.md` (per affected stack — pre-injects into task files)
+- `{plugin_dir}/anti-patterns/{type}.md` (per affected stack — pre-injects into task files)
 
 **ux-consultant** (`{slug}-ux-consultant`, Phase 5b)
 - platform.md (domain, user roles, i18n languages)
@@ -146,14 +146,14 @@ These agents work primarily from one repo at a time. They don't load workspace-w
 - Sibling repos of the same type if no analog locally (R10)
 - Spec files (api-first services) or contract repos (no-api workers)
 
-> Implementers do **not** load platform.md directly — what they need from it is pre-injected into their task file's `## Architecture context`, `## Known Pitfalls`, and `## Out of Scope` sections by the task-planner.
+> Implementers do **not** load platform.md directly — what they need from it is pre-injected into their task file's `## Architecture context`, `## Known Anti-Patterns`, and `## Out of Scope` sections by the task-planner.
 
 **Reviewers** (4 stack-specific agents — `spring-boot-code-reviewer`, `react-code-reviewer`, etc.)
 - The git diff (the only material the reviewer truly inspects)
 - The **repo's CLAUDE.md** + agent-context (for convention checks)
 - The OpenAPI spec (api-first) or architect's inline contract (code-first)
 - The IMPLEMENTATION_SPEC from the UX consultant (frontend reviewers)
-- The task file's FR/EC list + Out of Scope + Known Pitfalls (cross-checks)
+- The task file's FR/EC list + Out of Scope + Known Anti-Patterns (cross-checks)
 
 **troubleshooter** (`{slug}-troubleshooter`, `/troubleshoot`)
 - platform.md (specifically the OBSERVABILITY block — log destinations, trace header, dashboards, runbooks)
@@ -185,7 +185,7 @@ These agents work primarily from one repo at a time. They don't load workspace-w
 
 1. **Two access tiers**: heavy readers (architect, planner, UX, assessor, learner, context-manager — load most workspace context) vs. light readers (implementers, reviewers, schema-implementer, openapi-spec-editor — work primarily from their task file + the repo in front of them).
 
-2. **The task file is the bottleneck input for implementers + reviewers.** Phase 4.5's task-planner pre-injects everything the implementer needs (FR/EC list, Architecture Context, Contract Reference, Known Pitfalls, Out of Scope) so per-dispatch input stays under ~5K tokens. This is the central design choice that lets the system scale to many repos without exploding token cost.
+2. **The task file is the bottleneck input for implementers + reviewers.** Phase 4.5's task-planner pre-injects everything the implementer needs (FR/EC list, Architecture Context, Contract Reference, Known Anti-Patterns, Out of Scope) so per-dispatch input stays under ~5K tokens. This is the central design choice that lets the system scale to many repos without exploding token cost.
 
 3. **CLAUDE.md is the most-read artifact.** Every agent that touches a repo reads it. It's the per-repo source of truth; deep dives are indexed from its `## Deep context` section into `agent-context/`.
 
@@ -201,7 +201,7 @@ These agents work primarily from one repo at a time. They don't load workspace-w
 
 9. **`/learn` is the bridge between observed reality and durable docs**. It's the one mechanism that updates platform.md after `/discover` finishes the bootstrap. That's why dropping the per-stack docs (B2.5) tightened the system: there's now a single durable workspace doc to maintain, not a fan-out.
 
-10. **Generic stack-conventional knowledge lives in the plugin** (`{plugin_dir}/docs/pitfalls/{type}.md`), not the workspace. The task-planner injects the relevant bullets per repo type into per-task files. The workspace doesn't redundantly carry stack knowledge.
+10. **Generic stack-conventional knowledge lives in the plugin** (`{plugin_dir}/anti-patterns/{type}.md`), not the workspace. The task-planner injects the relevant bullets per repo type into per-task files. The workspace doesn't redundantly carry stack knowledge.
 
 ---
 
@@ -211,8 +211,8 @@ These agents work primarily from one repo at a time. They don't load workspace-w
 |---|---|---|---|
 | 1 | **Per-dispatch token budget for implementers ≈ task file + repo CLAUDE.md.** Not platform.md. | Task-planner pre-filters workspace context into the task file. Implementers never load `platform.md` directly. | Don't put hot-path implementation details in platform.md. Don't add per-stack convention docs (proven by the B2.5 removal). New per-task hints belong in the task-planner's injection logic, not in a new workspace doc. |
 | 2 | **CLAUDE.md is the per-repo identity. Keep it lean.** | Every agent that touches a repo reads it. Bloat compounds across dispatches. | Keep CLAUDE.md ≤ ~5K tokens. Push deep-dive material into `agent-context/` and link via the `## Deep context` index. New conventions belong here when they're repo-specific. |
-| 3 | **Workspace-wide patterns belong in platform.md § Established Patterns.** | This is the single durable workspace tier. Read by ~6 orchestration-tier agents. | Cross-cutting decisions (auth strategy, observability, ORM choice if uniform across repos) go here. Stack-specific traps go in plugin pitfalls. Per-repo deviations go in that repo's CLAUDE.md. |
-| 4 | **Generic stack knowledge belongs in the plugin, not the workspace.** | Universal traps don't change per workspace. Maintaining N copies invites drift. | New stack-conventional pitfalls go in `{plugin_dir}/docs/pitfalls/{type}.md`. The task-planner auto-injects the relevant ones. |
+| 3 | **Workspace-wide patterns belong in platform.md § Established Patterns.** | This is the single durable workspace tier. Read by ~6 orchestration-tier agents. | Cross-cutting decisions (auth strategy, observability, ORM choice if uniform across repos) go here. Stack-specific traps go in plugin anti-patterns. Per-repo deviations go in that repo's CLAUDE.md. |
+| 4 | **Generic stack knowledge belongs in the plugin, not the workspace.** | Universal traps don't change per workspace. Maintaining N copies invites drift. | New stack-conventional anti-patterns go in `{plugin_dir}/anti-patterns/{type}.md`. The task-planner auto-injects the relevant ones. |
 | 5 | **Workspace-tailored agents (`{slug}-*.md`) inherit context once at creation, not per dispatch.** | Phase C bakes domain into their system prompt at agent-publish time. | Domain-specific reasoning that's load-bearing for product-owner / UX / assessor / troubleshooter goes in their template files. Hand-edits to `{workspace_root}/{slug}/agents/{role}.md` persist; re-running `/discover` Phase C would overwrite them — back up first. |
 | 6 | **`/discover` produces context. `/deliver` consumes it. `/learn` updates it. `/context-refresh` keeps it current.** | Each skill has a defined role in the lifecycle. | Don't have `/deliver` mutate workspace docs (only `/learn` and `/context-refresh` do). Don't have `/learn` write code (only `/deliver` does — fix-round dispatches notwithstanding). Respect the boundaries. |
 | 7 | **R10 (Inherit, don't invent) is the implementer's prime discipline.** | Once stacks/{type}.md was dropped, R10 became the explicit version of what those docs implicitly enforced. Reviewers gate-check it via the Pattern Adherence pass. | New implementers MUST cite R10 + its enforcement (find analog → follow). New reviewers MUST include the Pattern Adherence pass. Without these, conventions drift across runs. |

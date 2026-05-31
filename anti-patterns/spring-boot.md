@@ -1,4 +1,4 @@
-# Spring Boot — Known Pitfalls
+# Spring Boot — Known Anti-Patterns
 
 Seed list of predictable failure modes to inject into Phase 4.5 task files for `type: spring-boot` repos. The task-file generator selects the subset relevant to the endpoints + data model in scope.
 
@@ -28,7 +28,7 @@ Seed list of predictable failure modes to inject into Phase 4.5 task files for `
 ## Role / authz matrix
 
 - Role-gate checks in service code (`SecurityContextHolder.getContext().getAuthentication()`) bypass the HTTP layer, so tests that mock `MockMvc` with an unauthenticated principal may pass even if the controller would receive a valid JWT at runtime. Add explicit role-denial tests per HTTP method for every denied role — NOT just one representative.
-- If the platform has a known multi-role permission bug (first-match-wins), document it in the task's "Known Pitfalls" section so implementers don't accidentally rely on the broken behavior.
+- If the platform has a known multi-role permission bug (first-match-wins), document it in the task's "Known Anti-Patterns" section so implementers don't accidentally rely on the broken behavior.
 
 ## N+1 queries
 

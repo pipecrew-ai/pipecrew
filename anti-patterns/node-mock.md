@@ -1,4 +1,4 @@
-# Node Mock Server — Known Pitfalls
+# Node Mock Server — Known Anti-Patterns
 
 Seed list for `type: node-mock` repos.
 

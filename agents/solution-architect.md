@@ -522,7 +522,7 @@ Guidelines:
 Save as an ADR (`context/adrs/`):
 - Architectural decisions and their rationale
 - Domain model relationships and cross-service integration patterns specific to this workspace
-- Common pitfalls found during reviews that constrain future design
+- Common anti-patterns found during reviews that constrain future design
 
 Save as a private note (`agent-memory/solution-architect/`):
 - Rare architect-only observations that don't belong in the team record

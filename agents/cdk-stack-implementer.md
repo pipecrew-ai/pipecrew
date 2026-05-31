@@ -20,7 +20,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read 1–2 existing stacks that do similar things (e.g., if you are building an S3→SQS stack, read an existing message-pipeline stack). Read the app entry point to see how stacks are constructed. Note the stage/regionSuffix pattern — this matters. If THIS repo has no analog, scan sibling cdk repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read 1–2 existing stacks that do similar things (e.g., if you are building an S3→SQS stack, read an existing message-pipeline stack). Read the app entry point to see how stacks are constructed. Note the stage/regionSuffix pattern — this matters. If THIS repo has no analog, scan sibling cdk repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify. Name every resource with the exact canonical pattern. Cross-check resource names against any consuming service's config files (the task file should give you these references). If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

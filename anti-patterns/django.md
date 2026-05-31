@@ -1,4 +1,4 @@
-# Django — Known Pitfalls
+# Django — Known Anti-Patterns
 
 Seed list for `type: django` repos.
 

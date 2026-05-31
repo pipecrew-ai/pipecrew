@@ -42,7 +42,7 @@
 
 ### 3. Task files list what to do but not what *not* to do *(Surgical)*
 
-Phase 4.5 task-file template (`phases/phase-4-plan.md` lines 168–234) has `## Contract Reference`, `## Known Pitfalls`, `## Work Log` — but no `## Out of Scope`. Useful because the architect often raises topics that got descoped at the Phase 2 gate, and the implementer has no durable record of that.
+Phase 4.5 task-file template (`phases/phase-4-plan.md` lines 168–234) has `## Contract Reference`, `## Known Anti-Patterns`, `## Work Log` — but no `## Out of Scope`. Useful because the architect often raises topics that got descoped at the Phase 2 gate, and the implementer has no durable record of that.
 
 **Suggested:** add `## Out of Scope` section to task body, populated from anything the user rejected/deferred at the Phase 2 or 4.5 gate.
 

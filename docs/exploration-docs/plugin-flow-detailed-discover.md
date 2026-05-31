@@ -260,7 +260,7 @@ Severity levels: `critical` (will fail at runtime), `high` (latent bug / contrac
 **Why it matters:** code-reading agents see real bugs in passing. Without the contract, those observations vanish into chat narration. With it, they accumulate into a per-workspace bug list. On the first DAL onboarding run, this surfaced **7 live bugs** that would have otherwise been re-discovered ad hoc later.
 
 The audit-findings.md feeds:
-- `/deliver` Phase 4.5 "Known Pitfalls" section in implementer task files
+- `/deliver` Phase 4.5 "Known Anti-Patterns" section in implementer task files
 - `/site-view` "Audit findings" tab with critical/high/medium/low pills
 - `/learn` triage when the user wants to clean up tech debt
 

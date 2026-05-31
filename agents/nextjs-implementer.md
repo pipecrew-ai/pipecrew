@@ -20,7 +20,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md`, the agent-context docs it points to, and `DESIGN_SYSTEM.md`. Per R10, find the closest analog in this repo before writing new code — read 1–2 existing feature pages end-to-end (page → layout → components → data fetching → tests) to absorb the concrete patterns: App Router vs Pages Router, data-fetching pattern (RSC, `getServerSideProps`, React Query, SWR), styling approach, i18n library. If THIS repo has no analog, scan sibling nextjs repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md`, the agent-context docs it points to, and `DESIGN_SYSTEM.md`. Per R10, find the closest analog in this repo before writing new code — read 1–2 existing feature pages end-to-end (page → layout → components → data fetching → tests) to absorb the concrete patterns: App Router vs Pages Router, data-fetching pattern (RSC, `getServerSideProps`, React Query, SWR), styling approach, i18n library. If THIS repo has no analog, scan sibling nextjs repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify. Mark which are server components and which are client components. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

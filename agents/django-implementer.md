@@ -20,7 +20,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read the OpenAPI spec (api-first) or the inline contract (code-first), and 2–3 existing views/viewsets, their serializers, and URL routers to absorb the concrete patterns: ViewSet vs APIView vs function-based view, mixin usage, filter backend, pagination class, auth/permission classes, service-layer pattern (if any). If THIS repo has no analog, scan sibling django repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read the OpenAPI spec (api-first) or the inline contract (code-first), and 2–3 existing views/viewsets, their serializers, and URL routers to absorb the concrete patterns: ViewSet vs APIView vs function-based view, mixin usage, filter backend, pagination class, auth/permission classes, service-layer pattern (if any). If THIS repo has no analog, scan sibling django repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify. For fix rounds, use the file:line targets. Identify the Django app you'll modify (or create) — do not scatter new code across apps. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

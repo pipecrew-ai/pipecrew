@@ -225,7 +225,7 @@ Check and warn — each one degrades quality in a specific way, but none blocks 
 | Repo CLAUDE.md (one per repo in `config.repos`) | `test -f {repo.path}/CLAUDE.md` | "⚠ {repo} missing CLAUDE.md — Phase 5 implementer will re-derive conventions from code (3-5× more tokens per dispatch). Run `/discover --resume --workspace={slug}` to generate it." |
 | Workspace product-owner agent | `test -f ~/.claude/agents/{slug}-product-owner.md` | "⚠ Workspace product-owner agent not published — Phase 1 will fall back to `general-purpose` with a preamble. Quality degrades. Run `/discover --resume --workspace={slug}` to publish." |
 | Workspace assessor agent | `test -f ~/.claude/agents/{slug}-assessor.md` | "⚠ Workspace assessor agent not published — Phase 6 will fall back to `general-purpose`. Run `/discover --resume --workspace={slug}` to publish." |
-| `context/audit-findings.md` | `test -f {workspace_root}/{slug}/context/audit-findings.md` | "ℹ audit-findings.md not present — Phase 4.5 `## Known Pitfalls` will use plugin stack catalog only. If this workspace was onboarded before audit findings existed, run `/discover --resume` to generate." |
+| `context/audit-findings.md` | `test -f {workspace_root}/{slug}/context/audit-findings.md` | "ℹ audit-findings.md not present — Phase 4.5 `## Known Anti-Patterns` will use plugin stack catalog only. If this workspace was onboarded before audit findings existed, run `/discover --resume` to generate." |
 
 Print all warnings at once as a grouped block so the user sees the full health check, then continue:
 

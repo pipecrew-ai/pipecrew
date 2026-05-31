@@ -840,7 +840,7 @@ function writeAuditFindings() {
 // NOTE: per-stack convention docs (`stacks/{type}.md`) are no longer produced
 // by /discover. Workspace-wide patterns live in platform.md § Established
 // Patterns; per-repo patterns live in each repo's CLAUDE.md; generic stack
-// pitfalls live in the plugin at docs/pitfalls/{type}.md and are injected
+// anti-patterns live in the plugin at anti-patterns/{type}.md and are injected
 // into per-task files by the task-planner. The simulator therefore no
 // longer fabricates these docs.
 function writeStacks() {

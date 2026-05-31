@@ -20,7 +20,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read 2–3 existing controllers and services to absorb the concrete patterns: DI style, exception handling, transaction boundaries, MapStruct usage, how DTOs flow between layers. Read the existing migration format. If THIS repo has no analog (e.g., this is the first endpoint of its kind), scan sibling spring-boot repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read 2–3 existing controllers and services to absorb the concrete patterns: DI style, exception handling, transaction boundaries, MapStruct usage, how DTOs flow between layers. Read the existing migration format. If THIS repo has no analog (e.g., this is the first endpoint of its kind), scan sibling spring-boot repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify and the concrete change for each. For fix rounds, use the file:line targets the caller gave you. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

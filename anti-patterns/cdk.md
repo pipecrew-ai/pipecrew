@@ -1,4 +1,4 @@
-# AWS CDK — Known Pitfalls
+# AWS CDK — Known Anti-Patterns
 
 Seed list for `type: cdk` repos.
 

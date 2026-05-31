@@ -1,6 +1,6 @@
 # Implementer common rules — framework-agnostic
 
-> Every `*-implementer.md` agent in this plugin references this document. The rules below are universal — they apply regardless of tech stack (Spring Boot, NestJS, FastAPI, React, CDK, …). Stack-specific conventions live in each repo's `CLAUDE.md` + `agent-context/`; cross-cutting workspace patterns live in `platform.md § Established Patterns`; generic stack pitfalls are pre-injected into per-task files by the task-planner from `{plugin_dir}/docs/pitfalls/{type}.md`.
+> Every `*-implementer.md` agent in this plugin references this document. The rules below are universal — they apply regardless of tech stack (Spring Boot, NestJS, FastAPI, React, CDK, …). Stack-specific conventions live in each repo's `CLAUDE.md` + `agent-context/`; cross-cutting workspace patterns live in `platform.md § Established Patterns`; generic stack anti-patterns are pre-injected into per-task files by the task-planner from `{plugin_dir}/anti-patterns/{type}.md`.
 
 These rules compose on top of each agent's stack-specific invariants. Where a shared rule conflicts with a repo-specific convention, the repo convention wins — but in practice they should agree.
 
@@ -25,7 +25,7 @@ Before any code change, read `{repo_path}/CLAUDE.md` and the agent-context docs 
 
 For workspace-wide patterns (cross-cutting decisions like "we use JWT auth" or "all services log to CloudWatch"), the architect captured them in `{workspace_root}/{slug}/context/platform.md` § `Established Patterns`. That section is small and worth a read pass once per dispatch.
 
-For stack-conventional traps that apply to any workspace using this stack (e.g., Spring Boot's `Exception → HTTP status` convention, React's useCallback dependency stability), the task-planner has already pre-injected the relevant ones into your task file's `## Known Pitfalls` section. You do not need to load `{plugin_dir}/docs/pitfalls/{type}.md` separately — the planner pulls from it. Treat the pitfalls section in your task file as the active checklist.
+For stack-conventional traps that apply to any workspace using this stack (e.g., Spring Boot's `Exception → HTTP status` convention, React's useCallback dependency stability), the task-planner has already pre-injected the relevant ones into your task file's `## Known Anti-Patterns` section. You do not need to load `{plugin_dir}/anti-patterns/{type}.md` separately — the planner pulls from it. Treat the anti-patterns section in your task file as the active checklist.
 
 **Pattern discipline** — see Rule 10 (`Inherit, don't invent`). Before writing any new code, find the closest analog in this repo and follow its shape. Inventing a new pattern when an existing one exists is the most common review-flagging issue and is a Critical or Non-critical finding at review time depending on whether the invention is architectural or mechanical.
 
@@ -216,7 +216,7 @@ The implementer's job is faithful continuation of an existing system, not greenf
    - **Adding a migration?** Read the most recent migration in `db/changelog` / `db/migration` / `alembic/versions` / `migrations/`. Match naming + format.
    - **Adding a service / repository / DTO?** Same idea — find the nearest sibling, follow its shape.
 3. If no analog exists in **this** repo, scan sibling repos of the same `type` (the orchestrator's dispatch prompt names them — they're listed in `config.repos`). Read-only. The first matching analog is your reference.
-4. Only when neither this repo nor sibling repos have an analog, fall back to (a) the plugin pitfalls already injected into your task file's `## Known Pitfalls`, and (b) your own training. In that case, **record the choice in your `## Assumptions` section** so the reviewer knows it was a deliberate decision, not an oversight.
+4. Only when neither this repo nor sibling repos have an analog, fall back to (a) the plugin anti-patterns already injected into your task file's `## Known Anti-Patterns`, and (b) your own training. In that case, **record the choice in your `## Assumptions` section** so the reviewer knows it was a deliberate decision, not an oversight.
 
 **Anti-patterns to avoid**:
 

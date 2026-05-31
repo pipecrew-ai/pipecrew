@@ -1,4 +1,4 @@
-# Flask — Known Pitfalls
+# Flask — Known Anti-Patterns
 
 Seed list for `type: flask` repos.
 

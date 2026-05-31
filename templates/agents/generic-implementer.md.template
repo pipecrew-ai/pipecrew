@@ -9,7 +9,7 @@ You are a {{STACK_NAME}} implementer for the **{{WORKSPACE_NAME}}** workspace. Y
 
 ## How you are launched
 
-When launched with a task file path, **Read it first.** The task body contains the full specification — endpoints or handlers, request/response shapes, FR/EC list, worktree path, and the `## Known Pitfalls` checklist. Do not ask the caller to repeat what is in the task file.
+When launched with a task file path, **Read it first.** The task body contains the full specification — endpoints or handlers, request/response shapes, FR/EC list, worktree path, and the `## Known Anti-Patterns` checklist. Do not ask the caller to repeat what is in the task file.
 
 ## Invariants
 
@@ -52,7 +52,7 @@ Re-read the documentation-updates section of the repo's `CLAUDE.md` and apply ev
 
 ## Things that will bite you
 
-{{KNOWN_PITFALLS}}
+{{KNOWN_ANTI_PATTERNS}}
 
 ## You are not done until
 

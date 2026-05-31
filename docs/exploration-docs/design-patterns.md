@@ -14,7 +14,7 @@ The plugin partitions information by lifetime + scope:
 
 | Tier | Where | Lifetime | Read by |
 |---|---|---|---|
-| **Plugin** (`docs/pitfalls/{type}.md`, `templates/`, agent prompts) | Plugin source | Versioned with plugin | Pre-injected into per-task files (not loaded directly by implementers) |
+| **Plugin** (`anti-patterns/{type}.md`, `templates/`, agent prompts) | Plugin source | Versioned with plugin | Pre-injected into per-task files (not loaded directly by implementers) |
 | **Workspace** (`platform.md`, `learn-log.md`) | `{workspace_root}/{slug}/context/` | Durable across runs | Orchestration-tier agents only |
 | **Per-repo** (`CLAUDE.md`, `agent-context/`, `DESIGN_SYSTEM.md`) | Inside each repo | Lives with the code | Every agent that touches the repo |
 | **Per-run** (scratchpad, checkpoints, `outputs/blocks/`, `tasks/`) | `runs/{skill}/{run_id}/` | Ephemeral per invocation | Run-scoped agents |
@@ -23,7 +23,7 @@ The plugin partitions information by lifetime + scope:
 
 ## 2. Task file as the implementer's bottleneck input
 
-The single most important pattern. Phase 4.5's `task-planner` pre-builds a self-contained markdown file per sub-task — FR/EC list, architecture context, Contract Reference, Known Pitfalls, Out of Scope. Phase 5 dispatch carries only `task_id` + `worktree_path`; the implementer reads the task file once. **Per-dispatch input bounded to ~5K tokens instead of ~30K+**, regardless of workspace size. This is what makes the system scale to N repos.
+The single most important pattern. Phase 4.5's `task-planner` pre-builds a self-contained markdown file per sub-task — FR/EC list, architecture context, Contract Reference, Known Anti-Patterns, Out of Scope. Phase 5 dispatch carries only `task_id` + `worktree_path`; the implementer reads the task file once. **Per-dispatch input bounded to ~5K tokens instead of ~30K+**, regardless of workspace size. This is what makes the system scale to N repos.
 
 ## 3. JSON blocks inside markdown via BEGIN/END markers
 
@@ -47,7 +47,7 @@ Every task file has YAML frontmatter (`id`, `repo`, `fr_refs`, `status: todo→d
 
 ## 8. Pre-injection over per-dispatch loading
 
-Per-stack pitfalls live in the plugin (`docs/pitfalls/{type}.md`). The `task-planner` filters them per task and injects relevant bullets into each task file's `## Known Pitfalls` section. Implementer doesn't load pitfalls; they read their task file. Same pattern for FR/EC filtering — the planner pulls only the FR/EC bullets relevant to THIS task's repo into THIS task's file.
+Per-stack anti-patterns live in the plugin (`anti-patterns/{type}.md`). The `task-planner` filters them per task and injects relevant bullets into each task file's `## Known Anti-Patterns` section. Implementer doesn't load anti-patterns; they read their task file. Same pattern for FR/EC filtering — the planner pulls only the FR/EC bullets relevant to THIS task's repo into THIS task's file.
 
 ## 9. Workspace agents as system-prompt baked
 
@@ -67,7 +67,7 @@ Both kept; neither replaces the other.
 Layered scope:
 
 - **Architect** (Opus): reasons across workspace; outputs design + TASK_SKELETON.
-- **Planner** (Sonnet, three-mode): hydrates skeleton with workspace-shaped material (pitfalls, audit findings, post-Phase-3 spec paths) into per-task files.
+- **Planner** (Sonnet, three-mode): hydrates skeleton with workspace-shaped material (anti-patterns, audit findings, post-Phase-3 spec paths) into per-task files.
 - **Implementer** (per-stack): consumes one task file, follows R10 to inherit patterns from existing code.
 
 Each layer's input is bounded; each does only what its role uniquely qualifies it for.
@@ -182,7 +182,7 @@ Every skill's run dir has `scratchpad.md` with a Phase Status table. `--resume` 
 
 If I had to compress these 30+ techniques into three principles:
 
-1. **Bound per-dispatch input.** No agent should ever load workspace-wide context unless its job genuinely requires synthesis. The task file pattern, JSON-block side files, lazy phase loading, and pre-injection of pitfalls all serve this.
+1. **Bound per-dispatch input.** No agent should ever load workspace-wide context unless its job genuinely requires synthesis. The task file pattern, JSON-block side files, lazy phase loading, and pre-injection of anti-patterns all serve this.
 
 2. **Specialize agents to bounded scopes.** Per-stack implementers and reviewers, three-mode agents, workspace-published vs plugin-shipped, architect–planner–implementer hierarchy — each agent has the smallest possible scope that lets it do its job competently.
 

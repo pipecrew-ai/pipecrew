@@ -35,7 +35,7 @@ When the table above does NOT list a plugin-shipped implementer for a type (e.g.
    - the task file
    - the repo's `CLAUDE.md`
    - 2-3 existing features to match conventions
-   - the Known Pitfalls section in the task body
+   - the Known Anti-Patterns section in the task body
 
    This is a last resort — quality is lower than a workspace-local agent. Log a warning to the scratchpad and suggest the user run `/discover --resume --workspace={slug}` to publish a per-workspace agent for this type.
 

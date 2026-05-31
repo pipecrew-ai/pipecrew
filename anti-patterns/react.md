@@ -1,4 +1,4 @@
-# React (Vite/SWC, TanStack Query, shadcn/ui) — Known Pitfalls
+# React (Vite/SWC, TanStack Query, shadcn/ui) — Known Anti-Patterns
 
 Seed list for `type: react` repos. Task-file generator selects relevant subset.
 

@@ -1,4 +1,4 @@
-# FastAPI — Known Pitfalls
+# FastAPI — Known Anti-Patterns
 
 Seed list for `type: fastapi` repos.
 

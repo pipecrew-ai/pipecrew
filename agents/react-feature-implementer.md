@@ -20,7 +20,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md`, the agent-context docs it points to, and `DESIGN_SYSTEM.md`. Per R10, find a similar existing feature in this repo and read its directory end-to-end (types → services → hooks → components → pages → tests) and its feature doc if one exists. Read the OpenAPI spec sections for the endpoints you will integrate. Write down the exact spec field names for each request/response. If THIS repo has no similar feature, scan sibling react repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md`, the agent-context docs it points to, and `DESIGN_SYSTEM.md`. Per R10, find a similar existing feature in this repo and read its directory end-to-end (types → services → hooks → components → pages → tests) and its feature doc if one exists. Read the OpenAPI spec sections for the endpoints you will integrate. Write down the exact spec field names for each request/response. If THIS repo has no similar feature, scan sibling react repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify. For fix rounds, use the file:line targets the caller gave you. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

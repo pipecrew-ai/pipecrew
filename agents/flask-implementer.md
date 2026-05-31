@@ -19,7 +19,7 @@ Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before star
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read the OpenAPI spec (api-first) or inline contract (code-first), and 2–3 existing blueprints + their services to absorb the concrete patterns: DI style (app factory + extensions, flask-injector, or manual constructors), validation library, ORM usage, error-handler registration, auth decorators, config loading. If THIS repo has no analog, scan sibling flask repos in the workspace before falling back to plugin pitfalls.
+Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read the OpenAPI spec (api-first) or inline contract (code-first), and 2–3 existing blueprints + their services to absorb the concrete patterns: DI style (app factory + extensions, flask-injector, or manual constructors), validation library, ORM usage, error-handler registration, auth decorators, config loading. If THIS repo has no analog, scan sibling flask repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify. For fix rounds, use the file:line targets. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.

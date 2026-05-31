@@ -1,4 +1,4 @@
-# Terraform — Known Pitfalls
+# Terraform — Known Anti-Patterns
 
 Seed list for `type: terraform` repos.
 

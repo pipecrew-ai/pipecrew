@@ -1,4 +1,4 @@
-# Python Worker — Known Pitfalls
+# Python Worker — Known Anti-Patterns
 
 Seed list for `type: python-worker` repos — Lambda handlers, SQS/SNS/Kinesis/Kafka consumers, Celery tasks, scheduled jobs.
 

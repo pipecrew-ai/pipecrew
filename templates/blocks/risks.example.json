@@ -1,0 +1,40 @@
+{
+  "_comment": "Canonical example for the RISKS block emitted by the solution-architect inside outputs/phase-2-architecture.md. Two arrays: `risks[]` (narrative — risk + mitigation pairs the user reviews at the Phase 2 gate) and `deferred_items[]` (the structured INDEX of items that will NOT ship in the minimum slice — each one maps to a `tier: D` sub-task in TASK_SKELETON). Phase 4.5's task-planner reads `outputs/blocks/risks.json` to populate per-repo Out-of-Scope sections deterministically — replacing the prior prose-tag scan (`deferred` / `out of scope` / `follow-up` / `v2` / `enhancement` keywords). Each `deferred_items[].id` is the stable address the planner uses in `deferral_reason: \"RISKS DEF-N — {rationale}\"` against TASK_SKELETON `tier: D` entries. Schema reference and consumer list live in block-schemas.md. Strip the _comment field from real output.",
+  "risks": [
+    {
+      "id": "R-1",
+      "summary": "Bulk endpoint may saturate the S3 client when a 50-file batch arrives all at once",
+      "severity": "medium",
+      "mitigation": "Cap concurrent uploads to 10 per batch; circuit-break on S3 5xx with exponential backoff"
+    },
+    {
+      "id": "R-2",
+      "summary": "Search-svc indexing may lag if `book.uploaded` events queue faster than the consumer drains",
+      "severity": "low",
+      "mitigation": "Monitor consumer lag; alert at >60s; existing autoscaling on the consumer keeps lag bounded under projected load"
+    }
+  ],
+  "deferred_items": [
+    {
+      "id": "DEF-1",
+      "tag": "v2",
+      "summary": "Auto-retry of failed files in a bulk batch",
+      "rationale": "User can manually re-attempt via the UI in v1; auto-retry adds idempotency + dedup complexity not worth the effort for the initial release",
+      "owning_repo": "publisher-frontend"
+    },
+    {
+      "id": "DEF-2",
+      "tag": "follow-up",
+      "summary": "Bulk delete and bulk status-change endpoints",
+      "rationale": "Single-book delete and status-change already work; bulk variants can be added once user demand is observed",
+      "owning_repo": "publisher-service"
+    },
+    {
+      "id": "DEF-3",
+      "tag": "out-of-scope",
+      "summary": "Background scheduling of bulk uploads via a worker queue",
+      "rationale": "v1 ships a synchronous-respond endpoint; queue-based dispatch is a different architecture decision deferred to a future RFC",
+      "owning_repo": null
+    }
+  ]
+}

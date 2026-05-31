@@ -21,8 +21,8 @@ Skip the whole phase if `--skip-spec-edit` was passed. Skip 3a if `AFFECTED_CONT
 # AFFECTED_SERVICES — the structured services index
 cat {pipeline_dir}/outputs/blocks/affected-services.json
 
-# AFFECTED_CONTRACTS — present iff contract repos affected
-cat {pipeline_dir}/outputs/blocks/affected-contracts.json 2>/dev/null || echo '{"contracts":[]}'
+# AFFECTED_CONTRACTS — always emitted (empty contracts[] iff none affected)
+cat {pipeline_dir}/outputs/blocks/affected-contracts.json
 
 # CONTRACT_DESIGN — the body 3a passes to schema-implementer (only when contracts affected)
 cat {pipeline_dir}/outputs/blocks/contract-design.json 2>/dev/null
@@ -41,13 +41,15 @@ From `affected-services.json`, `services_to_edit = services.filter(s => s.spec_p
 
 ## Phase 3a: Contract Edit (schema-implementer)
 
-Skip this sub-phase entirely if `AFFECTED_CONTRACTS` resolves to `N/A` / empty. Log: `"Phase 3a skipped — no contract repos affected"`.
+Skip this sub-phase entirely if `affected-contracts.json` has `contracts.length === 0`. Log: `"Phase 3a skipped — no contract repos affected"`. If the file does NOT exist at all, treat that as a producer bug: the architect was supposed to emit the `AFFECTED_CONTRACTS` JSON block (even when empty), and `split-design.js` always materializes a present block. STOP and report `"AFFECTED_CONTRACTS missing — re-dispatch the architect"` rather than silently skipping (the previous fallback masked this bug for months).
+
+Also enforce the breaking-changes gate at this point: if any `contracts[].files[].classification === "breaking"`, `breaking_changes_authorized` MUST be `true` AND the prose section under `CONTRACT_DESIGN` must contain a `### Breaking Change Authorization` sub-section. If either is missing, STOP and report the contract repo(s) and file(s) involved — the schema-implementer would refuse anyway, surface it here so the user can decide before any worktree is created.
 
 #### Step 0a: Create worktrees for contract-owning repos
 
 Unless `--no-worktrees` was passed:
 
-1. Build the distinct list of contract repos from `AFFECTED_CONTRACTS`: resolve each `repo_key` → `config.repos[repo_key].path`.
+1. Build the distinct list of contract repos from `affected-contracts.json`: iterate `contracts[].repo_key` and resolve each via `config.repos[repo_key].path`.
 2. For each, create a worktree at a sibling path named `{repo-name}-{feature-slug}` on branch `feature/{feature-slug}`:
    ```bash
    cd {repo_path} && git worktree add ../{repo-name}-{feature-slug} -b feature/{feature-slug}
@@ -59,12 +61,13 @@ If `--no-worktrees` was passed, skip this step; file paths below use the repo ro
 
 #### Step 1a: Build the schema-implementer input list
 
-For each repo in `AFFECTED_CONTRACTS` (in the architect's declared order):
+Iterate `affected-contracts.json` in the order given by `edit_order` (NOT `contracts[]` array order — `edit_order` is the dispatch sequence). For each `repo_key`:
 
+- Find the matching `contracts[]` entry by `repo_key`.
 - Resolve its path (worktree path if Step 0a ran, else repo root).
-- Collect the file_targets the architect listed, translating each relative path to an absolute one against the resolved path.
+- Use `contracts[].files[]` directly — each `{ path, change_kind, classification, summary }` becomes one `file_target`, with the relative `path` translated to an absolute path against the resolved repo path.
 
-Build an ordered list of `(repo_key, absolute_repo_path, [file_targets])` tuples.
+Build an ordered list of `(repo_key, absolute_repo_path, [file_targets])` tuples following `edit_order` literally.
 
 #### Step 2a: Dispatch schema-implementer
 

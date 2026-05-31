@@ -1,0 +1,39 @@
+{
+  "_comment": "Canonical example for the AFFECTED_CONTRACTS block emitted by the solution-architect inside outputs/phase-2-architecture.md. Per-repo entries with affected files and their additive/breaking classification. The JSON is the source of truth — downstream phases extract it via scripts/extract-block.js (or read outputs/blocks/affected-contracts.json after split-design.js runs). Phase 3a (contract edit) dispatches schema-implementer per repo in `edit_order` and refuses `classification: breaking` unless `breaking_changes_authorized` is `true`. The task-planner reads this block to resolve event schema file paths for no-api workers. Full schema change content (Avro field definitions, JSON Schema $refs, Protobuf field numbers) lives in the CONTRACT_DESIGN prose — this block carries the navigable index. Field reference and consumer list live in block-schemas.md. Strip the _comment field from real output.",
+  "contracts": [
+    {
+      "repo_key": "data-schemas",
+      "format": "avro",
+      "rationale": "Order shipped event needs a carrier field so downstream observers can route by carrier",
+      "files": [
+        {
+          "path": "schemas/events/order-shipped.avsc",
+          "change_kind": "modified",
+          "classification": "additive",
+          "summary": "Add nullable `carrier` field (string, default null)"
+        },
+        {
+          "path": "schemas/events/order-cancelled.avsc",
+          "change_kind": "added",
+          "classification": "additive",
+          "summary": "New event type — no existing consumers"
+        }
+      ]
+    },
+    {
+      "repo_key": "order-events",
+      "format": "avro",
+      "rationale": "Order events reference the shared OrderRef schema from data-schemas",
+      "files": [
+        {
+          "path": "schemas/order-created.avsc",
+          "change_kind": "modified",
+          "classification": "additive",
+          "summary": "Pick up new `carrier` field via the OrderRef $ref"
+        }
+      ]
+    }
+  ],
+  "edit_order": ["data-schemas", "order-events"],
+  "breaking_changes_authorized": false
+}

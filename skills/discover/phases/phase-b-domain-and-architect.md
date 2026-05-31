@@ -89,7 +89,7 @@ cp {decision.profile_path} {run_dir}/outputs/repo-profiles/{decision.repo_key}.j
 For each `action: "rescan"` decision: dispatch `repo-discoverer` as usual (the dispatch shape below). Skip the dispatch entirely for reused repos.
 
 **Bypass options:**
-- `--no-cache` flag was passed to `/discover` → treat every decision as `rescan` (use the script's output but ignore the `reuse` actions). Useful when the user knows local edits the cache can't see.
+- `--refresh-cache` flag was passed to `/discover` → treat every decision as `rescan` (use the script's output but ignore the `reuse` actions). The cache is still written afterwards as usual, so the next run benefits from the fresh profiles.
 - The state file is missing or corrupt → the script returns every decision as `rescan` defensively (no error, no crash).
 - A reused profile's file goes missing or fails JSON parse → the script detects it and returns `rescan` for that repo.
 

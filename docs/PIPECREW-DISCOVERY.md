@@ -32,6 +32,9 @@ Every command operates against a **workspace** — a directory under a configura
 │   ├── architecture-overview.mmd                  high-level C4 block diagram (~10 nodes, 4 subgraphs)
 │   ├── architecture.mmd                           detailed topology with every service / DB / queue / Lambda + edge labels
 │   ├── learn-log.md                               append-only — populated by /learn over time as institutional memory
+│   ├── adrs/                                      architecture decision records (team-visible — written at the optional ADR gate after /deliver Phase 2)
+│   │   ├── INDEX.md                               one line per ADR with bracketed tags + decision summary (capped at 200 lines for cheap scanning)
+│   │   └── ADR-NNN-<slug>.md                      one file per decision (read by solution-architect's Step 0 when index tags match)
 │   └── diagrams/                                  (only when /draw-diagram --topic was used)
 │       ├── auth-flow.mmd                          example focused topic diagram
 │       ├── event-flow.mmd                         example focused topic diagram
@@ -45,10 +48,10 @@ Every command operates against a **workspace** — a directory under a configura
 │   └── {slug}-{type}-implementer.md               (optional — only if a stack has no plugin agent;
 │                                                    e.g. Rails / Phoenix / Go-Gin / .NET workspaces)
 │
-├── agent-memory/                                  architect-owned ADRs (created on first ADR gate)
-│   └── solution-architect/
-│       └── adrs.md                                Architecture Decision Records — appended at the
-│                                                    optional ADR gate after Phase 2 approval
+├── agent-memory/                                  thin private-notes scope (rare — most decisions go to context/adrs/)
+│   └── solution-architect/                        genuinely architect-private observations that aren't team-grade
+│                                                    (e.g., "the user pushed back on structure X here last time").
+│                                                    Read explicitly when relevant; not auto-loaded.
 │
 ├── deferred/                                      deferred follow-up files (only when /deliver Phase 4.5
 │   │                                                user picked "Minimum only")

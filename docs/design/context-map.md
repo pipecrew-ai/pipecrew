@@ -227,4 +227,4 @@ These agents work primarily from one repo at a time. They don't load workspace-w
 - [`PIPECREW-DISCOVERY.md`](../PIPECREW-DISCOVERY.md) — overview of the plugin
 - [`rules/implementer-common.md`](../implementer-common-rules.md) — R1–R10, the implementer contract
 - [`templates/blocks/block-schemas.md`](../../templates/blocks/block-schemas.md) — schema reference for structured blocks (TASK_SKELETON, OBSERVABILITY, etc.)
-- [`docs/exploration-docs/discover-enhancement.md`](./discover-enhancement.md) — performance enhancement plan for `/discover` (Win #1 was rejected; Wins #2-6 remain)
+- [`docs/design/discover-enhancement.md`](./discover-enhancement.md) — performance enhancement plan for `/discover` (Win #1 was rejected; Wins #2-6 remain)

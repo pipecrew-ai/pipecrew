@@ -230,5 +230,5 @@ If you're **adding a new skill**, ask:
 - [`PIPECREW-DISCOVERY.md`](../PIPECREW-DISCOVERY.md) — overview of the plugin
 - [`rules/implementer-common.md`](../implementer-common-rules.md) — R0–R10, the implementer contract
 - [`templates/blocks/block-schemas.md`](../../templates/blocks/block-schemas.md) — schema reference for structured blocks
-- [`docs/exploration-docs/context-map.md`](./context-map.md) — what `/discover` creates and which agents read what
-- [`docs/exploration-docs/discover-enhancement.md`](./discover-enhancement.md) — six wins, current status of each
+- [`docs/design/context-map.md`](./context-map.md) — what `/discover` creates and which agents read what
+- [`docs/design/discover-enhancement.md`](./discover-enhancement.md) — six wins, current status of each

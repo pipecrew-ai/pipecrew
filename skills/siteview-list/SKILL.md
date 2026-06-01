@@ -26,7 +26,7 @@ When the user invokes `/siteview-list`:
 
 1. Run the scan script via Bash:
    ```bash
-   node {plugin_dir}/skills/sites/scan.js
+   node {plugin_dir}/skills/siteview-list/scan.js
    ```
 2. Relay the output to the user verbatim — it's a pre-formatted table.
 3. If no servers are running, suggest `/pipecrew:site-view` to start one.
@@ -46,4 +46,4 @@ PORT  PID     WORKSPACE  RUN ID                                           CHARS 
 
 ## Full reference
 
-Scan range + probe details documented in `{plugin_dir}/skills/sites/scan.js` header.
+Scan range + probe details documented in `{plugin_dir}/skills/siteview-list/scan.js` header.

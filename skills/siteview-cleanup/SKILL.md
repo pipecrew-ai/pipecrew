@@ -28,7 +28,7 @@ When the user invokes `/siteview-cleanup`:
 
 1. Run the cleanup script via Bash, passing through the user's flags verbatim:
    ```bash
-   node {plugin_dir}/skills/sites-cleanup/cleanup.js [user's flags]
+   node {plugin_dir}/skills/siteview-cleanup/cleanup.js [user's flags]
    ```
 2. Relay the output to the user verbatim — it's a pre-formatted report.
 3. If the user didn't specify a kill flag, **remind them the default is dry-run** and suggest the best flag for their intent:
@@ -44,4 +44,4 @@ When the user invokes `/siteview-cleanup`:
 
 ## Full reference
 
-Flag semantics + exit codes documented in `{plugin_dir}/skills/sites-cleanup/cleanup.js` header.
+Flag semantics + exit codes documented in `{plugin_dir}/skills/siteview-cleanup/cleanup.js` header.

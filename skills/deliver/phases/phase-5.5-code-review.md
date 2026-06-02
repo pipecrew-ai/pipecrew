@@ -14,7 +14,7 @@ This phase is SKIPPED for:
 - **Mock server** — mocks are transient and reviewed implicitly by the frontend tests consuming them
 - **Infrastructure — CDK**: verified by `cdk synth` and by Phase 6 cross-stack reference checks
 - **Infrastructure — Terraform**: the `terraform plan` output produced by `terraform-implementer` is itself the review artifact; a human reviews it before any `terraform apply`
-- **Services with no matching reviewer agent**: fastapi, flask, django, python-worker, nextjs (where no `*-reviewer` exists today). Log the skip with reason in the scratchpad: `"Phase 5.5 skipped {svc} — no reviewer agent for type {type}"` so the reporter can surface the gap at Phase 7.
+- **Services with no matching reviewer agent**: only fires for `other` / fallback-resolved types whose generated implementer has no paired reviewer. All plugin-shipped stack implementers (spring-boot, fastapi, flask, django, nestjs, python-worker, react, nextjs) now have paired reviewers. Log the skip with reason in the scratchpad: `"Phase 5.5 skipped {svc} — no reviewer agent for type {type}"` so the reporter can surface the gap at Phase 7.
 
 **Precondition**: Before dispatching reviewers, confirm each worktree path recorded in the scratchpad's Implementation Tasks table still exists (`git -C {worktree_path} status`). If a worktree is missing, log it as a skip and do not dispatch a reviewer for that repo — a missing worktree means Phase 5 failed for that repo, which Phase 6 will flag as a blocker.
 

@@ -11,11 +11,11 @@ All implementer work is launched via the `Agent` tool in the current session. **
 | Config `type` | Implementer agent | Reviewer agent |
 |--------------|-------------------|----------------|
 | `spring-boot` | `spring-boot-api-implementer` | `spring-boot-code-reviewer` |
-| `fastapi` | `fastapi-implementer` | — |
-| `flask` | `flask-implementer` | — |
-| `django` | `django-implementer` | — |
+| `fastapi` | `fastapi-implementer` | `fastapi-reviewer` |
+| `flask` | `flask-implementer` | `flask-reviewer` |
+| `django` | `django-implementer` | `django-reviewer` |
 | `nestjs` | `nestjs-implementer` | `nestjs-reviewer` |
-| `python-worker` | `python-worker-implementer` | — |
+| `python-worker` | `python-worker-implementer` | `python-worker-reviewer` |
 | `react` | `react-feature-implementer` | `react-code-reviewer` |
 | `nextjs` | `nextjs-implementer` | `nextjs-reviewer` |
 | `node-mock` | `mock-endpoint-implementer` | *(skip — mock not reviewed)* |

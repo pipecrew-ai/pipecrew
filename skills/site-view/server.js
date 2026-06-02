@@ -676,7 +676,7 @@ const ROLE_PATTERNS = [
   { role: 'pixel',   patterns: ['react-feature-implementer', 'react-implementer', 'nextjs-implementer', 'frontend-implementer', 'feature-implementer'] },
   { role: 'echo',    patterns: ['mock-endpoint-implementer', 'node-mock-implementer', 'mock-implementer'] },
   { role: 'stratos', patterns: ['cdk-stack-implementer', 'cdk-implementer', 'infra-implementer', 'ops-implementer', 'terraform-implementer'] },
-  { role: 'crit',    patterns: ['spring-boot-code-reviewer', 'react-code-reviewer', 'nestjs-reviewer', 'nextjs-reviewer', 'fastapi-reviewer', 'flask-reviewer', 'django-reviewer', 'python-worker-reviewer', 'code-reviewer', 'reviewer'] },
+  { role: 'crit',    patterns: ['spring-boot-code-reviewer', 'react-code-reviewer', 'nestjs-reviewer', 'nextjs-reviewer', 'fastapi-reviewer', 'flask-reviewer', 'django-reviewer', 'python-worker-reviewer', 'cdk-reviewer', 'terraform-reviewer', 'code-reviewer', 'reviewer'] },
   { role: 'judge',   patterns: ['assessor'] },
   { role: 'scribe',  patterns: ['reporter'] },
   // Loop must come BEFORE sage — the literal `feedback-learner` is more

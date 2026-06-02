@@ -19,8 +19,8 @@ All implementer work is launched via the `Agent` tool in the current session. **
 | `react` | `react-feature-implementer` | `react-code-reviewer` | consumer (reads spec / inline contract) |
 | `nextjs` | `nextjs-implementer` | `nextjs-reviewer` | consumer (reads spec / inline contract) |
 | `node-mock` | `mock-endpoint-implementer` | *(skip — mock not reviewed)* | consumer (mirrors spec) |
-| `cdk` | `cdk-stack-implementer` | *(skip — CDK verified by synth)* | n/a |
-| `terraform` | `terraform-implementer` | *(skip — plan is the review artifact)* | n/a |
+| `cdk` | `cdk-stack-implementer` | `cdk-reviewer` | `infra` (always) |
+| `terraform` | `terraform-implementer` | `terraform-reviewer` | `infra` (always) |
 | `schemas` | `schema-implementer` (dispatched in Phase 3a, not Phase 5) | — | n/a (event schemas, not OpenAPI) |
 | `api-collections` | *(not dispatched — detect-only)* | — | n/a |
 | `other` | *(resolve via fallback chain below)* | — | depends on resolved agent |

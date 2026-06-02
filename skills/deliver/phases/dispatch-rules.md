@@ -8,22 +8,24 @@
 
 All implementer work is launched via the `Agent` tool in the current session. **NEVER `claude -p`**. The agent `subagent_type` is selected dynamically from the repo's `type` field in the workspace config:
 
-| Config `type` | Implementer agent | Reviewer agent |
-|--------------|-------------------|----------------|
-| `spring-boot` | `spring-boot-api-implementer` | `spring-boot-code-reviewer` |
-| `fastapi` | `fastapi-implementer` | `fastapi-reviewer` |
-| `flask` | `flask-implementer` | `flask-reviewer` |
-| `django` | `django-implementer` | `django-reviewer` |
-| `nestjs` | `nestjs-implementer` | `nestjs-reviewer` |
-| `python-worker` | `python-worker-implementer` | `python-worker-reviewer` |
-| `react` | `react-feature-implementer` | `react-code-reviewer` |
-| `nextjs` | `nextjs-implementer` | `nextjs-reviewer` |
-| `node-mock` | `mock-endpoint-implementer` | *(skip — mock not reviewed)* |
-| `cdk` | `cdk-stack-implementer` | *(skip — CDK verified by synth)* |
-| `terraform` | `terraform-implementer` | *(skip — plan is the review artifact)* |
-| `schemas` | `schema-implementer` (dispatched in Phase 3a, not Phase 5) | — |
-| `api-collections` | *(not dispatched — detect-only)* | — |
-| `other` | *(resolve via fallback chain below)* | — |
+| Config `type` | Implementer agent | Reviewer agent | `spec_policy` support |
+|--------------|-------------------|----------------|----|
+| `spring-boot` | `spring-boot-api-implementer` | `spring-boot-code-reviewer` | `api-first` (recommended) \| `code-first` |
+| `fastapi` | `fastapi-implementer` | `fastapi-reviewer` | `api-first` (recommended) \| `code-first` |
+| `flask` | `flask-implementer` | `flask-reviewer` | `api-first` (recommended) \| `code-first` |
+| `django` | `django-implementer` | `django-reviewer` | `api-first` (recommended) \| `code-first` |
+| `nestjs` | `nestjs-implementer` | `nestjs-reviewer` | `api-first` (recommended) \| `code-first` |
+| `python-worker` | `python-worker-implementer` | `python-worker-reviewer` | `no-api` (always) |
+| `react` | `react-feature-implementer` | `react-code-reviewer` | consumer (reads spec / inline contract) |
+| `nextjs` | `nextjs-implementer` | `nextjs-reviewer` | consumer (reads spec / inline contract) |
+| `node-mock` | `mock-endpoint-implementer` | *(skip — mock not reviewed)* | consumer (mirrors spec) |
+| `cdk` | `cdk-stack-implementer` | *(skip — CDK verified by synth)* | n/a |
+| `terraform` | `terraform-implementer` | *(skip — plan is the review artifact)* | n/a |
+| `schemas` | `schema-implementer` (dispatched in Phase 3a, not Phase 5) | — | n/a (event schemas, not OpenAPI) |
+| `api-collections` | *(not dispatched — detect-only)* | — | n/a |
+| `other` | *(resolve via fallback chain below)* | — | depends on resolved agent |
+
+The `spec_policy` column reflects what each implementer ACCEPTS (and `code-first` was added to spring-boot / fastapi / nestjs in PR #30). The actual policy per service is set in `config.services[svc].spec_policy` at `/discover` time — see `{plugin_dir}/rules/spec-policy-modes.md` for the full mode reference, who decides, and what each downstream phase does per mode.
 
 ### Implementer resolution — fallback chain for unsupported types
 

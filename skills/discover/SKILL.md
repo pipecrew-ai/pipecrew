@@ -282,7 +282,11 @@ Each phase lives in its own file. Load only the active phase.
 |-------|------|
 | Greenfield (brainstorm + scaffold) | `phases/phase-greenfield-brainstorm.md` |
 | A. Repo Discovery | `phases/phase-a-repo-discovery.md` |
-| B. Domain Questions + Architect + Observability + Design System Discovery | `phases/phase-b-domain-and-architect.md` |
+| B1. Domain Questions | `phases/phase-b1-domain-questions.md` |
+| B2.0. Per-repo Discovery | `phases/phase-b2-0-repo-discovery.md` |
+| B2. Architect Synthesis | `phases/phase-b2-architect-synthesis.md` |
+| B2.6. Observability Extraction | `phases/phase-b2-6-observability.md` |
+| B3. Design System Discovery | `phases/phase-b3-design-system.md` |
 | C. Generation | `phases/phase-c-generation.md` |
 | D. Verification | `phases/phase-d-verification.md` |
 

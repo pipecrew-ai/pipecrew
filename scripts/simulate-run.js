@@ -1274,7 +1274,7 @@ async function runDeliverRunLive({ runId, featureName, featureSlug, withPr, days
   let runStatus = 'IN_PROGRESS';
 
   // Agent Dispatch Log entries — drives promotion of queued preseed characters
-  // (mira / scribe) since Phase 5 + Phase 7 are intentionally omitted from the
+  // (tya / scribe) since Phase 5 + Phase 7 are intentionally omitted from the
   // server's PHASE_TO_ROLE map. Each entry has a stable _key so we can flip
   // outcome from in_progress → success on a later step.
   const dispatched = [];
@@ -1502,7 +1502,7 @@ ${dispatchSection}`;
     },
     // Phase 5 — multi-stack fan-out. Five implementers run in parallel
     // (publisher-svc Spring Boot, search-svc NestJS, frontend React, mock,
-    // infra-cdk) plus the UX consultant. Mira (UX) is preseeded queued by
+    // infra-cdk) plus the UX consultant. Tya (UX) is preseeded queued by
     // the server, so her queued → working → done transition rides on
     // dispatch-log rows.
     () => {
@@ -1512,7 +1512,7 @@ ${dispatchSection}`;
       setTask(3, 'IN_PROGRESS');
       setTask(4, 'IN_PROGRESS');
       setTask(5, 'IN_PROGRESS');
-      upsertDispatch('mira', {
+      upsertDispatch('tya', {
         phase: '5', agent: 'ux-consultant',
         duration: '—', tokens: '—', outcome: 'in_progress',
       });
@@ -1520,7 +1520,7 @@ ${dispatchSection}`;
     },
     // UX finishes first (the user expects ux to complete before implementers).
     () => {
-      upsertDispatch('mira', {
+      upsertDispatch('tya', {
         duration: '3:08', tokens: '53K',
         outcome: 'success — IMPLEMENTATION_SPEC produced',
       });

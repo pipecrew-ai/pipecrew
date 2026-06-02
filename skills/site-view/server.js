@@ -671,7 +671,7 @@ const ROLE_PATTERNS = [
   { role: 'foreman', patterns: ['task-planner', 'planner'] },
   { role: 'yara',    patterns: ['openapi-spec-editor', 'spec-editor', 'schema-implementer'] },
   { role: 'shield',  patterns: ['security-consultant', 'security-reviewer', 'security-auditor'] },
-  { role: 'mira',    patterns: ['ux-consultant', 'ux-reviewer', 'ux-designer'] },
+  { role: 'tya',    patterns: ['ux-consultant', 'ux-reviewer', 'ux-designer'] },
   { role: 'bruno',   patterns: ['spring-boot-api-implementer', 'spring-boot-implementer', 'backend-implementer', 'nestjs-implementer', 'fastapi-implementer', 'django-implementer', 'flask-implementer', 'python-worker-implementer'] },
   { role: 'pixel',   patterns: ['react-feature-implementer', 'react-implementer', 'nextjs-implementer', 'frontend-implementer', 'feature-implementer'] },
   { role: 'echo',    patterns: ['mock-endpoint-implementer', 'node-mock-implementer', 'mock-implementer'] },
@@ -721,7 +721,7 @@ const DEFAULT_AGENT_NAME = {
   yara:    'openapi-spec-editor',
   bruno:   'backend-implementer',
   pixel:   'frontend-implementer',
-  mira:    'ux-consultant',
+  tya:    'ux-consultant',
   shield:  'security-consultant',
   echo:    'mock-implementer',
   stratos: 'infra-implementer',
@@ -1071,7 +1071,7 @@ function parseScratchpad(content) {
   // The Phase Status loop above only covers roles listed in PHASE_TO_ROLE
   // (pip, archie, yara, crit, judge). Stage-specific roles — per-service
   // implementers (bruno/pixel/echo/stratos), security-consultant (shield),
-  // ux-consultant (mira), reporter (scribe), context-manager (sage) — only
+  // ux-consultant (tya), reporter (scribe), context-manager (sage) — only
   // appear in characters[] once they have a real Implementation-Tasks row
   // or an Agent-Dispatch-Log entry. That makes the "queue" zone show only
   // crit + judge at Phase 1, which is wrong — the user should see the
@@ -1107,15 +1107,15 @@ function parseScratchpad(content) {
       agent: DEFAULT_AGENT_NAME.bruno, repo: null, status: 'queued',
     });
   }
-  // Frontend implementer — one pixel + one mira if frontend required.
+  // Frontend implementer — one pixel + one tya if frontend required.
   if (flags.frontendRequired) {
     preseed.push({
       id: 'pixel', role: 'pixel', phase: '5',
       agent: DEFAULT_AGENT_NAME.pixel, repo: null, status: 'queued',
     });
     preseed.push({
-      id: 'mira', role: 'mira', phase: '5',
-      agent: DEFAULT_AGENT_NAME.mira, repo: null, status: 'queued',
+      id: 'tya', role: 'tya', phase: '5',
+      agent: DEFAULT_AGENT_NAME.tya, repo: null, status: 'queued',
     });
   }
   // Mock implementer — one echo if mock required.

@@ -137,7 +137,7 @@ One character per pipeline role. The agent's reported name (from scratchpad's Ag
 | Archie | Architect | `solution-architect` |
 | Yara | Spec Editor | `openapi-spec-editor`, `spec-editor` |
 | Shield | Security Consultant | `security-consultant`, `security-reviewer`, `security-auditor` |
-| Mira | UX Consultant | `ux-consultant`, `ux-reviewer`, `ux-designer`, `dal-ux-consultant` |
+| Tya | UX Consultant | `ux-consultant`, `ux-reviewer`, `ux-designer`, `dal-ux-consultant` |
 | Bruno | Backend Implementer | `spring-boot-api-implementer`, `nestjs-implementer`, `fastapi-implementer`, … |
 | Pixel | Frontend Implementer | `react-feature-implementer`, `nextjs-implementer`, `frontend-implementer` |
 | Echo | Mock Implementer | `mock-endpoint-implementer`, `node-mock-implementer` |
@@ -148,7 +148,7 @@ One character per pipeline role. The agent's reported name (from scratchpad's Ag
 | Sage | Context Manager | `context-manager` (Phase 7 history distiller) |
 | Loop | Feedback Learner | `feedback-learner` (Phase 8 — only fires if the user opts in to feedback at Step 8.6; closing the pyramid is keyed on Loop reaching `done`) |
 
-**Note**: `Shield` and `Mira` are listed before the implementers in `ROLE_PATTERNS` so the more-specific `*-consultant` suffix wins over a hypothetical fuzzier substring match. Order matters in `agentToRole()` — first match wins.
+**Note**: `Shield` and `Tya` are listed before the implementers in `ROLE_PATTERNS` so the more-specific `*-consultant` suffix wins over a hypothetical fuzzier substring match. Order matters in `agentToRole()` — first match wins.
 
 **Matching rules** (in `agentToRole()`):
 - Exact match on any pattern → role

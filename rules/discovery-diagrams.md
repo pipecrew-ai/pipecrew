@@ -127,4 +127,4 @@ If all 12 pass, the diagram is ready to return. If you catch one on step 9 but f
 - `classDef` styling: `infra` (blue tones), `frontend` (green tones), `worker` (purple tones), `external` (orange tones), `orphan` (red dashed — for resources that exist but have no current owner).
 - Draw only edges you confirmed in code or configuration. If an integration is ambiguous, leave it out and flag it under `## Open Questions` in platform.md.
 
-Full phase-specific instructions (exact section list, skeletons, post-processing) live in `skills/discover/phases/phase-b-domain-and-architect.md` — the orchestrator inlines the relevant parts at dispatch time.
+Full phase-specific instructions (exact section list, skeletons, post-processing) live in `skills/discover/phases/phase-b2-architect-synthesis.md` — the orchestrator inlines the relevant parts at dispatch time.

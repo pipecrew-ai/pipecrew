@@ -161,7 +161,7 @@ In those cases: target reads, not full repo walks. The discoverer was thorough; 
 
 Read whichever rules file applies at the start of every discovery run before drawing. Do NOT load both — they describe different output formats. Do NOT read either in design mode — it wastes context.
 
-The phase prompt from `skills/discover/phases/phase-b-domain-and-architect.md` (or `skills/draw-diagram/SKILL.md` for standalone diagram refresh) will tell you what to produce in this run, including which diagram style.
+The phase prompt from `skills/discover/phases/phase-b2-architect-synthesis.md` (or `skills/draw-diagram/SKILL.md` for standalone diagram refresh) will tell you what to produce in this run, including which diagram style.
 
 ### What you don't do in B2
 

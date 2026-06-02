@@ -156,7 +156,7 @@ const results = await pipeline(
 await agent(commitPrompt(plan.reuses, results), { phase: 'Commit' })
 ```
 
-~100 lines. Drop-in replacement for the per-repo dispatch section of `phase-b-domain-and-architect.md`. The markdown keeps its CRITICAL/contract framing; the runtime becomes deterministic.
+~100 lines. Drop-in replacement for the per-repo dispatch section of `phase-b2-0-repo-discovery.md`. The markdown keeps its CRITICAL/contract framing; the runtime becomes deterministic.
 
 **Validation criteria** for the pilot:
 - Wall-clock at parity or better than the markdown-driven dispatch

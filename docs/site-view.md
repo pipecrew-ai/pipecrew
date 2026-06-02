@@ -142,7 +142,7 @@ One character per pipeline role. The agent's reported name (from scratchpad's Ag
 | Pixel | Frontend Implementer | `react-feature-implementer`, `nextjs-implementer`, `frontend-implementer` |
 | Echo | Mock Implementer | `mock-endpoint-implementer`, `node-mock-implementer` |
 | Stratos | Infra Implementer | `cdk-stack-implementer`, `cdk-implementer`, `infra-implementer` |
-| Crit | Code Reviewer | `spring-boot-code-reviewer`, `react-code-reviewer`, `nestjs-reviewer`, `nextjs-reviewer`, `fastapi-reviewer`, `flask-reviewer`, `django-reviewer`, `python-worker-reviewer` |
+| Crit | Code Reviewer | `spring-boot-code-reviewer`, `react-code-reviewer`, `nestjs-reviewer`, `nextjs-reviewer`, `fastapi-reviewer`, `flask-reviewer`, `django-reviewer`, `python-worker-reviewer`, `cdk-reviewer`, `terraform-reviewer` |
 | Judge | Assessor | `assessor`, `dal-assessor`, `acme-assessor` |
 | Scribe | Reporter | `reporter` (Phase 7 summary author) |
 | Sage | Context Manager | `context-manager` (Phase 7 history distiller) |

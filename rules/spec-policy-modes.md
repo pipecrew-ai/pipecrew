@@ -6,13 +6,14 @@
 
 ---
 
-## The three modes
+## The four modes
 
 | `spec_policy` | When it applies | Contract source |
 |---|---|---|
 | **`api-first`** | The repo has (or will gain) a hand-edited OpenAPI YAML spec at HEAD. The spec is the lead artifact; the implementation conforms to it | The OpenAPI spec file (`spec_file`) |
 | **`code-first`** | The repo has no spec, or the team's working pattern is to write code first and treat the spec as a build artifact (or skip the spec entirely) | The architect's inline contract block (`inline_contract`) inside the task file's `API_DESIGN` section |
 | **`no-api`** | The repo has no HTTP endpoints — it's an event-driven worker (SQS / SNS / Kinesis / Kafka / Celery / scheduled). HTTP-flavored contract concepts don't apply | The event schema file(s) in a shared schema repo (JSON Schema / Avro / Protobuf), passed as `event_schemas` |
+| **`infra`** | The repo is Infrastructure-as-Code (CDK, Terraform). There's no application-level HTTP or event contract — the resources themselves are the contract | The architect's `INFRASTRUCTURE_IMPACT` block (`infrastructure_impact`) from Phase 2, listing per-repo resources added / modified / removed plus cross-stack references |
 
 **`api-first` is the recommended default.** It is the only mode that produces a hand-maintained spec artifact other services can consume. When an OpenAPI spec exists OR can reasonably be authored, prefer `api-first`. Use `code-first` only when the workspace's existing convention precludes it.
 
@@ -28,6 +29,8 @@
 | Flask | `flask-implementer` | `api-first` \| `code-first` | api-first |
 | Django · DRF | `django-implementer` | `api-first` \| `code-first` | api-first |
 | Python worker | `python-worker-implementer` | `no-api` (always) | n/a |
+| AWS CDK | `cdk-stack-implementer` | `infra` (always) | n/a |
+| Terraform | `terraform-implementer` | `infra` (always) | n/a |
 
 Frontend stacks (React, Next.js) consume the contract but don't produce one — `spec_policy` is not an input on those implementers. Mock servers (`mock-endpoint-implementer`) mirror the API and follow the same spec.
 
@@ -44,6 +47,7 @@ Frontend stacks (React, Next.js) consume the contract but don't produce one — 
 | Repo `role` is `api-service` AND an OpenAPI spec file was found | `api-first` (default for stacks with a spec) |
 | Repo `role` is `api-service` AND no spec file was found | `code-first` |
 | Repo `role` is `worker` (python-worker or other non-HTTP runtime) | `no-api` |
+| Repo `role` is `infrastructure` (CDK or Terraform) | `infra` |
 
 The user reviews and can correct the inferred policy at the `/discover` Step 6 confirmation gate. Once written to `config.json`, the value is binding for every subsequent `/deliver` run.
 
@@ -106,6 +110,16 @@ The dispatch sets `event_schemas` to the list of `(schema_repo_path, schema_file
 - Read each schema file. Walk every typed event model in your code field-by-field against its schema. Drift = Critical.
 - Verify the idempotency guard, partial-failure reporting, DLQ + retry config per `rules/reviewer-common.md` Step 4's `no-api` directive (the reviewer enforces the same set).
 
+### `spec_policy: infra`
+
+The dispatch sets `infrastructure_impact` to the per-repo entry from the architect's `INFRASTRUCTURE_IMPACT` block in Phase 2 (`outputs/phase-2-architecture.md`). The entry lists `resources_added[]`, `resources_modified[]`, `resources_removed[]`, plus `cross_stack_refs[]` mapping exports / imports between stacks. Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § INFRASTRUCTURE_IMPACT.
+
+- Walk every resource declared in the diff against the `resources_added/modified/removed` lists. Resources in code but not in the block = Critical (scope violation OR architect missed a downstream resource — investigate; do not silently add). Resources in the block but not in code = Critical (incomplete implementation).
+- Walk every `cross_stack_refs[]` entry — for CDK, the export side uses `Stack.exportValue` or `CfnOutput`; the import side uses `Fn.importValue`. For Terraform, exports use `output {}` blocks and imports use `terraform_remote_state` or workspace data sources. Missing the producing-side declaration when a sibling stack imports the value = Critical (deploy will fail).
+- Apply security defaults that synth/plan don't enforce: encryption on stateful resources, least-privilege IAM, `removalPolicy: RETAIN` / `lifecycle { prevent_destroy = true }` on stateful resources, mandatory tags, pinned provider/module versions. The reviewer checks each per the stack-specific patterns in `agents/cdk-reviewer.md` / `agents/terraform-reviewer.md` Step 5.
+- The build artifact is the synth / plan output. The implementer runs `cdk synth` / `terraform plan` as part of its verification step; the reviewer reads the synth/plan DIFF alongside the source diff to confirm the declared resources actually compile / plan cleanly.
+- DO NOT flag "missing HTTP status codes", "missing request body validation", or "missing event schema files" — those concepts don't apply to infra.
+
 ---
 
 ## Task-file frontmatter contract (per mode)
@@ -134,6 +148,21 @@ spec_file: null
 inline_contract: null
 event_schemas:
   - { schema_repo_path: ..., schema_file_path: ... }
+
+# infra
+spec_policy: infra
+spec_file: null
+inline_contract: null
+infrastructure_impact:
+  repo: platform-cdk
+  type: cdk
+  resources_added:
+    - { name: BookUploadBucket, kind: s3.Bucket, summary: "..." }
+  resources_modified: []
+  resources_removed: []
+  cross_stack_refs:
+    - { from: BookProcessingQueue, to: publisher-service-stack, purpose: "..." }
+  fr_ids: [FR-1]
 ```
 
 The implementer reads its mode from the frontmatter (per R0 — task file is your source of truth). It does NOT ask the caller to confirm the mode — the architect's choice in Phase 2 is binding for this feature.

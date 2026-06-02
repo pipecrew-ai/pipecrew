@@ -9,12 +9,11 @@ Reviewers **raise issues only** — they do not fix anything. If fixes are neede
 This phase runs for:
 - **Backend + Workers**: one reviewer per affected service whose repo type has a matching reviewer agent (see `TYPE_TO_AGENT` table in `dispatch-rules.md`). The reviewer prompt is shaped by the service's `spec_policy` (see Step 1).
 - **Frontend**: one reviewer for the frontend worktree if Phase 5b ran. Type-aware via `TYPE_TO_AGENT` (`react` → `react-code-reviewer`, `nextjs` → `nextjs-reviewer`) — resolved from the frontend repo's `type` in config.
+- **Infrastructure**: one reviewer per affected infra repo. Type-aware via `TYPE_TO_AGENT` (`cdk` → `cdk-reviewer`, `terraform` → `terraform-reviewer`). The reviewer's contract is the per-repo entry in the architect's `INFRASTRUCTURE_IMPACT` block (Phase 2); `spec_policy: infra`. The implementer's `cdk synth` / `terraform plan` output is consumed as a verification artifact alongside the source diff. The reviewer NEVER runs `terraform apply` or `cdk deploy` — it produces findings only.
 
 This phase is SKIPPED for:
 - **Mock server** — mocks are transient and reviewed implicitly by the frontend tests consuming them
-- **Infrastructure — CDK**: verified by `cdk synth` and by Phase 6 cross-stack reference checks
-- **Infrastructure — Terraform**: the `terraform plan` output produced by `terraform-implementer` is itself the review artifact; a human reviews it before any `terraform apply`
-- **Services with no matching reviewer agent**: only fires for `other` / fallback-resolved types whose generated implementer has no paired reviewer. All plugin-shipped stack implementers (spring-boot, fastapi, flask, django, nestjs, python-worker, react, nextjs) now have paired reviewers. Log the skip with reason in the scratchpad: `"Phase 5.5 skipped {svc} — no reviewer agent for type {type}"` so the reporter can surface the gap at Phase 7.
+- **Services with no matching reviewer agent**: only fires for `other` / fallback-resolved types whose generated implementer has no paired reviewer. All plugin-shipped stack implementers (spring-boot, fastapi, flask, django, nestjs, python-worker, react, nextjs, cdk, terraform) now have paired reviewers. Log the skip with reason in the scratchpad: `"Phase 5.5 skipped {svc} — no reviewer agent for type {type}"` so the reporter can surface the gap at Phase 7.
 
 **Precondition**: Before dispatching reviewers, confirm each worktree path recorded in the scratchpad's Implementation Tasks table still exists (`git -C {worktree_path} status`). If a worktree is missing, log it as a skip and do not dispatch a reviewer for that repo — a missing worktree means Phase 5 failed for that repo, which Phase 6 will flag as a blocker.
 

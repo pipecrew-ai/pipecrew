@@ -1,6 +1,6 @@
 # Site-view notifications — implementation history
 
-Chronological log of polish rounds that built up the site-view notification subsystem. Originally part of `rules/site-view-notifications.md`; split off during the rules/ vs design/ separation because polish rounds are history, not rules. The **current** rules (banners, hook config, gotchas) live in [`rules/site-view-notifications.md`](../../rules/site-view-notifications.md).
+Chronological log of polish rounds that built up the site-view notification subsystem. Originally part of `rules/site-view-notifications.md`; split off when the file's two purposes were separated AND the rules half was relocated to `docs/` (no skill or agent actually loads it at runtime — it's documentation, not a rule). The **current architecture** lives in [`../site-view-notifications.md`](../site-view-notifications.md).
 
 Each "Polish round N" section below is a self-contained record of what changed, why, and the files touched. Newest at the bottom; read top-to-bottom to retrace how the UI evolved.
 

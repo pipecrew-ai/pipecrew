@@ -27,9 +27,10 @@ When Claude is executing a skill and hits a scenario the shared doc covers (inte
 | `implementer-common.md` | Every per-stack implementer agent (R1-R10) | The rules every implementer follows regardless of stack: no inventing conventions, no overwriting human files, etc. |
 | `discovery-diagrams.md` | `/discover` Phase B2 architect | How to author the discovery (C4 context + component) diagrams |
 | `c4-diagrams.md` | `/discover` Phase B2 architect, possibly others | C4 syntax and convention rules |
-| `site-view-notifications.md` | Skills emitting UI events | What events trigger which site-view UI states |
 
 `docs/PIPECREW-DISCOVERY.md` is the **only** human-facing doc in this directory — it's the high-level pipeline overview.
+
+**Removed from this catalog**: `site-view-notifications.md` was previously listed here, claimed to be loaded by "skills emitting UI events." Grep proved otherwise — no skill or agent cites it. It is documentation of the site-view notification subsystem, not a rule. Relocated to `docs/site-view-notifications.md` and `docs/design/site-view-notifications-history.md`.
 
 ---
 

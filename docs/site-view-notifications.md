@@ -2,7 +2,9 @@
 
 This document describes how every "paused, waiting for user" state — whether from the pipeline's own gates or Claude Code's own tool-approval prompt — is surfaced in the site-view UI with a distinct banner, a persistent audible peep, and a flashing tab title.
 
-> **Scope of this file**: the current architecture (banners, hook config, permissions, gotchas). The iterative polish-round log that built up to this state is in [`docs/design/site-view-notifications-history.md`](../docs/design/site-view-notifications-history.md).
+> **Scope of this file**: the current architecture (banners, hook config, permissions, gotchas). The iterative polish-round log that built up to this state is in [`design/site-view-notifications-history.md`](./design/site-view-notifications-history.md).
+>
+> **Why it's in `docs/` and not `rules/`**: no skill or agent loads this file at runtime — `grep -r site-view-notifications agents/ skills/ scripts/` returns zero hits. It is documentation of how `skills/site-view/server.js` + `scripts/notify-hook.js` are wired, not a rule the orchestrator enforces.
 
 ## Scope
 

@@ -86,7 +86,7 @@ if (!config.repos || typeof config.repos !== 'object') {
 }
 
 // ── services block ────────────────────────────────────────
-const VALID_SPEC_POLICIES = ['api-first', 'code-first', 'no-api'];
+const VALID_SPEC_POLICIES = ['api-first', 'code-first', 'no-api', 'infra'];
 
 if (!config.services || typeof config.services !== 'object') {
   err('Missing top-level "services" block');
@@ -113,6 +113,9 @@ if (!config.services || typeof config.services !== 'object') {
     }
     if (effectivePolicy === 'no-api' && specFile) {
       warn(`services.${name} has spec_policy "no-api" but declares spec_file "${specFile}" — no-api services should not have an OpenAPI spec`);
+    }
+    if (effectivePolicy === 'infra' && specFile) {
+      warn(`services.${name} has spec_policy "infra" but declares spec_file "${specFile}" — infra services have no OpenAPI spec; the contract is the architect's INFRASTRUCTURE_IMPACT block`);
     }
 
     // Check spec_file exists if repo path is known

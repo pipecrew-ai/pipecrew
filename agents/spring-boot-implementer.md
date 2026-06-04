@@ -1,5 +1,5 @@
 ---
-name: spring-boot-api-implementer
+name: spring-boot-implementer
 description: "Implements REST endpoints, services, repositories, DB migrations, and tests in a Spring Boot / Java 21 service. Supports both api-first (recommended — OpenAPI spec present) and code-first (no spec — architect inlines the endpoint contract) modes. Reads the target repo's CLAUDE.md (and any context files it points to) for conventions, reads the spec or inline contract and existing code for patterns, then implements the feature end-to-end.\n\nInputs the caller must provide:\n- repo_path: absolute path to the target repo worktree\n- spec_policy: 'api-first' | 'code-first'\n- spec_file: relative path to the OpenAPI spec from repo_path (only when spec_policy=api-first)\n- inline_contract: for code-first, the endpoint contract (method, path, request/response shape, status codes) extracted from the architect's API_DESIGN\n- feature_summary: one paragraph describing the feature\n- requirements: functional requirements (FR-X) and edge cases (EC-X) that must be enforced\n- data_model_changes: any DB migrations needed\n- endpoints_to_implement: list of endpoint paths + methods the agent must implement\n- fix_list (optional): if the call is a fix round, a list of file:line targets with the exact change needed"
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet

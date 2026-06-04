@@ -62,8 +62,8 @@ Live dashboard at `http://localhost:5173` shows the crew in real time.
 
 | Stack | Implementer | Reviewer | spec_policy |
 |-------|------------|---------|-------------|
-| Spring Boot | `spring-boot-api-implementer` | `spring-boot-code-reviewer` | `api-first` |
-| React | `react-feature-implementer` | `react-code-reviewer` | — (frontend) |
+| Spring Boot | `spring-boot-implementer` | `spring-boot-reviewer` | `api-first` |
+| React | `react-implementer` | `react-reviewer` | — (frontend) |
 | Next.js | `nextjs-implementer` | `nextjs-reviewer` | — (frontend) |
 | NestJS | `nestjs-implementer` | `nestjs-reviewer` | `api-first` |
 | FastAPI | `fastapi-implementer` | — | `api-first` |
@@ -72,7 +72,7 @@ Live dashboard at `http://localhost:5173` shows the crew in real time.
 | Python worker | `python-worker-implementer` | — | `no-api` (event-driven) |
 | AWS CDK | `cdk-stack-implementer` | — (verified by `cdk synth`) | — (infra) |
 | Terraform | `terraform-implementer` | — (plan is the review artifact) | — (infra) |
-| Node mock | `mock-endpoint-implementer` | — (reviewed via frontend tests) | — (mock) |
+| Node mock | `mock-implementer` | — (reviewed via frontend tests) | — (mock) |
 | Schemas | `schema-implementer` | — | — (contract repos, Phase 3a) |
 
 ## Skills
@@ -175,7 +175,7 @@ The generated agent ships with the same structure as plugin agents (Invariants /
 
 The pipeline dispatches two kinds of agents via the `Agent` tool's `subagent_type`:
 
-**Plugin agents** live at `{plugin_dir}/agents/` and ship with the plugin. They are framework-agnostic and loaded into Claude Code at install time. Examples: `pipecrew:spring-boot-api-implementer`, `pipecrew:react-feature-implementer`, `pipecrew:openapi-spec-editor`. Pipeline phases that dispatch these reference them by their plugin-qualified name.
+**Plugin agents** live at `{plugin_dir}/agents/` and ship with the plugin. They are framework-agnostic and loaded into Claude Code at install time. Examples: `pipecrew:spring-boot-implementer`, `pipecrew:react-implementer`, `pipecrew:openapi-spec-editor`. Pipeline phases that dispatch these reference them by their plugin-qualified name.
 
 **Workspace agents** are generated per-workspace by `/discover` from templates in `{plugin_dir}/templates/agents/`. Three roles are produced: `product-owner`, `assessor`, `ux-consultant`. The filled files live at two paths:
 

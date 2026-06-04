@@ -48,12 +48,12 @@ Pull the structured services list from the architect's output (do NOT LLM-parse 
 node {plugin_dir}/scripts/extract-block.js outputs/phase-2-architecture.md AFFECTED_SERVICES
 ```
 
-For each entry in `services[]`, pick the implementer dynamically from the repo's `type` via the `TYPE_TO_AGENT` mapping in `phases/dispatch-rules.md`. Do **NOT** hardcode `spring-boot-api-implementer` — services may be any of spring-boot / fastapi / nestjs / flask / django / python-worker (or future additions).
+For each entry in `services[]`, pick the implementer dynamically from the repo's `type` via the `TYPE_TO_AGENT` mapping in `phases/dispatch-rules.md`. Do **NOT** hardcode `spring-boot-implementer` — services may be any of spring-boot / fastapi / nestjs / flask / django / python-worker (or future additions).
 
 Lookup rule, per service:
 1. Resolve `config.repos[config.services[svc].repo].type`
 2. Map to `subagent_type` via the dispatch-rules table:
-   - `spring-boot` → `spring-boot-api-implementer`
+   - `spring-boot` → `spring-boot-implementer`
    - `fastapi` → `fastapi-implementer`
    - `nestjs` → `nestjs-implementer`
    - `flask` → `flask-implementer`
@@ -150,7 +150,7 @@ Now: produce UX recommendations for the feature in `{frontend.path}` and emit th
 Then use the lean task-ID dispatch template from Phase 4.5:
 
 **Tool**: `Agent`
-**subagent_type**: looked up by the frontend repo's `type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md` (`react` → `react-feature-implementer`, `nextjs` → `nextjs-implementer`). Resolve via `config.repos` where `role === "frontend"`. Do **NOT** hardcode `react-feature-implementer` — workspaces with a Next.js frontend must dispatch `nextjs-implementer`.
+**subagent_type**: looked up by the frontend repo's `type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md` (`react` → `react-implementer`, `nextjs` → `nextjs-implementer`). Resolve via `config.repos` where `role === "frontend"`. Do **NOT** hardcode `react-implementer` — workspaces with a Next.js frontend must dispatch `nextjs-implementer`.
 **description**: `"Frontend implement — {feature-slug}"`
 **prompt**: the canonical task-ID dispatch template (see Phase 4.5) with the frontend task file path and worktree path substituted. Do **NOT** inline requirements, frontend architecture, endpoints, or the IMPLEMENTATION_SPEC — all of it is in the task file the agent will read first.
 
@@ -163,7 +163,7 @@ Dispatch in the same message as Phases 5a, 5d, and the UX half of 5b.
 **Use the lean task-ID dispatch template from Phase 4.5.** The mock task file carries the endpoint list, response shapes (from API_DESIGN), worktree path, seed data hints, and the spec-over-frontend rule. The orchestrator does not forward any of this in the prompt.
 
 **Tool**: `Agent`
-**subagent_type**: `mock-endpoint-implementer`
+**subagent_type**: `mock-implementer`
 **description**: `"Mock endpoints — {feature-slug}"`
 **prompt**: the canonical task-ID dispatch template (see Phase 4.5) with the mock task file path and worktree path substituted.
 

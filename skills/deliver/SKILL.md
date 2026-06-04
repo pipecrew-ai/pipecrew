@@ -182,9 +182,9 @@ Phase 3a: Contract Edit (schema-implementer) ────── SHARED SCHEMAS  
 Phase 3b: Spec Edit (openapi-spec-editor) ────────── API CONTRACT             ┴─<- single user gate (both diffs)
 Phase 4: Sync Specs ────────────────────────────── opt-in at Phase 3 gate (default OFF)
 Phase 4.5: Implementation Plan + Context Budget ─── full task list          <- user gate
-Phase 5: Parallel ──────┬── 5a: Backend (spring-boot-api-implementer — one per service)
-  (Agent tool dispatch) ├── 5b: Frontend (ux-consultant → react-feature-implementer)
-                        ├── 5c: Mock Server (mock-endpoint-implementer)
+Phase 5: Parallel ──────┬── 5a: Backend (spring-boot-implementer — one per service)
+  (Agent tool dispatch) ├── 5b: Frontend (ux-consultant → react-implementer)
+                        ├── 5c: Mock Server (mock-implementer)
                         └── 5d: Infrastructure (cdk-stack-implementer, if needed)
 Phase 5.5: Per-repo code review ─┬── Backend: {type}-reviewer (once per service)
   (parallel, skips mock+infra)   └── Frontend: {type}-reviewer

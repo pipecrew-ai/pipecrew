@@ -138,11 +138,11 @@ One character per pipeline role. The agent's reported name (from scratchpad's Ag
 | Yara | Spec Editor | `openapi-spec-editor`, `spec-editor` |
 | Shield | Security Consultant | `security-consultant`, `security-reviewer`, `security-auditor` |
 | Tya | UX Consultant | `ux-consultant`, `ux-reviewer`, `ux-designer`, `dal-ux-consultant` |
-| Bruno | Backend Implementer | `spring-boot-api-implementer`, `nestjs-implementer`, `fastapi-implementer`, … |
-| Pixel | Frontend Implementer | `react-feature-implementer`, `nextjs-implementer`, `frontend-implementer` |
-| Echo | Mock Implementer | `mock-endpoint-implementer`, `node-mock-implementer` |
+| Bruno | Backend Implementer | `spring-boot-implementer`, `nestjs-implementer`, `fastapi-implementer`, … |
+| Pixel | Frontend Implementer | `react-implementer`, `nextjs-implementer`, `frontend-implementer` |
+| Echo | Mock Implementer | `mock-implementer`, `node-mock-implementer` |
 | Stratos | Infra Implementer | `cdk-stack-implementer`, `cdk-implementer`, `infra-implementer` |
-| Crit | Code Reviewer | `spring-boot-code-reviewer`, `react-code-reviewer`, `nestjs-reviewer`, `nextjs-reviewer`, `fastapi-reviewer`, `flask-reviewer`, `django-reviewer`, `python-worker-reviewer`, `cdk-reviewer`, `terraform-reviewer` |
+| Crit | Code Reviewer | `spring-boot-reviewer`, `react-reviewer`, `nestjs-reviewer`, `nextjs-reviewer`, `fastapi-reviewer`, `flask-reviewer`, `django-reviewer`, `python-worker-reviewer`, `cdk-reviewer`, `terraform-reviewer` |
 | Judge | Assessor | `assessor`, `dal-assessor`, `acme-assessor` |
 | Scribe | Reporter | `reporter` (Phase 7 summary author) |
 | Sage | Context Manager | `context-manager` (Phase 7 history distiller) |
@@ -153,7 +153,7 @@ One character per pipeline role. The agent's reported name (from scratchpad's Ag
 **Matching rules** (in `agentToRole()`):
 - Exact match on any pattern → role
 - Ends with `-{pattern}` → role (so workspace-published agents like `dal-assessor` resolve)
-- Ends with `:{pattern}` → role (so plugin-qualified names like `pipecrew:spring-boot-api-implementer` resolve)
+- Ends with `:{pattern}` → role (so plugin-qualified names like `pipecrew:spring-boot-implementer` resolve)
 - Substring match → role (fallback)
 
 Characters whose status is `skipped` are omitted from the UI. When multiple characters share a role (e.g., two backend services → two Bruno cards), IDs are suffixed: `bruno`, `bruno-2`, `bruno-3`, …

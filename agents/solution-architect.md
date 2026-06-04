@@ -381,7 +381,7 @@ Split by service. For each affected service, look up its `spec_policy` in the wo
 <!-- END API_DESIGN -->
 
 <!-- BEGIN FRONTEND_ARCHITECTURE -->
-**Read `{plugin_dir}/templates/blocks/frontend-architecture.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream consumers (Phase 5b `react-feature-implementer` / `nextjs-implementer` — via the task-planner's Architecture context) extract via `node {plugin_dir}/scripts/extract-block.js {this-file} FRONTEND_ARCHITECTURE` (or read `outputs/blocks/frontend-architecture.json` after `split-design.js` runs). Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § FRONTEND_ARCHITECTURE.
+**Read `{plugin_dir}/templates/blocks/frontend-architecture.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream consumers (Phase 5b `react-implementer` / `nextjs-implementer` — via the task-planner's Architecture context) extract via `node {plugin_dir}/scripts/extract-block.js {this-file} FRONTEND_ARCHITECTURE` (or read `outputs/blocks/frontend-architecture.json` after `split-design.js` runs). Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § FRONTEND_ARCHITECTURE.
 
 ```json
 { ... matches templates/blocks/frontend-architecture.example.json ... }

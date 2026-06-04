@@ -67,7 +67,7 @@ const patternSet = new Set(allPatterns);
 // Replicate server.js agentToRole resolution. server.js matches:
 //   - exact name
 //   - endsWith('-' + pattern)  — for `dal-product-owner` style
-//   - endsWith(':' + pattern)  — for `pipecrew:spring-boot-api-implementer` style
+//   - endsWith(':' + pattern)  — for `pipecrew:spring-boot-implementer` style
 // For the static eval, the agent's base name IS its filename (no slug prefix
 // at rest), so an exact-match-or-substring check is enough.
 function hasRole(agentName) {

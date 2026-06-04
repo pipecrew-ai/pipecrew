@@ -1,5 +1,5 @@
 ---
-name: mock-endpoint-implementer
+name: mock-implementer
 description: "Adds mock HTTP endpoints to a Node.js / Express mock server that mirrors one or more backend services for local frontend development. Reads the target repo's CLAUDE.md (and any context files it points to) plus the existing server files and OpenAPI specs, then adds route handlers with realistic mock data that matches the spec shapes exactly. Use for any spec-driven Node.js mock-server project.\n\nInputs the caller must provide:\n- repo_path: absolute path to the mock server repo worktree\n- spec_files: which OpenAPI specs the new endpoints come from\n- endpoints_to_mock: list of endpoint paths + methods + the spec schemas they return\n- seed_data_hints: notes on realistic data (e.g., locale, realistic identifiers, sample cases to cover)\n- fix_list (optional): file:line targets with exact changes"
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet

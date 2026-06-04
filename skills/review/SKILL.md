@@ -47,8 +47,8 @@ Use the TYPE_TO_AGENT mapping:
 
 | `type` | Reviewer agent |
 |--------|---------------|
-| `spring-boot` | `spring-boot-code-reviewer` |
-| `react` | `react-code-reviewer` |
+| `spring-boot` | `spring-boot-reviewer` |
+| `react` | `react-reviewer` |
 | `nextjs` | `nextjs-reviewer` |
 | `nestjs` | `nestjs-reviewer` |
 | `node-mock` | *(skip — mock not reviewed)* |

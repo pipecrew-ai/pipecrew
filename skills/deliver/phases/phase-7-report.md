@@ -109,9 +109,9 @@ Compiled from each task file's cumulative frontmatter metrics. Lists every task 
 
 | Task ID | Repo | Phase | Status | Invocations | Duration | Tokens | Last Agent |
 |---------|------|-------|--------|-------------|----------|--------|------------|
-| {id} | {repo} | 4.5 | done | 1 | {Xm Xs} | {N}K | spring-boot-api-implementer |
-| {id} | {repo} | 4.5 | done | 2 | {Xm Xs} | {N}K | react-feature-implementer (fix round) |
-| {id} | {repo} | 5.5 | done | 1 | {Xm Xs} | {N}K | spring-boot-code-reviewer |
+| {id} | {repo} | 4.5 | done | 1 | {Xm Xs} | {N}K | spring-boot-implementer |
+| {id} | {repo} | 4.5 | done | 2 | {Xm Xs} | {N}K | react-implementer (fix round) |
+| {id} | {repo} | 5.5 | done | 1 | {Xm Xs} | {N}K | spring-boot-reviewer |
 | ... | ... | ... | ... | ... | ... | ... | ... |
 | **Total** | — | — | — | **{N}** | **{Xm Xs}** | **{N}K** | — |
 
@@ -125,21 +125,21 @@ Compiled from the Agent Dispatch Log. Shows how much each subagent type spent in
 | solution-architect | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
 | openapi-spec-editor | {N} | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
 | ux-consultant | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
-| spring-boot-api-implementer | {N} | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
-| react-feature-implementer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
-| mock-endpoint-implementer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
+| spring-boot-implementer | {N} | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
+| react-implementer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
+| mock-implementer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
 | cdk-stack-implementer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
-| spring-boot-code-reviewer | {N} | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
-| react-code-reviewer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
+| spring-boot-reviewer | {N} | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
+| react-reviewer | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
 | dal-assessor | 1 | {Xm Xs} | {N}K | {Xm Xs} | {N}K |
 | **Total** | **{N}** | **{Xm Xs}** | **{N}K** | — | — |
 
 **Conditional rows:**
 - **`--skip-spec-edit`** was passed → omit the `openapi-spec-editor` row entirely. The spec editor was never dispatched this run, so a "0 dispatches" row is misleading clutter.
-- **`--no-review`** was passed → omit the `spring-boot-code-reviewer` and `react-code-reviewer` rows.
-- **`--no-mock`** was passed → omit the `mock-endpoint-implementer` row.
-- **`--backend-only`** → omit frontend + mock + ux-consultant + react-code-reviewer rows.
-- **`--frontend-only`** → omit backend + mock + infra + spring-boot-code-reviewer rows.
+- **`--no-review`** was passed → omit the `spring-boot-reviewer` and `react-reviewer` rows.
+- **`--no-mock`** was passed → omit the `mock-implementer` row.
+- **`--backend-only`** → omit frontend + mock + ux-consultant + react-reviewer rows.
+- **`--frontend-only`** → omit backend + mock + infra + spring-boot-reviewer rows.
 
 ---
 

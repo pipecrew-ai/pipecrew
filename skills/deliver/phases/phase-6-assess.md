@@ -77,7 +77,7 @@ Wait for the assessor to complete and present the report to the user.
 
 **If the assessor found cross-repo issues not caught by Phase 5.5**, ask: "Should I dispatch fix-round agents to address these?"
 
-If yes, dispatch fixes via the **same `Agent` tool pattern as Phase 5** — one `Agent` call per repo that has fixes, all in a single assistant message so they run in parallel. Use the same generic implementer agents (`spring-boot-api-implementer`, `react-feature-implementer`, `cdk-stack-implementer`, `mock-endpoint-implementer`). **Include the requirement reference (FR-X / EC-X) from the assessor's fix assignment** in each fix prompt so the agent can map fixes back to requirements.
+If yes, dispatch fixes via the **same `Agent` tool pattern as Phase 5** — one `Agent` call per repo that has fixes, all in a single assistant message so they run in parallel. Use the same generic implementer agents (`spring-boot-implementer`, `react-implementer`, `cdk-stack-implementer`, `mock-implementer`). **Include the requirement reference (FR-X / EC-X) from the assessor's fix assignment** in each fix prompt so the agent can map fixes back to requirements.
 
 Fixes must be applied to the existing feature worktrees from Phase 5 — never on main. If a worktree is missing (cleanup happened), recreate it with `Bash`: `cd {repo_path} && git worktree add ../{repo-name}-{feature-slug} feature/{feature-slug}`. If `--no-worktrees` was passed, apply fixes on the current branch of each repo.
 

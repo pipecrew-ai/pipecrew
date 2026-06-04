@@ -59,7 +59,7 @@ Read `agent_end` events for per-agent data and `orch_checkpoint` events for orch
 |---|---|---|---|---|---|---|
 | **Orchestrator** | — | (sum of orch_since_last.input_tokens) | (sum) | (sum) | (sum) | …% |
 | solution-architect | 1 | … | … | … | … | …% |
-| spring-boot-api-implementer ×{N} | {N} | … | … | … | … | …% |
+| spring-boot-implementer ×{N} | {N} | … | … | … | … | …% |
 | … | … | … | … | … | … | … |
 | **Total** | **{N}** | **…** | **…** | **…** | **…** | 100% |
 
@@ -101,7 +101,7 @@ If fewer than 2 completed sibling runs exist, write "First run — no trend data
 This is your unique value as an agent (vs. a template). Identify:
 
 - **Anomalies**: "Phase 5a took 8m vs. typical 4m — the backend implementer likely looped on test failures. Check the Work Log."
-- **Expensive operations**: "The react-feature-implementer used 84K tokens — 35% of the total. The task file may be too large."
+- **Expensive operations**: "The react-implementer used 84K tokens — 35% of the total. The task file may be too large."
 - **Cache efficiency**: "Cache read was 72% of input — good prompt cache hit rate."
 - **Slow bash calls**: surface up to 3 `bash_slow` events from the checkpoints log, noting phase and duration.
 - **Retries**: count `retry` events. If >0, note which agents retried and whether they eventually succeeded (`status: ok`) or deferred.

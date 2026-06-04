@@ -658,7 +658,7 @@ function readHookErrors() {
 }
 
 // ─── Agent name → character role ─────────────────────────────
-// Matches both plugin-qualified names (pipecrew:spring-boot-api-implementer)
+// Matches both plugin-qualified names (pipecrew:spring-boot-implementer)
 // and workspace-published names (dal-product-owner, dal-assessor, dal-ux-consultant).
 // Matching strategy: substring / suffix match on the role name.
 // Order matters: more-specific patterns must come before generic ones that
@@ -672,11 +672,11 @@ const ROLE_PATTERNS = [
   { role: 'yara',    patterns: ['openapi-spec-editor', 'spec-editor', 'schema-implementer'] },
   { role: 'shield',  patterns: ['security-consultant', 'security-reviewer', 'security-auditor'] },
   { role: 'tya',    patterns: ['ux-consultant', 'ux-reviewer', 'ux-designer'] },
-  { role: 'bruno',   patterns: ['spring-boot-api-implementer', 'spring-boot-implementer', 'backend-implementer', 'nestjs-implementer', 'fastapi-implementer', 'django-implementer', 'flask-implementer', 'python-worker-implementer'] },
-  { role: 'pixel',   patterns: ['react-feature-implementer', 'react-implementer', 'nextjs-implementer', 'frontend-implementer', 'feature-implementer'] },
-  { role: 'echo',    patterns: ['mock-endpoint-implementer', 'node-mock-implementer', 'mock-implementer'] },
+  { role: 'bruno',   patterns: ['spring-boot-implementer', 'backend-implementer', 'nestjs-implementer', 'fastapi-implementer', 'django-implementer', 'flask-implementer', 'python-worker-implementer', 'spring-boot-api-implementer'] },
+  { role: 'pixel',   patterns: ['react-implementer', 'nextjs-implementer', 'frontend-implementer', 'feature-implementer', 'react-feature-implementer'] },
+  { role: 'echo',    patterns: ['mock-implementer', 'node-mock-implementer', 'mock-endpoint-implementer'] },
   { role: 'stratos', patterns: ['cdk-stack-implementer', 'cdk-implementer', 'infra-implementer', 'ops-implementer', 'terraform-implementer'] },
-  { role: 'crit',    patterns: ['spring-boot-code-reviewer', 'react-code-reviewer', 'nestjs-reviewer', 'nextjs-reviewer', 'fastapi-reviewer', 'flask-reviewer', 'django-reviewer', 'python-worker-reviewer', 'cdk-reviewer', 'terraform-reviewer', 'code-reviewer', 'reviewer'] },
+  { role: 'crit',    patterns: ['spring-boot-reviewer', 'react-reviewer', 'nestjs-reviewer', 'nextjs-reviewer', 'fastapi-reviewer', 'flask-reviewer', 'django-reviewer', 'python-worker-reviewer', 'cdk-reviewer', 'terraform-reviewer', 'spring-boot-code-reviewer', 'react-code-reviewer', 'code-reviewer', 'reviewer'] },
   { role: 'judge',   patterns: ['assessor'] },
   { role: 'scribe',  patterns: ['reporter'] },
   // Loop must come BEFORE sage — the literal `feedback-learner` is more
@@ -694,7 +694,7 @@ function agentToRole(agentName) {
     for (const p of patterns) {
       if (name === p) return role;
       if (name.endsWith('-' + p)) return role; // dal-assessor, dal-product-owner
-      if (name.endsWith(':' + p)) return role; // pipecrew:spring-boot-api-implementer
+      if (name.endsWith(':' + p)) return role; // pipecrew:spring-boot-implementer
       if (name.includes(p)) return role;
     }
   }
@@ -891,7 +891,7 @@ function mapPhaseToLabel(phase) {
 
 // ─── Dispatch-log Agent column → repo token (Polish round 8 follow-up) ──
 // The Agent column carries a parenthesised qualifier that is usually the
-// short repo name, e.g. "spring-boot-api-implementer (backoffice-service
+// short repo name, e.g. "spring-boot-implementer (backoffice-service
 // PRIMARY)" or "cdk-stack-implementer (ops-platform)". Sometimes it's a
 // round-descriptor instead ("dal-product-owner (Q&A round)") — in that
 // case callers fall back to role-only matching. We return the first

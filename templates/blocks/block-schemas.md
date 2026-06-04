@@ -168,7 +168,7 @@ If no infra repo is affected, the producer emits `{"infra_changes": []}` rather 
 ### `FRONTEND_ARCHITECTURE`
 
 **Producer**: `solution-architect` (Phase 2 design output)
-**Consumers**: Phase 4.5 `task-planner` (filters `components[]` / `routes[]` / `api_integration[]` per sub-task when building each frontend task file's Architecture context), Phase 5b `react-feature-implementer` / `nextjs-implementer` (reads via the task file), Phase 5b `{slug}-ux-consultant` (sees the structured component tree at dispatch time).
+**Consumers**: Phase 4.5 `task-planner` (filters `components[]` / `routes[]` / `api_integration[]` per sub-task when building each frontend task file's Architecture context), Phase 5b `react-implementer` / `nextjs-implementer` (reads via the task file), Phase 5b `{slug}-ux-consultant` (sees the structured component tree at dispatch time).
 **File**: `{run_dir}/outputs/phase-2-architecture.md` (and `{run_dir}/outputs/blocks/frontend-architecture.json` after `split-design.js`).
 **Canonical example**: [`templates/blocks/frontend-architecture.example.json`](./frontend-architecture.example.json) — single source of truth for the structure. Update that file when the schema changes; this doc only carries the field reference table below.
 

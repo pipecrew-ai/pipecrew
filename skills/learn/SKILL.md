@@ -408,8 +408,8 @@ Append to `{workspace_root}/{slug}/history/learn-log.md` (create if missing). Fo
 
 | Repo | Branch | Implementer | Duration | Tokens | Applied | Skipped | Tests | Lint |
 |---|---|---|---|---|---|---|---|---|
-| abvi-pms-frontend | feature/contract-view-and-list | react-feature-implementer | 4m 12s | 38K | #1, #3, #4, #5 | #2 (covered by #1) | pass | pass |
-| abvi-publisher-service | feature/contract-view-and-list | spring-boot-api-implementer | 2m 04s | 19K | — | (no bundle — no findings for this repo) | — | — |
+| abvi-pms-frontend | feature/contract-view-and-list | react-implementer | 4m 12s | 38K | #1, #3, #4, #5 | #2 (covered by #1) | pass | pass |
+| abvi-publisher-service | feature/contract-view-and-list | spring-boot-implementer | 2m 04s | 19K | — | (no bundle — no findings for this repo) | — | — |
 
 For each row that has a `Notes for the user` line in the agent output, also include it as a bullet underneath the table.
 
@@ -627,7 +627,7 @@ If `--run` was not supplied (PR / branch / free-form modes), this step is a no-o
 Every `/pipecrew:learn` run emits the same event schema as `/deliver` / `/discover` runs (see `{plugin_dir}/rules/observability.md`):
 
 - `run_start` — with `skill: "learn"`, source mode, identifier.
-- `agent_end` — after the learner returns, with token usage. Also emitted after each fix-round implementer returns (one per dispatched bundle), with `agent_type` set to the resolved implementer (e.g., `react-feature-implementer`) and `phase: "6.5"`.
+- `agent_end` — after the learner returns, with token usage. Also emitted after each fix-round implementer returns (one per dispatched bundle), with `agent_type` set to the resolved implementer (e.g., `react-implementer`) and `phase: "6.5"`.
 - `phase_end` — one per pipeline step above. Step 6.5 emits its own `phase_end` only when at least one bundle was dispatched; otherwise a skip-reason is recorded as `phase_end` with `status: "skipped"` and `reason` set to one of `no-fix-flag` / `dry-run` / `no-applied-findings` / `all-plugin-level` / `user-declined`.
 - `run_end` — with applied/rejected/flagged counts AND fix-round counts (`fix_repos`, `fix_findings_applied`, `fix_findings_skipped`).
 

@@ -10,15 +10,15 @@ All implementer work is launched via the `Agent` tool in the current session. **
 
 | Config `type` | Implementer agent | Reviewer agent | `spec_policy` support |
 |--------------|-------------------|----------------|----|
-| `spring-boot` | `spring-boot-api-implementer` | `spring-boot-code-reviewer` | `api-first` (recommended) \| `code-first` |
+| `spring-boot` | `spring-boot-implementer` | `spring-boot-reviewer` | `api-first` (recommended) \| `code-first` |
 | `fastapi` | `fastapi-implementer` | `fastapi-reviewer` | `api-first` (recommended) \| `code-first` |
 | `flask` | `flask-implementer` | `flask-reviewer` | `api-first` (recommended) \| `code-first` |
 | `django` | `django-implementer` | `django-reviewer` | `api-first` (recommended) \| `code-first` |
 | `nestjs` | `nestjs-implementer` | `nestjs-reviewer` | `api-first` (recommended) \| `code-first` |
 | `python-worker` | `python-worker-implementer` | `python-worker-reviewer` | `no-api` (always) |
-| `react` | `react-feature-implementer` | `react-code-reviewer` | consumer (reads spec / inline contract) |
+| `react` | `react-implementer` | `react-reviewer` | consumer (reads spec / inline contract) |
 | `nextjs` | `nextjs-implementer` | `nextjs-reviewer` | consumer (reads spec / inline contract) |
-| `node-mock` | `mock-endpoint-implementer` | *(skip — mock not reviewed)* | consumer (mirrors spec) |
+| `node-mock` | `mock-implementer` | *(skip — mock not reviewed)* | consumer (mirrors spec) |
 | `cdk` | `cdk-stack-implementer` | `cdk-reviewer` | `infra` (always) |
 | `terraform` | `terraform-implementer` | `terraform-reviewer` | `infra` (always) |
 | `schemas` | `schema-implementer` (dispatched in Phase 3a, not Phase 5) | — | n/a (event schemas, not OpenAPI) |

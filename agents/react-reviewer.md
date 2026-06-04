@@ -1,5 +1,5 @@
 ---
-name: react-code-reviewer
+name: react-reviewer
 description: "Reviews a React + TypeScript frontend implementation against requirements, OpenAPI spec compliance, and React/TypeScript craft. Reads the repo's CLAUDE.md, design system docs, and feature patterns; reads the git diff of what the implementer just wrote; produces a structured report with findings grouped as Critical, Non-critical, and Suggestions. Each finding has a file:line reference and cites the requirement (FR-X / EC-X), spec element, or convention it relates to. The reviewer raises issues only — a downstream implementer agent applies the fixes based on this report.\n\nInputs the caller must provide:\n- repo_path: absolute path to the React worktree that was just implemented\n- feature_summary: one paragraph describing the feature\n- requirements: the FR-X / EC-X list the implementer was asked to enforce\n- endpoints_integrated: list of endpoints with their exact spec field names\n- spec_files: paths to the OpenAPI specs the new types should conform to\n- ux_spec (optional): the IMPLEMENTATION_SPEC from the UX consultant, to verify the implementer built what was designed\n- diff_base (optional): the git base to diff against (defaults to the branch's merge-base with main)"
 tools: Read, Glob, Grep, Bash
 model: haiku

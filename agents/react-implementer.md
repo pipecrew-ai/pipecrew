@@ -1,5 +1,5 @@
 ---
-name: react-feature-implementer
+name: react-implementer
 description: "Implements a full feature module in a React + TypeScript frontend that uses React Query, typed API clients generated from OpenAPI specs, and a feature-module pattern. Reads the target repo's CLAUDE.md (and any context files it points to) to learn conventions, then implements types, hooks, components, pages, routing, translations, and tests. i18n / RTL coverage matches whatever the workspace configures (read the repo's DESIGN_SYSTEM.md plus any cross-cutting language/direction notes in platform.md). Use for any spec-first React app.\n\nInputs the caller must provide:\n- repo_path: absolute path to the frontend worktree\n- spec_files: list of OpenAPI specs the API layer talks to\n- feature_summary: one paragraph\n- requirements: FR/EC list\n- ux_spec: UX decisions (layout, states, component choices, i18n keys)\n- endpoints_to_integrate: list of endpoints with their spec field names\n- fix_list (optional): file:line targets with exact changes"
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet

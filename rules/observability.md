@@ -210,7 +210,7 @@ Required: `duration_ms`, `cmd_summary` (first 60 chars of the command, trimmed).
   "run_id": "2026-04-15-104502-book-upload",
   "phase": "5a",
   "stage": "Backend implementation",
-  "agent_type": "spring-boot-api-implementer",
+  "agent_type": "spring-boot-implementer",
   "description": "Publisher backend — book content upload",
   "retry_reason": "529 overloaded"
 }

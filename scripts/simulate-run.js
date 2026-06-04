@@ -1108,11 +1108,11 @@ function writeDeliverRun({ runId, featureName, featureSlug, withPr, daysAgo, pic
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '2',   stage: 'Architecture',           agent_type: 'solution-architect',           description: `Technical design for ${featureName}`,                   status: 'ok', total_tokens: 86000,  duration_ms: 240000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '3',   stage: 'Spec edit',              agent_type: 'openapi-spec-editor',          description: 'OpenAPI spec edits',                                    status: 'ok', total_tokens: 52000,  duration_ms: 510000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '4.5', stage: 'Implementation plan',    agent_type: 'task-planner',                 description: `Hydrate task skeleton for ${featureName}`,              status: 'ok', total_tokens: 12000,  duration_ms: 25000  },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'spring-boot-api-implementer',  description: 'Backend service',                                       status: 'ok', total_tokens: 135000, duration_ms: 375000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Frontend implementation',agent_type: 'react-feature-implementer',    description: 'Frontend',                                              status: 'ok', total_tokens: 159000, duration_ms: 422000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Mock implementation',    agent_type: 'mock-endpoint-implementer',    description: 'Mock server',                                           status: 'ok', total_tokens: 91000,  duration_ms: 192000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'spring-boot-code-reviewer',    description: 'Backend code review',                                   status: 'ok', total_tokens: 82000,  duration_ms: 465000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'react-code-reviewer',          description: 'Frontend code review',                                  status: 'ok', total_tokens: 119000, duration_ms: 360000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'spring-boot-implementer',  description: 'Backend service',                                       status: 'ok', total_tokens: 135000, duration_ms: 375000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Frontend implementation',agent_type: 'react-implementer',    description: 'Frontend',                                              status: 'ok', total_tokens: 159000, duration_ms: 422000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Mock implementation',    agent_type: 'mock-implementer',    description: 'Mock server',                                           status: 'ok', total_tokens: 91000,  duration_ms: 192000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'spring-boot-reviewer',    description: 'Backend code review',                                   status: 'ok', total_tokens: 82000,  duration_ms: 465000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'react-reviewer',          description: 'Frontend code review',                                  status: 'ok', total_tokens: 119000, duration_ms: 360000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '6',   stage: 'Cross-repo assessment',  agent_type: `${WORKSPACE_SLUG}-assessor`,   description: 'Cross-repo wire-shape + requirement coverage',          status: 'ok', total_tokens: 174000, duration_ms: 460000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '7',   stage: 'Report',                 agent_type: 'reporter',                     description: 'Execution report writer',                               status: 'ok', total_tokens: 38000,  duration_ms: 140000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '7',   stage: 'Context refresh',        agent_type: 'context-manager',              description: 'agent-context refresh',                                 status: 'ok', total_tokens: 21000,  duration_ms: 65000  },
@@ -1158,9 +1158,9 @@ ${withPr ? '| 8. Publish + Wrap-up | COMPLETED | 1m 50s | —    |' : '| 8. Publ
 ## Implementation Tasks
 | # | Task ID | Repo | Agent | Status | Files Changed |
 |---|---------|------|-------|--------|---------------|
-| 1 | ${featureSlug}-a1 | demo-backend  | spring-boot-api-implementer | COMPLETED | 8 |
-| 2 | ${featureSlug}-a2 | demo-frontend | react-feature-implementer   | COMPLETED | 12 |
-| 3 | ${featureSlug}-a3 | demo-mock     | mock-endpoint-implementer   | COMPLETED | 2 |
+| 1 | ${featureSlug}-a1 | demo-backend  | spring-boot-implementer | COMPLETED | 8 |
+| 2 | ${featureSlug}-a2 | demo-frontend | react-implementer   | COMPLETED | 12 |
+| 3 | ${featureSlug}-a3 | demo-mock     | mock-implementer   | COMPLETED | 2 |
 `);
 
   // Phase outputs — Phase 1 + Phase 2 use realistic sample shapes
@@ -1262,10 +1262,10 @@ async function runDeliverRunLive({ runId, featureName, featureSlug, withPr, days
   // Multi-stack fan-out — five implementers cover three backends (Java, TS,
   // Python via the nestjs path), the frontend, the mock, and one infra repo.
   const taskDefs = [
-    { num: 1, id: `${featureSlug}-a1`, repo: 'demo-publisher-svc', agent: 'spring-boot-api-implementer', files: 8  },
+    { num: 1, id: `${featureSlug}-a1`, repo: 'demo-publisher-svc', agent: 'spring-boot-implementer', files: 8  },
     { num: 2, id: `${featureSlug}-a2`, repo: 'demo-search-svc',    agent: 'nestjs-implementer',          files: 6  },
-    { num: 3, id: `${featureSlug}-a3`, repo: 'demo-frontend',      agent: 'react-feature-implementer',   files: 12 },
-    { num: 4, id: `${featureSlug}-a4`, repo: 'demo-mock',          agent: 'mock-endpoint-implementer',   files: 2  },
+    { num: 3, id: `${featureSlug}-a3`, repo: 'demo-frontend',      agent: 'react-implementer',   files: 12 },
+    { num: 4, id: `${featureSlug}-a4`, repo: 'demo-mock',          agent: 'mock-implementer',   files: 2  },
     { num: 5, id: `${featureSlug}-a5`, repo: 'demo-infra-cdk',     agent: 'cdk-stack-implementer',       files: 3  },
   ];
   const phaseStatus = {};
@@ -1349,7 +1349,7 @@ ${dispatchSection}`;
   //   8: mock-endpoint-impl     (phase 5 — mock)
   //   9: cdk-stack-impl         (phase 5 — infra-cdk)
   //  10: spring-boot-code-rev   (phase 5.5)
-  //  11: react-code-reviewer    (phase 5.5)
+  //  11: react-reviewer    (phase 5.5)
   //  12: assessor               (phase 6)
   //  13: reporter               (phase 7)
   //  14: context-manager        (phase 7)
@@ -1367,13 +1367,13 @@ ${dispatchSection}`;
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '2',   stage: 'Architecture',           agent_type: 'solution-architect',           description: `Technical design for ${featureName}`,                   status: 'ok', total_tokens: 86000,  duration_ms: 240000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '3',   stage: 'Spec edit',              agent_type: 'openapi-spec-editor',          description: 'OpenAPI spec edits across publisher-svc + search-svc',  status: 'ok', total_tokens: 52000,  duration_ms: 510000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '4.5', stage: 'Implementation plan',    agent_type: 'task-planner',                 description: `Hydrate task skeleton for ${featureName}`,              status: 'ok', total_tokens: 12000,  duration_ms: 25000  },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'spring-boot-api-implementer',  description: 'publisher-svc (Spring Boot)',                           status: 'ok', total_tokens: 135000, duration_ms: 375000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'spring-boot-implementer',  description: 'publisher-svc (Spring Boot)',                           status: 'ok', total_tokens: 135000, duration_ms: 375000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Backend implementation', agent_type: 'nestjs-implementer',           description: 'search-svc (NestJS)',                                   status: 'ok', total_tokens: 112000, duration_ms: 320000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Frontend implementation',agent_type: 'react-feature-implementer',    description: 'frontend (React)',                                      status: 'ok', total_tokens: 159000, duration_ms: 422000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Mock implementation',    agent_type: 'mock-endpoint-implementer',    description: 'mock (Express)',                                        status: 'ok', total_tokens: 91000,  duration_ms: 192000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Frontend implementation',agent_type: 'react-implementer',    description: 'frontend (React)',                                      status: 'ok', total_tokens: 159000, duration_ms: 422000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Mock implementation',    agent_type: 'mock-implementer',    description: 'mock (Express)',                                        status: 'ok', total_tokens: 91000,  duration_ms: 192000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5',   stage: 'Infra implementation',   agent_type: 'cdk-stack-implementer',        description: 'infra-cdk (AWS CDK)',                                   status: 'ok', total_tokens: 64000,  duration_ms: 210000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'spring-boot-code-reviewer',    description: 'Backend review — publisher-svc',                        status: 'ok', total_tokens: 82000,  duration_ms: 465000 },
-    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'react-code-reviewer',          description: 'Frontend review',                                       status: 'ok', total_tokens: 119000, duration_ms: 360000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'spring-boot-reviewer',    description: 'Backend review — publisher-svc',                        status: 'ok', total_tokens: 82000,  duration_ms: 465000 },
+    { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '5.5', stage: 'Code review',            agent_type: 'react-reviewer',          description: 'Frontend review',                                       status: 'ok', total_tokens: 119000, duration_ms: 360000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '6',   stage: 'Cross-repo assessment',  agent_type: `${WORKSPACE_SLUG}-assessor`,   description: 'Cross-repo wire-shape + requirement coverage',          status: 'ok', total_tokens: 174000, duration_ms: 460000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '7',   stage: 'Report',                 agent_type: 'reporter',                     description: 'Execution report writer',                               status: 'ok', total_tokens: 38000,  duration_ms: 140000 },
     { event: 'agent_end', skill: 'deliver', run_id: runId, phase: '7',   stage: 'Context refresh',        agent_type: 'context-manager',              description: 'agent-context refresh across affected repos',           status: 'ok', total_tokens: 21000,  duration_ms: 65000  },
@@ -1540,11 +1540,11 @@ ${dispatchSection}`;
     () => {
       setPhase('5.5', 'IN_PROGRESS');
       upsertDispatch('crit-be', {
-        phase: '5.5', agent: 'spring-boot-code-reviewer (demo-publisher-svc)',
+        phase: '5.5', agent: 'spring-boot-reviewer (demo-publisher-svc)',
         duration: '—', tokens: '—', outcome: 'in_progress',
       });
       upsertDispatch('crit-fe', {
-        phase: '5.5', agent: 'react-code-reviewer (demo-frontend)',
+        phase: '5.5', agent: 'react-reviewer (demo-frontend)',
         duration: '—', tokens: '—', outcome: 'in_progress',
       });
       flush();
@@ -1588,11 +1588,11 @@ ${dispatchSection}`;
     // chip shows fix-r1).
     () => {
       upsertDispatch('bruno-fix', {
-        phase: '5.5-fix', agent: 'spring-boot-api-implementer (demo-publisher-svc)',
+        phase: '5.5-fix', agent: 'spring-boot-implementer (demo-publisher-svc)',
         duration: '—', tokens: '—', outcome: 'in_progress',
       });
       upsertDispatch('pixel-fix', {
-        phase: '5.5-fix', agent: 'react-feature-implementer (demo-frontend)',
+        phase: '5.5-fix', agent: 'react-implementer (demo-frontend)',
         duration: '—', tokens: '—', outcome: 'in_progress',
       });
       flush();
@@ -1762,7 +1762,7 @@ function writeLearnRun({ runId, sourceLabel, daysAgo, applied, flagged }) {
   for (let i = 0; i < flagged; i++) {
     findings.push(`### Finding ${applied + i + 1} — plugin-level — (plugin maintainer review)
 
-**Observation**: Plugin's spring-boot-api-implementer defaulted to manual auth read.
+**Observation**: Plugin's spring-boot-implementer defaulted to manual auth read.
 
 **Correction**: Plugin should default to declarative @PreAuthorize on greenfield code.
 

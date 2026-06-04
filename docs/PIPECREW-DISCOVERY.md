@@ -257,7 +257,7 @@ Phase 4.5 Implementation plan        task-planner agent (3 modes: draft / adjust
 Phase 5   PARALLEL DISPATCH (one Agent message, multiple tool calls):
             5a backend     spring-boot- / nestjs- / fastapi- / flask- / django- / python-worker-implementer (one per service)
             5b frontend    {slug}-ux-consultant → user gate → react- / nextjs-feature-implementer
-            5c mock        mock-endpoint-implementer
+            5c mock        mock-implementer
             5d infra       cdk-stack-implementer / terraform-implementer (worktrees per repo by default)
 Phase 5.5 Per-repo code review — {type}-reviewer per touched repo, parallel
             critical findings → user gate (auto-skipped with --auto-fix-mechanical when every critical is `mechanical`) → fix-round dispatch
@@ -279,7 +279,7 @@ Cross-cutting rules:
 
 # The other skills, briefly
 
-**`/review <repo-key> --branch=...`** — Looks up the repo's `type` in config, maps it to a reviewer agent (`spring-boot-code-reviewer` / `react-code-reviewer` / `nestjs-reviewer` / `nextjs-reviewer`), dispatches with the diff. Reports findings; doesn't fix.
+**`/review <repo-key> --branch=...`** — Looks up the repo's `type` in config, maps it to a reviewer agent (`spring-boot-reviewer` / `react-reviewer` / `nestjs-reviewer` / `nextjs-reviewer`), dispatches with the diff. Reports findings; doesn't fix.
 
 **`/assess --branch=...`** — Finds repos that have the branch (≥ 2), gathers requirements (from `--requirements` / pipeline scratchpad / spec only), dispatches `{slug}-assessor` with focus on wire-shape agreement, requirement symmetry, event/infra wiring. Returns PASS / PARTIAL / FAIL with per-repo fix assignments.
 

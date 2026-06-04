@@ -8,7 +8,7 @@ Reviewers **raise issues only** — they do not fix anything. If fixes are neede
 
 This phase runs for:
 - **Backend + Workers**: one reviewer per affected service whose repo type has a matching reviewer agent (see `TYPE_TO_AGENT` table in `dispatch-rules.md`). The reviewer prompt is shaped by the service's `spec_policy` (see Step 1).
-- **Frontend**: one reviewer for the frontend worktree if Phase 5b ran. Type-aware via `TYPE_TO_AGENT` (`react` → `react-code-reviewer`, `nextjs` → `nextjs-reviewer`) — resolved from the frontend repo's `type` in config.
+- **Frontend**: one reviewer for the frontend worktree if Phase 5b ran. Type-aware via `TYPE_TO_AGENT` (`react` → `react-reviewer`, `nextjs` → `nextjs-reviewer`) — resolved from the frontend repo's `type` in config.
 - **Infrastructure**: one reviewer per affected infra repo. Type-aware via `TYPE_TO_AGENT` (`cdk` → `cdk-reviewer`, `terraform` → `terraform-reviewer`). The reviewer's contract is the per-repo entry in the architect's `INFRASTRUCTURE_IMPACT` block (Phase 2); `spec_policy: infra`. The implementer's `cdk synth` / `terraform plan` output is consumed as a verification artifact alongside the source diff. The reviewer NEVER runs `terraform apply` or `cdk deploy` — it produces findings only.
 
 This phase is SKIPPED for:
@@ -32,11 +32,11 @@ node {plugin_dir}/scripts/extract-block.js outputs/phase-2-architecture.md AFFEC
 For each entry in `services[]` (the `spec_policy` field is already there — no config lookup needed for that):
 
 1. Resolve `type = config.repos[config.services[svc.name].repo].type`. The `policy` is `svc.spec_policy` from the JSON above.
-2. Look up the reviewer `subagent_type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md`. If the reviewer column is `—` for this type (no reviewer ships today), SKIP this service with the reason logged in the scratchpad and move on — do NOT dispatch spring-boot-code-reviewer as a fallback (it misreads non-Spring code).
+2. Look up the reviewer `subagent_type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md`. If the reviewer column is `—` for this type (no reviewer ships today), SKIP this service with the reason logged in the scratchpad and move on — do NOT dispatch spring-boot-reviewer as a fallback (it misreads non-Spring code).
 3. Dispatch using the template below, but substitute the `## Contract inputs` block per the service's `spec_policy`.
 
 **Tool**: `Agent`
-**subagent_type**: {looked up per type — `spring-boot-code-reviewer` / `nestjs-reviewer` / etc., or SKIP}
+**subagent_type**: {looked up per type — `spring-boot-reviewer` / `nestjs-reviewer` / etc., or SKIP}
 **description**: `"Backend review — {service} — {feature-slug}"`
 **prompt template**:
 
@@ -108,7 +108,7 @@ Now: review the diff in `{service_worktree_path}` for the feature, against the r
 
 **Frontend reviewer — one for the frontend**
 
-Look up the reviewer via `TYPE_TO_AGENT`: resolve the frontend repo (`config.repos` where `role === "frontend"`), then map its `type` to the reviewer (`react` → `react-code-reviewer`, `nextjs` → `nextjs-reviewer`). Do NOT hardcode `react-code-reviewer`.
+Look up the reviewer via `TYPE_TO_AGENT`: resolve the frontend repo (`config.repos` where `role === "frontend"`), then map its `type` to the reviewer (`react` → `react-reviewer`, `nextjs` → `nextjs-reviewer`). Do NOT hardcode `react-reviewer`.
 
 **Tool**: `Agent`
 **subagent_type**: {looked up per the frontend repo's type}
@@ -160,7 +160,7 @@ Now: review the diff in `{frontend_worktree_path}` for the feature, against the 
 
 #### Step 1.5: Persist each finding as a task file
 
-After each reviewer returns, **parse the `<!-- BEGIN FINDINGS -->` / `<!-- END FINDINGS -->` block** at the end of its report (every code reviewer now emits this machine-readable block — see the spring-boot-code-reviewer and react-code-reviewer agent definitions). The format is:
+After each reviewer returns, **parse the `<!-- BEGIN FINDINGS -->` / `<!-- END FINDINGS -->` block** at the end of its report (every code reviewer now emits this machine-readable block — see the spring-boot-reviewer and react-reviewer agent definitions). The format is:
 
 ```
 critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
@@ -180,7 +180,7 @@ severity: "critical"          # or "non-critical" or "scope"
 classification: "mechanical"  # or "architectural" — REQUIRED when severity=critical, OMIT for non-critical/scope
 status: "todo"                # "todo" → "done" after fix dispatch
 repo: "{repo-name}"
-agent: "spring-boot-code-reviewer"  # which reviewer produced this
+agent: "spring-boot-reviewer"  # which reviewer produced this
 target: "{file}:{line}"
 created: "{ISO-date}"
 ---

@@ -23,7 +23,7 @@
 
 | Stack | Implementer | Modes supported | Default |
 |---|---|---|---|
-| Spring Boot | `spring-boot-api-implementer` | `api-first` \| `code-first` | api-first |
+| Spring Boot | `spring-boot-implementer` | `api-first` \| `code-first` | api-first |
 | NestJS | `nestjs-implementer` | `api-first` \| `code-first` | api-first |
 | FastAPI | `fastapi-implementer` | `api-first` \| `code-first` | api-first |
 | Flask | `flask-implementer` | `api-first` \| `code-first` | api-first |
@@ -32,9 +32,7 @@
 | AWS CDK | `cdk-stack-implementer` | `infra` (always) | n/a |
 | Terraform | `terraform-implementer` | `infra` (always) | n/a |
 
-Frontend stacks (React, Next.js) consume the contract but don't produce one — `spec_policy` is not an input on those implementers. Mock servers (`mock-endpoint-implementer`) mirror the API and follow the same spec.
-
-**Naming note**: the name `spring-boot-api-implementer` predates dual-mode support; the `-api-` infix is historical, not a constraint. It supports both modes.
+Frontend stacks (React, Next.js) consume the contract but don't produce one — `spec_policy` is not an input on those implementers. Mock servers (`mock-implementer`) mirror the API and follow the same spec.
 
 ---
 

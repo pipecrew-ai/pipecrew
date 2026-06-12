@@ -332,11 +332,13 @@ Self-check before returning:
 
 The `/deliver` pipeline triggers many Edit / Write / Bash calls scoped to paths under `{workspace_root}/{slug}/**` and the repos in `config.repos`. Without pre-allow rules, every one prompts for approval, slowing the run and fragmenting flow.
 
-Offer to write a `settings.local.json` in the workspace directory (not in the repos — that scope is each team's decision) that pre-allows the common patterns this pipeline uses. The file is user-scoped (not committed to any repo), so it's safe to write but ONLY with explicit user consent.
+Offer to write a `settings.local.json` under the workspace directory's `.claude/` folder (not in the repos — that scope is each team's decision) that pre-allows the common patterns this pipeline uses. The file is user-scoped (not committed to any repo), so it's safe to write but ONLY with explicit user consent.
+
+**Path matters:** Claude Code only auto-loads project settings from `<dir>/.claude/settings.local.json`, discovered by walking up from the directory `claude` is launched in. A bare `settings.local.json` at the workspace root is **not** on the settings search path and would silently have no effect. Always write it to `{workspace_root}/{slug}/.claude/settings.local.json`.
 
 Prompt:
 ```
-I can write {workspace_root}/{slug}/settings.local.json that pre-allows:
+I can write {workspace_root}/{slug}/.claude/settings.local.json that pre-allows:
   - Edit/Write/Read under {workspace_root}/{slug}/**
   - Edit/Write on published workspace agents (~/.claude/agents/{slug}-*.md)
   - Read/Bash on plugin validator scripts
@@ -364,9 +366,9 @@ On `yes`:
          "Bash(cd {repo.path} && npx *)",      // only for node-based repos
    ```
    (Skip the `mvn` / `npm` lines per repo type as appropriate — check `config.repos[repo].type`.)
-4. Write to `{workspace_root}/{slug}/settings.local.json`.
+4. Create the `.claude/` directory if needed (`mkdir -p {workspace_root}/{slug}/.claude`) and write the file to `{workspace_root}/{slug}/.claude/settings.local.json`.
 5. Suggest to the user:
-   > "To make these allow rules active in this session, run `/permissions` and reload the settings, or run `/update-config reload-permissions`. New sessions pick them up automatically if this workspace directory is on the Claude Code settings search path."
+   > "These allow rules load automatically when you start `claude` with the working directory at (or below) `{workspace_root}/{slug}/` — Claude Code reads `.claude/settings.local.json` from the cwd and its parents. If you run `/deliver` from a different directory (e.g. your repos root), the rules won't apply there; in that case either launch from the workspace dir, or copy the `permissions.allow` entries into the `.claude/settings.local.json` of wherever you do launch `claude`. To pick them up mid-session, run `/permissions` and reload."
 
 On `no`: skip. Note in the Phase D summary: "settings.local.json skipped per user choice. Approval prompts will continue during feature runs."
 

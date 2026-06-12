@@ -262,7 +262,7 @@ Pipeline phases that dispatch these use the slug-prefixed published name (`dal-a
 
 ## Approval-free operation
 
-Onboarding Phase C Step 3.5 offers to write `{workspace_root}/{slug}/settings.local.json` with pre-allow rules for the common patterns `/deliver` uses. This is per-workspace and opt-in — no global permissions are granted without consent.
+Onboarding Phase C Step 3.5 offers to write `{workspace_root}/{slug}/.claude/settings.local.json` with pre-allow rules for the common patterns `/deliver` uses. This is per-workspace and opt-in — no global permissions are granted without consent.
 
 If you skipped it during onboarding and want to add it later:
 - Re-run `/discover --resume --workspace={slug}` and say `yes` at Step 3.5, or

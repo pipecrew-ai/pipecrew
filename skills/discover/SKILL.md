@@ -267,10 +267,10 @@ Phase Greenfield: Brainstorm + Scaffold ─ (only if --greenfield OR zero repos 
 Phase A:  Repo Discovery ─────── scan dirs, detect tech stacks, confirm with user
 Phase B:  Domain Questions ────── 4 questions to the user
 Phase B2.0: Per-repo Discovery ── repo-discoverer × N (Sonnet, parallel) → REPO_PROFILE JSON per repo
-Phase B2: Architect Synthesis ── solution-architect (Opus, MODE: discovery) reads profiles, writes platform.md + audit-findings.md + diagrams
-Phase B2.6: Observability ─────── extract IaC log destinations + curate trace/dashboards/runbooks
+Phase B2: Architect Synthesis ── solution-architect (Opus, MODE: discovery) reads profiles, writes platform.md + audit-findings.md + diagrams, then builds config.json
+Phase B2.6: Observability ─────── extract IaC log destinations (reads config.json) + curate trace/dashboards/runbooks
 Phase B3: Design System ────────── (only if frontend) discover components, tokens, patterns
-Phase C:  Generation ──────────── config + CLAUDE.md + platform.md + agents + agent-context
+Phase C:  Generation ──────────── CLAUDE.md + platform.md + agents + agent-context (config.json built in B2; validated here)
 Phase D:  Verification ────────── validate paths, check git status, summary
 ```
 

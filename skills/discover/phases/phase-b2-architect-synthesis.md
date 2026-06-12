@@ -218,6 +218,107 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
 
 **Render check**: before marking Phase B2 complete, validate both Mermaid files parse cleanly. Run a lightweight syntax check (or defer to the site-view render error) and surface any lexical errors to the user — most common cause is a period inside a dotted-edge label (`-.LABEL.->`) which the parser swallows.
 
+### Build workspace config (config.json)
+
+Now that the architect has returned the service map, entity list, and auth discovery, build `{workspace_root}/{slug}/config.json`. **This MUST happen here, at the end of B2 — not in Phase C — because Phase B2.6's observability extractor reads this file** (`extract-observability.js` needs `repos` paths/roles, `services`, and `workspace.envs`). Everything below is available by now: discovered repos (Phase A), domain answers (Phase B1), and the architect's service map / entities / auth (this phase).
+
+Build it from the discovered repos + domain answers:
+
+```js
+{
+  "workspace": {
+    "name": "{from B1 answer 1}",
+    "slug": "{derived slug}",
+    "pipeline_dir": "{workspace_root}/{slug}/pipeline",
+    "primary_language": "{from B1 answer 4}"
+  },
+  "repos": {
+    // one entry per confirmed repo from Phase A
+    "{repo-short-name}": {
+      "path": "{absolute path}",
+      "type": "{detected type}",
+      "role": "{detected role}",
+      "description": "{from CLAUDE.md or Phase A detection}",
+      "spec_file": "{if api-service, the discovered spec path}",
+      "spec_copies": { /* if frontend/mock, map service→relative-path */ }
+    }
+  },
+  "services": {
+    // one entry per service repo — includes api-services (HTTP) AND workers (event-driven).
+    // Both participate in /deliver; spec_policy tells the pipeline which contract phase applies.
+    "{service-short-name}": {
+      "repo": "{repo key}",
+      "spec_policy": "{api-first | code-first | no-api — see below}",
+      "spec_file": "{relative spec path — required when spec_policy is api-first, omitted otherwise}",
+      "description": "{from architect's service map}"
+    }
+  },
+  "domain": {
+    "name": "{from B1}",
+    "primary_entities": [/* from architect's entity list */],
+    "user_roles": [/* from B1 */],
+    "auth_type": "{from architect's discovery}",
+    "i18n_languages": [/* from B1 */],
+    "rtl_support": /* from B1 */,
+    "domain_notes": "{from B1}"
+  }
+}
+```
+
+#### Filling `spec_policy` per service
+
+Carry the value inferred in Phase A Step 3.5 (and confirmed by the user in Step 6) through to the generated config:
+
+| Repo role (from Phase A) | Emitted `services.{name}.spec_policy` | `spec_file` required? |
+|---|---|---|
+| `api-service` with a discovered spec | `api-first` | yes — use the discovered path |
+| `api-service` with no spec | `code-first` | no — omit the field |
+| `worker` (python-worker etc.) | `no-api` | no — omit the field |
+
+Do **not** emit `services` entries for repos with `role` of `frontend`, `mock-server`, `infrastructure`, `contract`, or `other` — they are not services.
+
+`schemas` / `api-collections` repos (role `contract`) are tracked only under `repos.*` for now. Future slices will add a `contracts` block that drives Phase 3 ordering.
+
+#### Probing `spec_copies` for every repo
+
+`spec_copies` is **repo-agnostic**. Any repo that keeps a local working copy of another service's OpenAPI spec can declare entries: frontends generating typed clients, mock-servers fabricating responses, api-services with build-time codegen (`openapi-generator-maven-plugin`, `openapitools`, `oapi-codegen`), IaC repos embedding specs into `RestApi.fromOpenApiDefinition` / `aws_api_gateway_rest_api.body`, doc sites (Redocly / Stoplight), contract-test repos (Pact), and SDKs. `/deliver` Phase 4 walks every repo with `spec_copies` regardless of role — so the probe must walk every repo too.
+
+For each api-service's `spec_file` (from Phase A), compute the basename and search **every other repo** in the workspace for that filename. The probe is deliberately filename-only — it does not parse build configs or guess from path patterns. If the file is physically present in a repo with the exact basename, that repo almost certainly consumes it. (False positives are caught by the validator at the end of this step and again at every `/deliver` pre-flight.)
+
+```bash
+spec_basename=$(basename "{api-service.spec_file}")
+
+# Walk every repo in the workspace EXCEPT the api-service that owns this spec.
+{for each repo in config.repos where repo.path != owning_api_service.path:}
+  find {repo.path} -type f -name "$spec_basename" \
+    -maxdepth 8 \
+    -not -path "*/node_modules/*" -not -path "*/dist/*" -not -path "*/build/*" \
+    -not -path "*/target/*" -not -path "*/.git/*" -not -path "*/.next/*" \
+    -not -path "*/__pycache__/*" -not -path "*/venv/*" -not -path "*/.venv/*" \
+    | head -1
+```
+
+If a match is found, record the path (relative to the consuming repo's root) under `repos.{consuming_repo}.spec_copies.{service_name}`. If no match is found, **omit the entry** — do not fabricate a plausible path. An empty map is strictly better than guessed paths.
+
+**Skip rules** (the probe does NOT record an entry):
+- The consuming repo is the api-service that owns the spec (self-reference).
+- The repo's `role` is `contract` (contract repos hold canonical schemas, never copies).
+- The matched file lives under the consuming repo's own `spec_file` (the repo's own canonical spec, not a copy).
+
+Also probe with any alternate filenames (e.g., a typo'd spec — ABVI has `user-managment-api-specs.yaml` with a missing `e`). Match by basename as declared in the api-service, not by a cleaned-up name.
+
+Write the file. Run the validator:
+
+```bash
+node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
+```
+
+Expect **0 warnings** after the probing step. If validation emits path-not-found warnings for `spec_copies`, the probe missed something — do not ignore; re-run the probe with a wider search (e.g., increase maxdepth, include additional exclude-dir patterns) and fix the paths in config before continuing.
+
+If validation fails with errors, fix and retry. Common errors: repo path typo, missing `type` or `role`.
+
+**Update scratchpad**: set `Workspace config` to COMPLETED in `## Generation Status`.
+
 Present a summary to the user:
 
 ```

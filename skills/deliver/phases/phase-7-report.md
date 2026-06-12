@@ -30,7 +30,12 @@ On exit 1, surface the schema violation in the report header. On exit 2, note wa
 Write the report to: {run_dir}/report.md
 ```
 
-After the reporter returns, also write the manual execution table below as a fallback (the reporter's output is richer, but the template ensures a baseline if the reporter fails).
+**The reporter owns `report.md`. The orchestrator does NOT write it.** After the reporter returns, verify its output landed — check that `{run_dir}/report.md` exists and is more than a stub (e.g. `node -e "process.exit(require('fs').statSync('{run_dir}/report.md').size > 400 ? 0 : 1)"`, or just read the first lines).
+
+- **Reporter succeeded** (`report.md` exists and is non-trivial — more than just a header) → you are done with the report. Do NOT re-write it, do NOT append the fallback table. Go straight to "Present the report to the user" below. The reporter's output is the report.
+- **Reporter failed** (agent errored, returned empty, or `report.md` is missing/near-empty) → only THEN fall back to Step 7.3 and author the template yourself. Note in the report header that it was orchestrator-generated because the reporter failed.
+
+This guard exists because the reporter is a Haiku agent dispatched precisely so the orchestrator's context isn't spent compiling tables. If the orchestrator writes the report whenever the reporter *also* ran, the reporter dispatch was wasted and the richer report is overwritten. Write the fallback ONLY on genuine reporter failure.
 
 ---
 
@@ -68,7 +73,9 @@ If a repo has no agent-context directory, skip it silently (this repo was onboar
 
 ---
 
-#### Step 7.3: Execution report template (fallback)
+#### Step 7.3: Execution report template (FALLBACK ONLY — reporter failed)
+
+> **Do not run this step if the reporter succeeded.** This template is what the orchestrator writes *only* when Step 7.1's reporter agent failed to produce a usable `report.md`. In the normal path the reporter already wrote the report and this step is skipped entirely. If you are here, prepend a one-line note to the report: `> ⚠ Orchestrator-generated fallback — the reporter agent failed to produce report.md.`
 
 Read the scratchpad Phase Status table to compile durations and token counts.
 
@@ -158,7 +165,11 @@ Compiled from the Agent Dispatch Log. Shows how much each subagent type spent in
 - [ ] {publish PRs — Phase 8 will handle this if `--with-pr` was passed; otherwise create them manually or re-run with `--with-pr`}
 ```
 
-**Present the report to the user** (show the full table + repos + next steps). If `--with-pr` was passed, Phase 8 will append a `## Pull Requests` section to this same `report.md` after PRs are created — no PR creation happens in Phase 7.
+---
+
+#### Step 7.3b: Present the report to the user
+
+Regardless of which path produced `report.md` (reporter in the normal case, or the Step 7.3 fallback on reporter failure), surface it to the user — show the report's key tables, repos modified, and next steps. Read `{run_dir}/report.md` and present it; do not re-derive or re-author the content here. If `--with-pr` was passed, Phase 8 will append a `## Pull Requests` section to this same `report.md` after PRs are created — no PR creation happens in Phase 7.
 
 #### Step 7.4: Archive scratchpad + history
 

@@ -12,6 +12,8 @@ During any skill run, the user can interrupt with one of:
 | `stop` | Update the scratchpad top-level status to `INTERRUPTED`; emit `run_end` with `status: "aborted"` and `duration_ms` since `run_start`; print a one-line resume hint. Do not continue to the next phase. |
 | `restart from phase X` | Update the scratchpad's `## Phase Status` to set the current phase to X; re-enter X fresh (prior outputs for X are archived to `outputs/phase-X.v{N}.md` before being overwritten). |
 
+**`/deliver` auto-approve cleanup:** whenever a `/deliver` run that was started with `--auto-approve` ends abnormally (`stop`, context limit, non-retryable error, or any abort that emits `run_end status: "aborted"`), also run `node {plugin_dir}/scripts/autoapprove-marker.js off` so the opt-in auto-approve marker doesn't leak into a later session. (It self-expires ~6h after the run goes idle and is harmless if already off, but turn it off explicitly on every abort path you control. The "User closes terminal / kills process" row below has no cleanup hook — the self-expiry is the only backstop there.)
+
 Don't add skill-specific interruption verbs without a good reason — consistency across skills matters more than the occasional convenience verb.
 
 ## Automatic interruption (environment-initiated)

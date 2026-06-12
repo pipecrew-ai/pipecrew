@@ -1,5 +1,5 @@
 {
-  "_comment": "PipeCrew plugin hooks. Auto-loaded by Claude Code when the plugin is installed. (1) PreToolUse/Bash installs the troubleshooter bash guard; it self-gates on ~/.claude/.pipecrew-troubleshooter-active and exits 0 immediately when no /troubleshoot run is active, so it has zero effect otherwise (see scripts/troubleshooter-bash-guard.js + skills/troubleshoot/SKILL.md). (2) Notification/UserPromptSubmit/PostToolUse drive scripts/notify-hook.js, which writes/clears awaiting_claude_approval.json in every ACTIVE /deliver run dir so the site-view UI shows a banner when Claude Code itself (not a pipeline gate) is paused asking the user to approve a tool call. notify-hook self-gates on active run dirs (scratchpad mtime within a short window) — when no /deliver run is live it is a fast no-op, so registering it globally is safe (same pattern as the bash guard).",
+  "_comment": "PipeCrew plugin hooks. Auto-loaded by Claude Code when the plugin is installed. (1) PreToolUse/Bash installs the troubleshooter bash guard; it self-gates on ~/.claude/.pipecrew-troubleshooter-active and exits 0 immediately when no /troubleshoot run is active, so it has zero effect otherwise (see scripts/troubleshooter-bash-guard.js + skills/troubleshoot/SKILL.md). (2) PreToolUse/(Bash|Edit|Write|MultiEdit|NotebookEdit) installs the OPT-IN /deliver auto-approve hook; it self-gates on ~/.claude/.pipecrew-deliver-autoapprove (written only when /deliver is run with --auto-approve) and otherwise emits nothing, leaving normal permission prompts intact. It only ever AUTO-APPROVES clearly-safe calls (file edits + known build/test/local-git/read Bash); dangerous or unclassifiable commands still prompt (see scripts/deliver-autoapprove-hook.js + scripts/autoapprove-marker.js). The two PreToolUse hooks are gated on mutually-exclusive markers (troubleshoot vs deliver-autoapprove) so they never both act on the same call. (3) Notification/UserPromptSubmit/PostToolUse drive scripts/notify-hook.js, which writes/clears awaiting_claude_approval.json in every ACTIVE /deliver run dir so the site-view UI shows a banner when Claude Code itself (not a pipeline gate) is paused asking the user to approve a tool call. notify-hook self-gates on active run dirs (scratchpad mtime within a short window) — when no /deliver run is live it is a fast no-op, so registering it globally is safe (same pattern as the bash guard).",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,6 +8,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/troubleshooter-bash-guard.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/deliver-autoapprove-hook.js\"",
             "timeout": 10
           }
         ]

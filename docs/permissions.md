@@ -98,6 +98,41 @@ for the build/test commands you actually see prompting.
 **everything**, including `rm -rf`, deploys, and pushes. Use it only in a
 throwaway sandbox, never against real repos.
 
+## Plugin-native fix — `/deliver --auto-approve`
+
+If you don't want to touch `settings.json` at all, run the pipeline with
+`--auto-approve`. At pre-flight it writes an opt-in marker
+(`scripts/autoapprove-marker.js on`) that the plugin's
+`scripts/deliver-autoapprove-hook.js` (a `PreToolUse` hook) reads to suppress
+prompts — but **only for clearly-safe calls**:
+
+- **Auto-approved:** `Edit` / `Write` / `MultiEdit`, and `Bash` whose every
+  `&&`/`|`/`;`-separated segment leads with a known build/test/local-git/read
+  verb (`mvn`, `npm`, `pytest`, `go`, `cargo`, `git diff/add/commit`, `ls`,
+  `grep`, …).
+- **Still prompts (never auto-approved, even with the flag on):** `rm`,
+  `git push`, `--force`, `git reset --hard`, deploys (`cdk deploy`, `terraform
+  apply`, `serverless deploy`), `kubectl apply/delete`, `npm publish`, `sudo`,
+  shell substitution (`$(…)`, backticks), pipes into a shell, output redirects
+  (except `/dev/null`), and any unknown binary. These fall through to the normal
+  permission prompt.
+
+This is **not** `bypassPermissions` — it removes the routine flood while keeping
+a human in the loop for anything risky or unclassifiable. The marker is removed
+at run end / interruption and self-expires ~6h after the run goes idle, so it
+never leaks into a later session. Differences vs. the allowlist above:
+
+| | `--auto-approve` | `permissions.allow` |
+|---|---|---|
+| Setup | none — just pass the flag | edit `settings.json` once |
+| Scope | only while that `/deliver` run is active | always on (until you remove it) |
+| Dangerous commands | always still prompt | whatever you allowlisted is allowed unconditionally |
+| Granularity | fixed safe-verb policy | you choose exact patterns |
+
+After a plugin install/upgrade the hook needs a **`claude` restart** to load
+(confirm with `/hooks`); until then `--auto-approve` writes a harmless marker
+that simply has no effect.
+
 ## Scope note
 
 Subagents inherit the session's permission mode and allowlist, so configuring

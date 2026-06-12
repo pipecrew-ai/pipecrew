@@ -295,6 +295,11 @@ Proceed on "yes" — multiple runs can execute simultaneously. Each has isolated
 2. Emit the first `run_start` event to `{run_dir}/checkpoints.jsonl` with `skill: "deliver"`, `workspace_slug`, `args`, and ISO8601 `ts`.
 3. Write `{run_dir}/scratchpad.md` from the template in this phase file.
 4. Set: Feature, Run ID, Workspace, Flags, Started date, Current Phase: "Phase 1: Requirements", Status: IN_PROGRESS.
+5. **If `--auto-approve` was passed**, turn on the opt-in auto-approve marker so the plugin's hook stops prompting for safe implementer tool calls:
+   ```bash
+   node {plugin_dir}/scripts/autoapprove-marker.js on --run-dir={run_dir} --run-id={run_id}
+   ```
+   Print one line in chat: `[auto-approve ON] safe Edit/Write + build/test/git commands won't prompt; dangerous commands still will.` You MUST turn this off at run end (Phase 8 `run_end`) and on any interruption/abort with `node {plugin_dir}/scripts/autoapprove-marker.js off` — the marker also self-expires ~6h after the run goes idle, but turn it off explicitly so a later session is never affected. (If the hook isn't loaded yet — fresh plugin install/upgrade — the marker is harmless; it just won't take effect until the next `claude` restart.)
 
 If `{run_dir}/` somehow already exists after the collision-suffix step, abort with a clear error — it indicates a clock or filesystem anomaly, not a user mistake.
 

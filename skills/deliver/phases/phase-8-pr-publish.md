@@ -291,6 +291,12 @@ Emit the final `run_end` event to `{run_dir}/checkpoints.jsonl`:
 
 Set scratchpad Status to COMPLETED. Phase 8 is done.
 
+**If `--auto-approve` was on for this run**, turn the marker off now so no later session inherits it:
+```bash
+node {plugin_dir}/scripts/autoapprove-marker.js off
+```
+(Harmless if it was never on — the helper is a no-op when the marker is absent. The marker also self-expires ~6h after the run goes idle, but turning it off here is the clean path.)
+
 ---
 
 ### PR body template

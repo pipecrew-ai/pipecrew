@@ -338,6 +338,14 @@ auto-opens the browser, reads `scratchpad.md` + `checkpoints.jsonl` +
 
 Do not wait for the server process to finish. Continue immediately to Phase 1.
 
+**One-time permission tip (print once, then proceed).** Phase 5 implementers each make dozens of `Bash`/`Edit`/`Write` calls, and Claude Code prompts to approve each one that isn't pre-approved — this is separate from the pipeline's own approval gates and is the usual cause of "why am I being asked so much during implementation?". Print this single line in chat after launching the site-view, then continue (do NOT block on it):
+
+```
+[tip] To cut Claude Code's per-tool-call approval prompts during implementation: press Shift+Tab → "accept edits", or add an allowlist (see {plugin_dir}/docs/permissions.md). This is separate from the pipeline's phase-boundary gates.
+```
+
+Do not gate the pipeline on this; it is informational. Skip the line on `--resume` (the user has already seen it for this run).
+
 **Why checkpoints discipline matters for the UI:** the site-view derives the
 agent lifecycle (which agents ran, per-repo identity, tokens, duration,
 fix-round re-dispatches) primarily from `checkpoints.jsonl`, not the scratchpad

@@ -8,7 +8,7 @@ Use the solution-architect agent to design the technical architecture for this f
 Workspace: {workspace.name} (slug: {workspace.slug})
 
 REQUIREMENTS FILE (read this yourself via Read tool):
-{pipeline_dir}/outputs/phase-1-requirements.md
+{run_dir}/outputs/phase-1-requirements.md
 
 WORKSPACE CONFIG (read for service map and domain context):
 {workspace_root}/{slug}/config.json
@@ -53,7 +53,7 @@ CRITICAL FOR THIS DISPATCH:
 - Identify ALL affected services AND contracts — the user did not pre-select. Missing one breaks downstream phases.
 - Name the runner-up alternative in one sentence and explain why you ruled it out (per your system prompt's simplicity-first rule).
 
-Now: design the technical architecture for the feature in {pipeline_dir}/outputs/phase-1-requirements.md and write the full design document.
+Now: design the technical architecture for the feature in {run_dir}/outputs/phase-1-requirements.md and write the full design document.
 ```
 
 **After**: Present to user. Wait for approval.
@@ -68,16 +68,16 @@ Now: design the technical architecture for the feature in {pipeline_dir}/outputs
 **Materialize per-block side files**: after writing `outputs/phase-2-architecture.md`, run:
 
 ```bash
-node {plugin_dir}/scripts/split-design.js {pipeline_dir}/outputs/phase-2-architecture.md
+node {plugin_dir}/scripts/split-design.js {run_dir}/outputs/phase-2-architecture.md
 ```
 
-This scans every `<!-- BEGIN X -->` block, extracts each `\`\`\`json` fence, and writes one file per block to `{pipeline_dir}/outputs/blocks/<slug>.json` (e.g., `affected-services.json`, `api-design.json`, `data-model.json`, `infrastructure-impact.json`, `contract-design.json`, `task-skeleton.json`). Prose-only blocks are skipped silently. **Loud-fails on JSON parse error** — exit 3 means the architect emitted malformed JSON; halt the pipeline and surface the error to the user.
+This scans every `<!-- BEGIN X -->` block, extracts each `\`\`\`json` fence, and writes one file per block to `{run_dir}/outputs/blocks/<slug>.json` (e.g., `affected-services.json`, `api-design.json`, `data-model.json`, `infrastructure-impact.json`, `contract-design.json`, `task-skeleton.json`). Prose-only blocks are skipped silently. **Loud-fails on JSON parse error** — exit 3 means the architect emitted malformed JSON; halt the pipeline and surface the error to the user.
 
-**Verify TASK_SKELETON exists**: after `split-design.js` runs, check that `{pipeline_dir}/outputs/blocks/task-skeleton.json` was produced. If missing (architect skipped the block), do NOT proceed — Phase 4.5 will fail without it. Re-dispatch the architect via `SendMessage` with: `"Your output is missing the TASK_SKELETON block. Read templates/blocks/task-skeleton.example.json and emit the block now — same conversation, do not redo the rest of the design."`
+**Verify TASK_SKELETON exists**: after `split-design.js` runs, check that `{run_dir}/outputs/blocks/task-skeleton.json` was produced. If missing (architect skipped the block), do NOT proceed — Phase 4.5 will fail without it. Re-dispatch the architect via `SendMessage` with: `"Your output is missing the TASK_SKELETON block. Read templates/blocks/task-skeleton.example.json and emit the block now — same conversation, do not redo the rest of the design."`
 
 Downstream phases (3, 4, 5) read these side files instead of the markdown. The orchestrator no longer pulls `phase-2-architecture.md` into context — that file is the human-narrative artifact for the Phase 2 gate review only.
 
-**Update scratchpad**: Set Phase 2 Status to COMPLETED. Write full approved tech design to `outputs/phase-2-architecture.md`. Extract and store in active.md: Affected Contracts, Affected Services, Contract Edit Order, Spec Edit Order, and the auto-detected phase flags:
+**Update scratchpad**: Set Phase 2 Status to COMPLETED. Write full approved tech design to `outputs/phase-2-architecture.md`. Extract and store in the scratchpad (`{run_dir}/scratchpad.md`): Affected Contracts, Affected Services, Contract Edit Order, Spec Edit Order, and the auto-detected phase flags:
 - Contracts Required = Yes if architect's AFFECTED_CONTRACTS is non-empty (not `N/A`)
 - Frontend Required = Yes if architect's design includes frontend changes AND config has a frontend repo
 - Mock Required = Yes if config has a mock-server repo AND architect didn't explicitly exclude it

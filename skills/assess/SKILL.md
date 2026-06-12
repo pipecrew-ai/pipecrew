@@ -44,7 +44,7 @@ Assess anyway? (yes / no)
 ### Step 3: Gather context
 
 **If `--requirements` is provided**: read the file.
-**If a pipeline scratchpad exists** (`{pipeline_dir}/active.md`): read requirements and architecture from the outputs directory.
+**If a deliver run exists for this workspace** (`{workspace_root}/{slug}/runs/deliver/*/scratchpad.md`): read requirements and architecture from that run's `outputs/` directory.
 **Otherwise**: the assessor will work from the spec and code only (less coverage but still useful).
 
 ### Step 4: Dispatch the assessor

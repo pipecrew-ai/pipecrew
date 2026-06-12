@@ -203,7 +203,7 @@ Phase 8: Publish ──┬── PR publish (if --with-pr): user gate → push �
 
 ### Scratchpad
 
-The scratchpad template and directory structure are in `phases/pre-flight.md` (loaded only during Pre-flight and Resume — not during implementation phases). The scratchpad itself lives at `{pipeline_dir}/active.md`.
+The scratchpad template and directory structure are in `phases/pre-flight.md` (loaded only during Pre-flight and Resume — not during implementation phases). The scratchpad itself lives at `{run_dir}/scratchpad.md`.
 
 ### Utility scripts
 

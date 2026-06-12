@@ -41,7 +41,7 @@ The planner reads the same flags out of the scratchpad — they are the source o
 Before dispatching, confirm the architect emitted the skeleton:
 
 ```bash
-test -s {pipeline_dir}/outputs/blocks/task-skeleton.json
+test -s {run_dir}/outputs/blocks/task-skeleton.json
 ```
 
 If the file is missing or empty, halt — re-dispatch the architect via Phase 2 SendMessage as documented in `phase-2-architecture.md` § "Verify TASK_SKELETON exists". Do NOT attempt Phase 4.5 without it; the planner will refuse.

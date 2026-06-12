@@ -97,7 +97,7 @@ To resume: `/deliver --resume --workspace={slug}`
 When `--resume` is passed:
 
 1. Read the workspace config at `{workspace_root}/{workspace}/config.json`
-2. List `{workspace_pipeline_dir}/active/` — get all in-flight pipeline slugs
+2. List `{runs_dir}/*/` and scan each `scratchpad.md` for `Status: IN_PROGRESS` — get all in-flight runs
 3. If none → "No active pipeline found. Start a new one with `/deliver <description>`"
 4. If exactly one → use it
 5. If multiple AND `--feature=<slug>` passed → use that slug
@@ -108,7 +108,7 @@ When `--resume` is passed:
      2. contract-types-c3d4 — Phase 2 — started 12m ago
    Which to resume? (1/2)
    ```
-7. Read `{pipeline_dir}/scratchpad.md` (where `{pipeline_dir}` = `active/{chosen-slug}/`)
+7. Read `{run_dir}/scratchpad.md` (where `{run_dir}` = `{runs_dir}/{chosen-run-id}/`)
 8. Parse the lean index to determine:
    - Which phases are COMPLETED (skip them)
    - What the current phase is (resume from here)

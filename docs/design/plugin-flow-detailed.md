@@ -116,7 +116,7 @@ Used by Phase 4.5 for prose blocks the orchestrator can't materialize as side fi
 Run **once** by Phase 2 right after the architect writes its markdown. Scans every `<!-- BEGIN X -->` block and materializes each `\`\`\`json` fence as a side file under `outputs/blocks/<slug>.json` (lowercase + dashed). Prose-only blocks are skipped silently.
 
 ```bash
-node {plugin_dir}/scripts/split-design.js {pipeline_dir}/outputs/phase-2-architecture.md
+node {plugin_dir}/scripts/split-design.js {run_dir}/outputs/phase-2-architecture.md
 ```
 
 | Exit code | Meaning |

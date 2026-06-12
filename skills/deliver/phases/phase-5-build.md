@@ -80,13 +80,13 @@ Read `outputs/phase-1-requirements.md` and extract the frontend-relevant section
 
 ```bash
 # Structured FRONTEND_ARCHITECTURE — components / routes / api_integration
-cat {pipeline_dir}/outputs/blocks/frontend-architecture.json
+cat {run_dir}/outputs/blocks/frontend-architecture.json
 
 # Raw FRONTEND_ARCHITECTURE markdown for the prose (state management, i18n, styling)
-node {plugin_dir}/scripts/extract-block.js {pipeline_dir}/outputs/phase-2-architecture.md FRONTEND_ARCHITECTURE --raw
+node {plugin_dir}/scripts/extract-block.js {run_dir}/outputs/phase-2-architecture.md FRONTEND_ARCHITECTURE --raw
 
 # API surface the frontend will hit
-cat {pipeline_dir}/outputs/blocks/api-design.json
+cat {run_dir}/outputs/blocks/api-design.json
 ```
 
 The JSON carries the navigable index (components, routes, api_integration) — pass it to the UX consultant + implementer as structured input. The `--raw` markdown carries the prose under the JSON (state management strategy, i18n keys, styling notes) — pass that alongside as supplementary context.

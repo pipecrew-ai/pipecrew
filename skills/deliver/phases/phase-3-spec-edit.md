@@ -19,16 +19,16 @@ Skip the whole phase if `--skip-spec-edit` was passed. Skip 3a if `AFFECTED_CONT
 
 ```bash
 # AFFECTED_SERVICES — the structured services index
-cat {pipeline_dir}/outputs/blocks/affected-services.json
+cat {run_dir}/outputs/blocks/affected-services.json
 
 # AFFECTED_CONTRACTS — always emitted (empty contracts[] iff none affected)
-cat {pipeline_dir}/outputs/blocks/affected-contracts.json
+cat {run_dir}/outputs/blocks/affected-contracts.json
 
 # CONTRACT_DESIGN — the body 3a passes to schema-implementer (only when contracts affected)
-cat {pipeline_dir}/outputs/blocks/contract-design.json 2>/dev/null
+cat {run_dir}/outputs/blocks/contract-design.json 2>/dev/null
 
 # API_DESIGN — the body 3b passes to openapi-spec-editor (only when api-first services affected)
-cat {pipeline_dir}/outputs/blocks/api-design.json
+cat {run_dir}/outputs/blocks/api-design.json
 ```
 
 Each `cat` is one Bash call returning a small, deterministic JSON payload — orders of magnitude cheaper than reading the full markdown. The JSON shape is documented in `templates/blocks/block-schemas.md` and matches `templates/blocks/<slug>.example.json`.

@@ -43,20 +43,20 @@ CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgo
 Now: produce the requirements document for the feature above.
 ```
 
-**After**: Present requirements to the user. Wait for approval. Once approved, write the full requirements document to `{pipeline_dir}/outputs/phase-1-requirements.md`.
+**After**: Present requirements to the user. Wait for approval. Once approved, write the full requirements document to `{run_dir}/outputs/phase-1-requirements.md`.
 
 **Materialize the requirements index.** Split the structured block out into its own file — the same pattern Phase 2 uses for the architecture blocks, reusing the same generic script:
 
 ```bash
-node {plugin_dir}/scripts/split-design.js {pipeline_dir}/outputs/phase-1-requirements.md
+node {plugin_dir}/scripts/split-design.js {run_dir}/outputs/phase-1-requirements.md
 ```
 
-This writes `{pipeline_dir}/outputs/blocks/requirements-index.json`. The prose blocks (OVERVIEW / FUNCTIONAL_REQUIREMENTS / EDGE_CASES / OUT_OF_SCOPE) have no ```json fence and are skipped silently — only REQUIREMENTS_INDEX is materialized. **Loud-fails on malformed JSON** (exit 3): the product-owner emitted an invalid REQUIREMENTS_INDEX block — do NOT proceed. Re-dispatch the product-owner via `SendMessage`: `"Your REQUIREMENTS_INDEX block is missing or invalid JSON. Re-emit it matching templates/blocks/requirements-index.example.json — same conversation, do not redo the prose."`
+This writes `{run_dir}/outputs/blocks/requirements-index.json`. The prose blocks (OVERVIEW / FUNCTIONAL_REQUIREMENTS / EDGE_CASES / OUT_OF_SCOPE) have no ```json fence and are skipped silently — only REQUIREMENTS_INDEX is materialized. **Loud-fails on malformed JSON** (exit 3): the product-owner emitted an invalid REQUIREMENTS_INDEX block — do NOT proceed. Re-dispatch the product-owner via `SendMessage`: `"Your REQUIREMENTS_INDEX block is missing or invalid JSON. Re-emit it matching templates/blocks/requirements-index.example.json — same conversation, do not redo the prose."`
 
 **Verify the file exists** (mirrors Phase 2's TASK_SKELETON guard — catches an omitted block here, at the Phase 1 gate, instead of letting it surface as a confusing Phase 4 failure):
 
 ```bash
-test -s {pipeline_dir}/outputs/blocks/requirements-index.json
+test -s {run_dir}/outputs/blocks/requirements-index.json
 ```
 
 If absent, the product-owner omitted the block entirely; re-dispatch as above before continuing.

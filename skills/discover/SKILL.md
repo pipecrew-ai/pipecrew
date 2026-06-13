@@ -104,7 +104,7 @@ Stable workspace-level outputs (`config.json`, `context/platform.md`, `agents/`,
 | `phase_start` | Entering any phase | `phase`, `stage` |
 | `phase_end` | Phase complete, scratchpad updated | `phase`, `stage`, `duration_ms` |
 | `agent_end` | Every `Agent` tool call returns | `agent_type`, `description`, token fields, `status`, optional `audit_findings_count` |
-| `orch_checkpoint` | Optional — emit at phase boundaries to capture orchestrator-overhead delta | `jsonl_offset`, `orch_since_last.{input,output,cache_read}_tokens` |
+| `orch_checkpoint` | **At every phase boundary** (mandatory — see "Orchestrator overhead tracking" below) | `jsonl_offset`, `orch_since_last.{input,output,cache_read}_tokens` |
 | `bash_slow` | Bash call > 5000 ms | `duration_ms`, `cmd_summary` (first 60 chars) |
 | `retry` | Between a failed `agent_end` and its retry | `agent_type`, `description`, `retry_reason` |
 
@@ -130,6 +130,14 @@ If `<usage>` is absent (tool error before usage was reported), emit `agent_end` 
 2. Emit `retry` with `retry_reason` (e.g., `"529 overloaded"`).
 3. Wait per the Phase C rules (30 s / 60 s / `retry-after`).
 4. Re-dispatch. Emit a fresh `agent_end` with `status: "ok"` on success, `status: "deferred"` if the retry also failed.
+
+**Orchestrator overhead tracking (mandatory)** — the orchestrator itself consumes tokens (loading skills, reading repo source during discovery, approval gates, scratchpad + diagram writes). Capture this with the `orch_checkpoint` event at **every phase boundary** (A → B1 → B2.0 → B2 → B2.6 → B3 → C → D) so the end-of-run report can split orchestrator vs agent cost — this is what makes "tokens used by the orchestrator" visible. Procedure (identical to `/deliver` `dispatch-rules.md`):
+
+1. **Record the session JSONL byte-offset** at the boundary (current size of the session transcript file).
+2. **Compute `orch_since_last`** — the orchestrator-only delta since the previous `orch_checkpoint`: read the session JSONL from `previous_offset` to `current_offset`, sum the per-line `"usage"` fields (`input_tokens`, `output_tokens`, `cache_read_input_tokens`), then subtract any `agent_end` tokens already recorded in that range (they're attributed to the agent, not the orchestrator).
+3. **Emit** the `orch_checkpoint` event with `jsonl_offset` and `orch_since_last.{input,output,cache_read}_tokens` (full schema in `rules/observability.md`).
+
+**First `orch_checkpoint`** of the run: emit at the end of PRE-PHASE 0 (before Phase A) with `previous_offset = 0` — the baseline before any agents run. Update the `## Phase Status` table in the scratchpad with an `Orch Tokens` column alongside each checkpoint so humans see the overhead too; `checkpoints.jsonl` is the authoritative source the `reporter` reads at Phase D. Orchestrator overhead is typically 20–40% of total run cost (discovery reads a lot of repo code), so it is invisible without these events.
 
 **Validation**: run `node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl` at the end of Phase D. Exit code 1 = schema violation (fix before archival). Exit code 2 = soft warning (record and continue).
 

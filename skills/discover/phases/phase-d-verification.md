@@ -118,13 +118,26 @@ Do NOT commit them automatically. The user decides when and how to commit.
 
 ---
 
-### Step 7: Execution summary (per-phase + per-agent token accounting)
+### Step 7: Execution report (reporter agent → `report.md`)
 
-Read `{workspace_root}/{slug}/runs/discover/{run_id}/checkpoints.jsonl` and produce a two-table execution summary. This reads the event log emitted during the run (see the **OBSERVABILITY** section in `SKILL.md` and `{plugin_dir}/rules/observability.md` for the full schema).
+The end-of-run report is a **saved output** at `{run_dir}/report.md`, produced by the `reporter` agent — the same way `/deliver` Phase 7 does it. This is where the **orchestrator's token usage** lands: the reporter's "Token Breakdown (orchestrator + agents)" section has an **Orchestrator row** that sums the `orch_checkpoint` deltas emitted at every phase boundary (see SKILL.md → Orchestrator overhead tracking). So "tokens used by the orchestrator" is captured here, persisted, and comparable across runs.
 
-Run `node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl` first — on exit 1, surface the schema violation before building the summary; on exit 2, note the warnings in the summary but continue.
+Run `node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl` first — on exit 1, surface the schema violation; on exit 2, note the warnings and continue. If the JSONL file does not exist (older run predating observability, or a corrupted log), skip straight to a one-line `⏱ Execution summary unavailable — no checkpoints.jsonl found` and proceed to `run_end`. Do not halt.
 
-If the JSONL file does not exist (e.g., an older run predating observability, or a corrupted log), emit a single line `⏱ Execution summary unavailable — no checkpoints.jsonl found` and move on. Do not halt.
+**Step 7.1 — Dispatch the reporter.** The reporter is skill-agnostic (it reads the unified checkpoint schema regardless of skill). Dispatch it to compile and write the report so the orchestrator's own context isn't spent building tables.
+
+**Tool**: `Agent`
+**subagent_type**: `reporter`
+**description**: `"Discover execution report — {slug}"`
+**prompt**: instruct it to read `{run_dir}/checkpoints.jsonl` + `{run_dir}/scratchpad.md` + `~/.claude/stats-cache.json` + sibling `runs/discover/*/` for trend comparison, and **write `{run_dir}/report.md`** with: waterfall timeline, Token Breakdown (orchestrator + agents), daily budget status, and trend vs prior discover runs. Pass `skill = discover`, `run_id = {run_id}`, `run_dir = {run_dir}`.
+
+**The reporter owns `report.md`. The orchestrator does NOT write it on success.** After it returns, verify the file landed and is non-trivial (`node -e "process.exit(require('fs').statSync('{run_dir}/report.md').size > 400 ? 0 : 1)"`):
+- **Reporter succeeded** → present a short summary to the user (and the path to `report.md`). Done — do NOT also author the fallback tables.
+- **Reporter failed** (errored / returned empty / `report.md` missing or near-empty) → only then author the two-table summary inline per **Step 7.2** below, and note in its header that it was orchestrator-generated because the reporter failed.
+
+### Step 7.2: Inline execution summary (FALLBACK ONLY — reporter failed)
+
+Read `{run_dir}/checkpoints.jsonl` and produce the two-table summary below.
 
 **Table 1 — per-phase roll-up:**
 
@@ -149,13 +162,15 @@ Emit:
 | C3    | Domain Agents            | 0:45     | 0      | —       |
 | C4    | Audit Findings Collation | 0:04     | 0      | —       |
 | D     | Verification             | 0:12     | 0      | —       |
-|       | **Total**                | **13:32**| **6**  | **310,959** |
+|       | Orchestrator (overhead)  | —        | —      | 84,210  |
+|       | **Total**                | **13:32**| **6**  | **395,169** |
 ```
 
 Format rules:
 - `Tokens` column shows `—` (em-dash) for phases with zero agent calls, not `0`.
 - `Agents` column shows `N` for clean runs; `N (Rr)` when `R` retries happened; `N (Rr Dd)` when `D` were deferred.
-- Total row sums duration (sum of phase durations, not wall-clock end-to-end — they may overlap on parallel dispatch) and tokens.
+- `Orchestrator (overhead)` row = sum of all `orch_checkpoint.orch_since_last` token deltas (input + output + cache_read) — the orchestrator's own usage (loading skills, reading repo code, approval gates), not attributable to any agent. Its Duration/Agents cells are `—`.
+- Total row sums duration (sum of phase durations, not wall-clock end-to-end — they may overlap on parallel dispatch) and tokens **including the Orchestrator row**.
 
 **Table 2 — per-agent detail:**
 

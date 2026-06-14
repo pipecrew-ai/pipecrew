@@ -11,3 +11,6 @@ Thumbs.db
 
 # runtime in-use markers (PID locks written by the plugin at run time)
 .in_use/
+
+# local-only design doc (kept out of the shared repo)
+docs/design/autonomy-trust-mode.md

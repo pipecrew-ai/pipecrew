@@ -5,7 +5,7 @@ Multi-repo feature pipeline plugin for [Claude Code](https://claude.ai/claude-co
 ## Install
 
 ```bash
-claude plugin install https://github.com/ramy-hassan/pipecrew
+claude plugin install https://github.com/pipecrew-ai/pipecrew
 ```
 
 ## Quick start

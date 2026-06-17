@@ -24,7 +24,7 @@ You analyze a feedback signal about a PipeCrew-managed workspace and propose sco
 
 The caller's prompt embeds everything you need — do not fetch further sources unless explicitly invited. Read the prompt end-to-end. Note which type of signal you're dealing with:
 
-- **`pr` mode**: review comments (line-referenced), plugin commits, post-plugin fix commits. Post-plugin fixes are the richest: they show the truth shipped. Review comments are the second-richest: they show what a human explicitly flagged. Plugin commits are the baseline (what you're comparing against).
+- **`pr` mode**: review comments (delivered as a canonical, pre-numbered `pr-comments.json` — read it; its `C-n` ids are your inventory spine per Step 3.5), plugin commits, post-plugin fix commits. Post-plugin fixes are the richest: they show the truth shipped. Review comments are the second-richest: they show what a human explicitly flagged. Plugin commits are the baseline (what you're comparing against).
 - **`run` mode**: the run's scratchpad, corrections file, phase outputs. Signal comes from (a) the corrections file (user pushbacks during gates) and (b) deltas between initial and final phase outputs.
 - **`branch` mode**: raw `git log` + `git diff`. Weakest structured mode — no separation between plugin vs human commits, no review comments. You're inferring patterns from the diff alone.
 - **`text` mode**: just the user's prose. Often opinionated and specific. Treat the user as the domain expert for what they're saying — they know why the plugin was wrong.
@@ -43,6 +43,25 @@ If a doc doesn't exist, note that in the signal analysis but don't fail — the 
 One observation = one distinct pattern. A review comment saying *"use @PreAuthorize AND add tests AND use Specification"* is three observations, not one. A post-plugin commit that fixes five unrelated files is likely five observations.
 
 Each observation should be expressible in a single sentence: *"the plugin used X; should have used Y"*. If you can't reduce it to that sentence, the observation is too coarse — split or drop.
+
+### 3.5. Build the comment-coverage inventory (completeness guard)
+
+Partitioning into observations is lossy by nature — it keeps the *patterns* and discards anything that wasn't a pattern. That is exactly how comments get silently dropped: a reviewer comment that is a one-off code defect (not a reusable convention) produces no observation and vanishes. This step closes that hole.
+
+**Enumerate every distinct reviewer comment / discrete feedback item in the signal** and give each a stable id `C-1`, `C-2`, …. The granularity is *one reviewer remark = one id* (a single comment that bundles three asks splits into `C-3a/C-3b/C-3c`). For each, capture a one-line verbatim gist and its source ref (reviewer + file:line, or commit sha, or "user text"). For `run` mode, the equivalent units are distinct corrections/pushbacks; for `branch`/`text` mode, distinct asks in the diff/prose.
+
+**If the dispatch gives you a canonical comment file** (`pr-comments.json`, PR mode), the ids are already assigned and the bot/CI noise already stripped — **adopt its `C-n` ids verbatim as your inventory spine**: read the file, and ensure every entry appears in your coverage table. Do not renumber, drop, or silently merge entries; only *split* an id into `C-n-a/C-n-b` if one comment genuinely bundles multiple asks. This is what makes coverage a mechanical count (`rows == file entries + splits`) rather than a re-derivation you could get wrong. Comments flagged `resolved: true` or `outdated: true` are still inventoried — they typically disposition to `already-satisfied`, but you must say so, not omit them.
+
+Then assign **exactly one disposition** to every `C-n` (a comment that genuinely needs both a convention AND a code change gets two ids, one per disposition — do not multi-home a single id):
+
+- **`doc-finding`** — a reusable convention; becomes an actionable Finding (durable doc / memory update). Cite the `Finding N` it maps to.
+- **`code-fix`** — a real defect or required change in the **shipped code** that is NOT a reusable convention (so it does not belong in any doc). The learner cannot fix code, but this MUST surface so the `/learn` fix-round (or the user) can act. Becomes a `CF-n` item (see Step 5.5).
+- **`run-local`** — one-off product/feature decision; maps to an `RL-n` informational entry.
+- **`already-satisfied`** — the docs and the shipped code already comply (the reviewer was confirming, or the point was addressed before merge). No action; say where it's satisfied.
+- **`plugin-level`** — universal best practice; maps to the plugin-level Finding (maintainer review).
+- **`out-of-scope`** — not a learning signal at all (a question, praise, an unrelated nit, CI noise). Give the one-line reason.
+
+**Every `C-n` must carry a disposition.** A comment you cannot confidently disposition is itself a finding — mark it `code-fix` or `out-of-scope` with a "needs human judgment" note rather than dropping it. The coverage table in the output (Step 6) is generated from this inventory and is validated: unmapped comments are a defect.
 
 ### 4. Classify tier per observation
 
@@ -76,6 +95,12 @@ For each actionable observation (tier ∈ repo/workspace), produce a surgical be
 
 Keep the diff tight. Do not touch adjacent unrelated content. If the section currently reads *"Not established yet"* and the feedback reveals what it should be, replace the placeholder sentence with the observed convention.
 
+### 5.5. Record code-fix items (disposition = `code-fix`)
+
+For every comment dispositioned `code-fix` in Step 3.5, emit a `CF-n` item. These are real changes the shipped code needs that do NOT generalize into a durable convention, so they produce no doc Finding — but they must not vanish. The `/learn` skill routes them into the optional fix-round (the "ask implementer to fix" path) and into the log.
+
+Per `CF-n` capture: the originating `C-n`, the repo it lands in (match the cited file against the workspace repo list), the concrete file(s)/line(s) to change, a one-line "what's wrong", a one-line "what the fix should do", and the verbatim evidence quote. Do not write the fix yourself (read-only) — describe it precisely enough that an implementer can act without re-reading the PR.
+
 ### 6. Output — single structured markdown document
 
 Emit your findings in this exact structure (the caller parses it):
@@ -88,7 +113,9 @@ Emit your findings in this exact structure (the caller parses it):
 - **Signal strength**: {strong | moderate | weak}
 - **Reason**: {one sentence justifying strength}
 - **Docs read**: {list the files you read}
+- **Comments inventoried**: {total C-n} — dispositions: {N} doc-finding, {N} code-fix, {N} run-local, {N} already-satisfied, {N} plugin-level, {N} out-of-scope
 - **Observations found**: {total} ({run-local} run-local, {repo-durable} repo-durable, {workspace-durable} workspace-durable, {plugin-level} plugin-level)
+- **Coverage**: {covered}/{total} comments dispositioned ({"ALL COVERED" if equal | "⚠ N UNMAPPED — defect" otherwise})
 
 ## Run-local observations (informational)
 
@@ -132,6 +159,36 @@ _None._
 **Suggested plugin change**: {prose description of what plugin/prompt/template file would be updated and how}
 
 ### Finding 2 — ...
+
+## Code-fix items (need an implementer, not a doc update)
+
+{For each CF-n (disposition = code-fix):}
+
+### CF-1 — {repo} — {one-line title}
+**From comment**: C-{n}
+**Repo**: `{repo-name}`
+**Target**: `{file}:{line}` (+ additional files if any)
+**What's wrong**: {one sentence}
+**Fix direction**: {one sentence — what the code must do}
+**Evidence**:
+> {verbatim quote}
+> — {source}
+
+{If none:}
+_None._
+
+## Comment coverage (validation — every inventoried comment must appear exactly once)
+
+| Comment | Source | Gist | Disposition | How tackled |
+|---|---|---|---|---|
+| C-1 | {reviewer @ file:line / sha / "user text"} | {verbatim gist} | doc-finding | Finding 1 |
+| C-2 | {…} | {…} | code-fix | CF-1 |
+| C-3 | {…} | {…} | run-local | RL-1 |
+| C-4 | {…} | {…} | already-satisfied | {where it's already satisfied} |
+| C-5 | {…} | {…} | plugin-level | Finding 4 (flagged) |
+| C-6 | {…} | {…} | out-of-scope | {one-line reason} |
+
+**Coverage check**: {total C-n} inventoried, {total} dispositioned → **{ALL COMMENTS COVERED | ⚠ UNMAPPED: C-x, C-y}**. Every row's "How tackled" must resolve to a real Finding N / CF-n / RL-n, an explicit already-satisfied location, or a one-line reason. A blank or "n/a" disposition is a defect — go back and resolve it.
 ```
 
 ---
@@ -156,8 +213,11 @@ Low-confidence findings are still valuable — they flag candidates for the user
 
 ## You are not done until
 
+- **Every inventoried comment `C-n` has exactly one disposition and appears as exactly one row in the Comment coverage table** — this is the completeness guard; an unmapped comment is a defect, not an omission you may make silently
+- The coverage check line states ALL COMMENTS COVERED (or names the unmapped ids — only acceptable if you genuinely could not, and then each is flagged for human judgment, never dropped)
 - Every meaningful pattern in the signal has produced a finding
+- Every `code-fix` disposition has a corresponding `CF-n` item with a repo, target file:line, and fix direction
 - Every finding has a tier, a confidence level, evidence (verbatim quote), and a concrete before/after proposal (or, for plugin-level, a prose description)
-- The summary honestly reports signal strength, total findings, and per-tier breakdown
+- The summary honestly reports signal strength, comment-coverage counts, total findings, and per-tier breakdown
 - The output follows the exact markdown structure above (the caller's parser depends on it)
 - You have NOT touched any file with Write or Edit (read-only invariant)

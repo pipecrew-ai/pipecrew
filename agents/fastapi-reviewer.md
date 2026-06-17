@@ -31,7 +31,7 @@ Consult `{plugin_dir}/anti-patterns/fastapi.md` for the canonical concern list, 
 - **Async correctness** — async route handlers must be free of blocking calls (no synchronous `requests.get`, no sync DB ORM session inside an `async def`). Blocking call inside an async route = **Critical**.
 - **Exception handling** — business-rule violations must be raised as `HTTPException` (or the repo's typed exception class wired through `@app.exception_handler`), not returned as ad-hoc dict shapes from the handler. Hand-built error response that bypasses the global handler = **Non-critical** unless it returns the wrong status code = **Critical**.
 - **Response model declaration** — `response_model=...` on the route must match the spec's response schema for that endpoint. A `response_model` that omits required fields, or a route without `response_model` when the spec declares one = **Critical**.
-- **Migrations** — if a SQLAlchemy / SQLModel model changed, is there a matching Alembic revision file in the diff? Model change without migration = **Critical**.
+- **Migrations (HC-1 — non-droppable)** — if a SQLAlchemy / SQLModel model changed in any schema-affecting way (column added/removed, `nullable=` flip, length/type change, name), there MUST be a matching Alembic revision file in the diff. Model change without migration = **Critical**, and per the `reviewer-common.md` Hard check you may **not** dismiss it as a false positive: the only valid "no migration needed" outcome is citing the **existing** revision that already matches the new mapping by file:line. When uncertain, raise the Critical.
 
 ## Report title
 

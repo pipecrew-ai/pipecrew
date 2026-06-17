@@ -189,6 +189,16 @@ Pick the smallest design that satisfies the requirements. Specifically:
 
 When two designs both meet the requirements, pick the one with fewer files, fewer endpoints, and fewer moving parts — but name the runner-up in one sentence and explain why you ruled it out. The caller may have context you don't. If both are equal in simplicity, surface the tradeoff and ask before picking. Speculative future-proofing belongs in a follow-up feature, not this one.
 
+### Nearest-sibling design diff (CRITICAL)
+
+The pipeline is strong at "build what the spec says, consistently." Its blind spot is one altitude up: *should the spec have looked like this, given how we already solved the same problem?* Before finalizing any API/contract design, run this guard:
+
+1. **Name the nearest sibling.** Identify the existing feature that solves a structurally similar problem in the same repo (same kind of resource or flow) — e.g. another bulk-action-over-a-task-list controller, another paginated list, another claim/assign endpoint. Use `platform.md` and the agent-context docs to find it; you do not need a deep code walk. If there genuinely is no analogous feature, record **"no sibling"** and the check is satisfied.
+2. **Diff the contract shape.** Compare the proposed contract against the sibling's on these axes: request/response fields, **who resolves what** (does the client round-trip an id the server could resolve itself?), sync vs async, pagination source, identifier ownership. Mirror the sibling by default.
+3. **Justify every divergence.** Any divergence in *contract shape* from the sibling MUST carry a one-line "why different" justification in `ARCHITECTURE_DECISION`. A divergence with no rationale is a defect the reviewer will flag (HC-2 in `reviewer-common.md`). Concretely: if the sibling takes only `bookId` and resolves the task id server-side, a new feature that instead returns and round-trips `taskId` needs a stated reason — "redundant" is not one.
+
+**Guard against over-firing:** this is about *contract shape* divergence from a genuinely analogous feature, not every implementation detail. Don't manufacture a justification ritual for cosmetic differences or when no sibling exists.
+
 ### Spec gap analysis (CRITICAL)
 
 The product-owner says what is missing. Your job:
@@ -318,6 +328,9 @@ Set the `cross_repo_integration` boolean and `cross_repo_rationale` in the JSON 
 <!-- BEGIN ARCHITECTURE_DECISION -->
 ## Architecture Decision
 [1–2 paragraphs: chosen approach and why]
+
+### Nearest-sibling design diff
+[REQUIRED per the "Nearest-sibling design diff" rule. Name the closest existing analogous feature (or "no sibling — none exists"). For each contract-shape divergence from it, give a one-line "why different" justification. If the design fully mirrors the sibling, state "mirrors {sibling} — no contract-shape divergence." The reviewer reads this section to satisfy HC-2; an unjustified divergence is a finding.]
 <!-- END ARCHITECTURE_DECISION -->
 
 <!-- BEGIN DATA_MODEL -->

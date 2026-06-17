@@ -117,10 +117,18 @@ Branch on the source mode. Each produces the same output shape: a `signal` bundl
 
 #### 2a. PR mode (`--pr`)
 
+**Comments — use the canonical collector, do NOT hand-parse `gh` JSON.** Run the predefined script; it paginates fully, strips bot/CI noise, normalizes inline + conversation + review-summary comments into one list, and assigns **stable `C-n` ids** the learner's inventory adopts verbatim. Hand-parsing paginated JSON is the exact path by which a comment goes un-enumerated before the coverage guard can see it.
+
 ```bash
-# Via gh CLI
-gh pr view {pr-number} --repo {org}/{repo} --json title,body,state,merged,mergeCommit,headRefName,files,reviews
-gh api repos/{org}/{repo}/pulls/{pr-number}/comments --paginate
+node {plugin_dir}/scripts/collect-pr-feedback.js --pr={pr-url} --out={run_dir}/signal/pr-comments.json
+```
+
+Exit codes: `0` ok · `1` usage / bad URL · `2` `gh` unavailable / not authenticated / network (tell the user to `gh auth login`) · `3` unparseable `gh` output. The script prints only a one-line count to stdout — the comment bodies stay in the file, out of your context. Pass `{run_dir}/signal/pr-comments.json` to the learner (Step 3); the learner Reads it and builds its `C-n` inventory from the ids the script already assigned.
+
+**Commits — fetch separately for the plugin-vs-human partition** (the collector deliberately handles comments only, not the commit-authorship heuristic):
+
+```bash
+gh pr view {pr-number} --repo {org}/{repo} --json title,body,state,merged,mergeCommit,headRefName,files
 gh api repos/{org}/{repo}/pulls/{pr-number}/commits
 ```
 
@@ -134,9 +142,9 @@ From this, compute:
 
 - **Post-plugin fixes**: the diff between the last plugin commit and the final merged SHA — this is what humans had to add/fix to make the feature ship-worthy. The richest single signal.
 
-- **Review comments**: inline comments with file:line references + the commenter's text. Distinguish `MEMBER` / `CONTRIBUTOR` comments (strong signal) from `NONE` / bot comments (weak).
+- **Review comments**: already collected into `{run_dir}/signal/pr-comments.json` by the script above — each entry has a stable `C-n` id, `kind` (inline / conversation / review-summary), `author`, `association`, `path:line`, and `resolved` / `outdated` flags. Bot/CI noise is pre-excluded. Do NOT re-fetch or re-parse comments here; pass the file path to the learner.
 
-Bundle all of this into the signal for the learner. Include `--note` verbatim if provided.
+Bundle the commit material + the canonical comment file path into the signal for the learner. Include `--note` verbatim if provided.
 
 #### 2b. Run mode (`--run`)
 
@@ -188,8 +196,15 @@ Identifier: {PR URL | run_id | branch name | <first 60 chars of text>}
 ## The signal
 
 {For PR mode:}
-### Review comments ({N} total)
-{paste each comment with file:line + author + body}
+### Review comments — canonical list (read this file)
+The PR's comments are pre-collected, de-noised, and numbered at:
+  {run_dir}/signal/pr-comments.json
+Read that file. Each entry already has a stable `C-n` id plus kind / author /
+association / path:line / resolved / outdated. **Adopt those `C-n` ids verbatim
+as your inventory spine** (Step 3.5) — do not renumber, drop, or merge them.
+Every `C-n` in that file MUST appear in your Comment coverage table with a
+disposition. (If a single comment bundles N distinct asks, keep its id and add
+sub-ids C-n-a / C-n-b for the split.)
 
 ### Plugin commits ({N})
 {paste commit messages + diffs}
@@ -224,10 +239,22 @@ Read each of these before proposing any update:
 
 ## Your job
 
-For every meaningful pattern revealed by the signal, produce one finding.
+FIRST, inventory every distinct reviewer comment / discrete feedback item in
+the signal and give each a stable id (C-1, C-2, …) — one reviewer remark = one
+id; split a comment that bundles N asks into C-3a/C-3b/…. Assign EXACTLY ONE
+disposition to every C-n: `doc-finding` (→ a Finding), `code-fix` (→ a CF-n the
+implementer must fix — real code defect, not a reusable convention),
+`run-local` (→ RL-n), `already-satisfied` (docs + code already comply),
+`plugin-level` (→ flagged Finding), or `out-of-scope` (with a one-line reason).
+You MUST emit the "Comment coverage" table mapping every C-n to its disposition
+and how it was tackled — a comment with no disposition is a defect, not an
+allowed omission. This is the completeness guard the user asked for.
+
+THEN, for every meaningful pattern revealed by the signal, produce one finding.
 A "meaningful pattern" is a recurring / structural issue — not a one-off
 decision that only applied to this particular feature. Err on the side of
-NOT proposing updates for one-off decisions.
+NOT proposing updates for one-off decisions. A comment that is a real defect but
+not a reusable convention is NOT dropped — it becomes a `code-fix` (CF-n) item.
 
 Per finding, answer:
 
@@ -261,7 +288,29 @@ Per finding, answer:
 - Source: {mode} / {identifier}
 - Signal strength: {strong | moderate | weak — justify in one sentence}
 - Current docs read: {count}
+- Comments inventoried: {total C-n} — {N} doc-finding, {N} code-fix, {N} run-local, {N} already-satisfied, {N} plugin-level, {N} out-of-scope
+- Coverage: {covered}/{total} → {ALL COVERED | ⚠ UNMAPPED: C-x}
 - Findings produced: {N} ({N} run-local, {N} repo-durable, {N} workspace-durable, {N} plugin-level)
+
+## Comment coverage
+| Comment | Source | Gist | Disposition | How tackled |
+|---|---|---|---|---|
+| C-1 | {reviewer @ file:line / sha / "user text"} | {gist} | doc-finding | Finding 1 |
+| C-2 | {…} | {…} | code-fix | CF-1 |
+{one row per inventoried comment — every C-n appears exactly once}
+
+**Coverage check**: {total} inventoried, {total} dispositioned → {ALL COMMENTS COVERED | ⚠ UNMAPPED}.
+
+## Code-fix items (need an implementer, not a doc update)
+{For each CF-n:}
+### CF-1 — {repo} — {title}
+**From comment**: C-{n}
+**Repo**: {repo-name}
+**Target**: {file}:{line}
+**What's wrong**: {one sentence}
+**Fix direction**: {one sentence}
+**Evidence**: {verbatim quote + source}
+{If none: _None._}
 
 ## Finding 1
 ### Observation
@@ -305,6 +354,12 @@ Per finding, answer:
 6. **No plugin-level edits.** Even if a finding is clearly plugin-level,
    describe what the plugin change would be, but do not produce a file path
    under {plugin_dir}.
+7. **Cover every comment.** Every inventoried C-n must appear exactly once in
+   the Comment coverage table with a disposition. Dropping a comment because it
+   wasn't a "pattern" is the exact failure this guard exists to prevent — route
+   it to `code-fix`, `already-satisfied`, or `out-of-scope` instead. End with
+   the coverage check line stating ALL COMMENTS COVERED or naming the unmapped
+   ids.
 ```
 
 The learner is read-only (tools: Read, Glob, Grep, Bash). It does not write anything.
@@ -313,7 +368,25 @@ The learner is read-only (tools: Read, Glob, Grep, Bash). It does not write anyt
 
 ### Step 4: Present findings + approval UX
 
-Parse the learner's output into a list of findings. Render each one to the user in a compact format:
+**Step 4.0 — coverage gate (run before any per-finding prompt).** Parse the learner's `## Comment coverage` table and its coverage-check line. Then:
+
+- If the coverage check reports any **UNMAPPED** comments, do NOT proceed silently. Re-dispatch the learner via `SendMessage` with: `"Your Comment coverage table left {ids} without a disposition. Every inventoried comment must map to doc-finding / code-fix / run-local / already-satisfied / plugin-level / out-of-scope. Re-emit the coverage table and any new CF-n / findings — same conversation, do not redo the rest."` Loop until coverage is complete (cap 2 retries; if still incomplete, surface the gap to the user explicitly rather than burying it).
+- Render the coverage table to the user up front, so they can see how **every** PR comment was handled — not just the ones that became doc findings:
+
+```
+## Comment coverage — {source}   ({covered}/{total} comments dispositioned)
+
+| Comment | Gist | Disposition | How tackled |
+|---|---|---|---|
+| C-1 | {gist} | doc-finding | Finding 1 |
+| C-2 | {gist} | code-fix | CF-1 → fix-round (Step 6.5) |
+| C-3 | {gist} | already-satisfied | platform.md §X already says this |
+| C-4 | {gist} | out-of-scope | reviewer question, no change |
+```
+
+Code-fix items (`CF-n`) are carried into the Step 6.5 fix-round bundles (the "ask implementer to fix" path) — flag in the render that they need code changes, not doc edits.
+
+**Step 4.1 — per-finding approval.** Parse the learner's output into a list of findings. Render each one to the user in a compact format:
 
 ```
 ## Feedback findings — {source}
@@ -388,6 +461,25 @@ Append to `{workspace_root}/{slug}/history/learn-log.md` (create if missing). Fo
 **Signal strength**: {strong|moderate|weak}
 **Workspace at time of feedback**: {git rev of workspace config.json, or "n/a"}
 
+### Comment coverage
+*(the full audit of how every inventoried reviewer comment was handled — copy the learner's coverage table)*
+
+| Comment | Gist | Disposition | How tackled |
+|---|---|---|---|
+| C-1 | {gist} | doc-finding | Finding 1 (applied) |
+| C-2 | {gist} | code-fix | CF-1 → fix-round: applied |
+| C-3 | {gist} | already-satisfied | platform.md §X |
+| C-4 | {gist} | out-of-scope | reviewer question |
+
+**Coverage**: {covered}/{total} comments dispositioned — {ALL COVERED | ⚠ list unmapped}.
+
+### Code-fix items
+*(reviewer-flagged defects that became implementer work, not doc updates — appears only if the learner produced CF-n items)*
+
+| CF | From | Repo | Target | Disposition |
+|---|---|---|---|---|
+| CF-1 | C-2 | abvi-backoffice-service | ContentRatingTaskService.java:142 | fixed in round (or: deferred / fix-skipped) |
+
 ### Findings applied
 | # | Tier | Target | Summary |
 |---|---|---|---|
@@ -438,12 +530,14 @@ Doc updates from Step 5 only steer **future** runs. The branch the feedback came
 **Skip this step entirely** when ANY of the following holds:
 - `--no-fix` was passed.
 - `--dry-run` was passed (no docs were applied either, so there's nothing to "match" the branch to).
-- Zero findings were applied at Step 5 (everything was rejected).
-- Every applied finding is `plugin-level` (no workspace repo to fix).
+- Zero findings were applied at Step 5 **AND** the learner produced zero `code-fix` (CF-n) items (nothing to fix in code).
+- Every applied finding is `plugin-level` **AND** there are no CF-n items (no workspace repo to fix).
+
+> **Code-fix items are first-class fix-round input.** The fix round addresses two kinds of work: (a) approved doc findings whose convention the branch still violates, and (b) the learner's `code-fix` (CF-n) items — real defects a reviewer flagged that aren't reusable conventions. Both flow through the same per-repo bundling below. CF-n items make the round worth running even when every doc finding was rejected.
 
 Otherwise:
 
-#### 6.5.1 — Group approved findings by affected repo
+#### 6.5.1 — Group approved findings AND code-fix items by affected repo
 
 For each applied (non-plugin-level) finding, resolve the affected repo:
 
@@ -451,7 +545,9 @@ For each applied (non-plugin-level) finding, resolve the affected repo:
 2. The Observation / Evidence sections also contain concrete source-file references (e.g., `src/components/contracts/DownloadContractButton.tsx`). Extract any path that resolves under the same `repo_path` — these become the per-finding `affected_files` list.
 3. If a finding has no in-repo source files (it's purely about adding a new file or moving things around), keep the finding but mark `affected_files: []` — the implementer will use the Correction text to decide what to create / move.
 
-If the same repo is targeted by multiple findings, group them into ONE per-repo bundle. The orchestrator will dispatch ONE implementer per bundle, not N.
+**Then add the learner's `code-fix` (CF-n) items.** Each CF-n already names its repo and target file:line. Resolve its `repo_path` the same way and fold it into that repo's bundle as a fix-list entry of kind `code-fix` (alongside any doc findings). A CF-n carries no doc to update — its "reference convention" is the reviewer comment itself; pass its `What's wrong` + `Fix direction` + evidence straight through. A repo that has only CF-n items and no doc findings still gets a bundle.
+
+If the same repo is targeted by multiple findings and/or CF-n items, group them into ONE per-repo bundle. The orchestrator will dispatch ONE implementer per bundle, not N.
 
 #### 6.5.2 — Resolve the implementer agent per repo
 
@@ -485,7 +581,8 @@ For each repo bundle, before dispatching, render:
 Implementer:  {resolved_subagent_type}
 Branch:       {resolved_branch}    (resolved via {flag | current | user-input})
 Findings:     {N} ({list of finding IDs and one-line summaries})
-Files in scope: {list of resolved affected_files, or "(implementer will derive from Correction text)"}
+Code-fixes:   {M} ({list of CF IDs and one-line summaries — reviewer-flagged defects})
+Files in scope: {list of resolved affected_files + CF target files, or "(implementer will derive from Correction text)"}
 
 Dispatch? (y = yes / n = skip this repo / b = pick a different branch)
 ```
@@ -532,6 +629,15 @@ Findings to apply (fix_list):
 - **Reference convention**: {repo-relative path of the doc updated at Step 5 for this finding},
   section "{section name}". Re-read it before editing — that is the rule of record.
 
+Code-fix items (fix_list — reviewer-flagged defects, no doc to read; the comment IS the spec):
+
+{for each CF-n in this bundle:}
+### {CF-id} — {one-line summary}  (from review comment {C-n})
+- **What's wrong** (current behavior): {cf.whats_wrong}
+- **Fix direction** (what the code must do): {cf.fix_direction}
+- **Target files**: {cf.target file:line list}
+- **Reviewer evidence**: {cf.evidence verbatim quote + source}. This is the rule of record for this item — there is no durable doc; apply exactly what the reviewer asked.
+
 Constraints:
 1. Edit ONLY the named files plus any of their direct callers / imports / tests that break
    because of the edit. Do NOT range further.
@@ -574,8 +680,11 @@ Emit the standard one-line phase-done status. Include a fix-round suffix when St
 
 ```
 [feedback ✔] {N} applied, {N} rejected, {N} plugin-flagged — {source} ({mm:ss}, {Xk} tokens)
-            ↳ fix-round: {R} repos, {A} findings applied to code, {S} skipped
+            ↳ coverage: {covered}/{total} comments dispositioned ({C} code-fix items)
+            ↳ fix-round: {R} repos, {A} findings + {CF} code-fixes applied to code, {S} skipped
 ```
+
+Always print the coverage line — it is the at-a-glance proof that no reviewer comment was silently dropped. If coverage is < 100%, use ⚠ and name the unmapped ids.
 
 If no findings were applied AND no fix-round ran, use ⚠:
 

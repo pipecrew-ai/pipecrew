@@ -95,9 +95,15 @@ EVENT SCHEMA FILES:
 
 --- End contract-inputs switch
 
+ESTABLISHED PATTERNS (load as a review checklist — Invariant 8):
+{workspace_root}/{slug}/context/platform.md  (read the § Established Patterns section)
+
+NEAREST-SIBLING DESIGN DIFF (from Phase 2 — verify HC-2):
+{paste the `### Nearest-sibling design diff` sub-section from the architect's ARCHITECTURE_DECISION block, or "none recorded" if the architect omitted it}
+
 INSTRUCTIONS:
-1. Read {service_worktree_path}/CLAUDE.md and the agent-context docs it points to (conventions, error-handling, database, and for workers: event handling / idempotency).
-2. Apply the contract compliance pass from your system prompt — the directive matching `spec_policy` above tells you exactly what to walk and what to flag.
+1. Read {service_worktree_path}/CLAUDE.md and the agent-context docs it points to (conventions, error-handling, database, and for workers: event handling / idempotency), AND the workspace `platform.md § Established Patterns`. Build a checklist from the applicable established patterns + repo conventions (Invariant 8) — freshly-learned conventions are first-class rules — and confirm the diff complies with each in your pattern-adherence pass.
+2. Apply the contract compliance pass from your system prompt — the directive matching `spec_policy` above tells you exactly what to walk and what to flag. Then apply the two Hard checks from `reviewer-common.md`: **HC-1** (any schema-affecting ORM/`@Entity` change MUST have a matching migration in the diff — non-droppable, cite the existing changeset by file:line if you claim none is needed) and **HC-2** (a contract-shape divergence from the nearest sibling above with no recorded justification is a finding).
 3. Read the diff: it is pre-computed at {run_dir}/review/{repo}.diff (DIFF FILE). Read that file — it is the complete set of changes to review. You have no Bash and never run git yourself; use Read/Glob/Grep over the worktree for any surrounding context a hunk needs.
 4. Walk each FR/EC and identify its enforcement point; flag any that are not enforced as Critical.
 5. Run the craft, security, and test passes described in your system prompt.
@@ -112,6 +118,8 @@ CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgo
 - **FINDINGS_SUMMARY block first.** The first machine-readable block in your report MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
 - **Classify every Critical.** Every Critical finding MUST carry `**Classification**: mechanical` or `**Classification**: architectural` in its prose entry, AND a 5th pipe field on its `critical` FINDINGS row. Missing classifications default to architectural — costs a user-gate round-trip.
 - **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
+- **Hard checks are non-droppable.** HC-1 (modified ORM model / `@Entity` ⇒ matching migration in the diff) and HC-2 (unjustified contract-shape divergence from the nearest sibling) MUST NOT be downgraded to a false positive on a hunch. For HC-1 the only valid "no migration needed" outcome is citing the existing changeset by file:line; when uncertain, raise the Critical.
+- **Established patterns are a checklist, not background reading.** Confirm the diff complies with each applicable rule in `platform.md § Established Patterns` and the repo conventions — a convention the team taught the pipeline via `/learn` is as binding as any older one.
 - **Apply only your system-prompt passes.** Contract / craft / security / test / scope-drift are defined in your agent system prompt. Do not invent additional checks. Do not flag findings the prompt didn't authorize.
 - **Read-only — structurally enforced.** Your tool grant is `Read, Glob, Grep` only: no `Bash`, no `Edit`, no `Write`. You cannot mutate the worktree, run git, apply a fix, or run a formatter/build. Output is the report only. (The orchestrator also re-checks the worktree is clean after you return.)
 
@@ -144,8 +152,14 @@ SPEC FILES TO VALIDATE TYPES AGAINST:
 UX SPEC (to verify what was built matches what was designed):
 {<!-- BEGIN IMPLEMENTATION_SPEC --> from the Phase 5b ux-consultant output}
 
+ESTABLISHED PATTERNS (load as a review checklist — Invariant 8):
+{workspace_root}/{slug}/context/platform.md  (read the § Established Patterns section)
+
+NEAREST-SIBLING DESIGN DIFF (from Phase 2 — verify HC-2):
+{paste the `### Nearest-sibling design diff` sub-section from the architect's ARCHITECTURE_DECISION block, or "none recorded" if the architect omitted it}
+
 INSTRUCTIONS:
-1. Read {frontend_worktree_path}/CLAUDE.md and the design-system + conventions + feature docs it points to.
+1. Read {frontend_worktree_path}/CLAUDE.md and the design-system + conventions + feature docs it points to, AND the workspace `platform.md § Established Patterns`. Build a checklist from the applicable established patterns + repo conventions (Invariant 8) — freshly-learned conventions are first-class rules — and confirm the diff complies with each in your pattern-adherence pass. Apply **HC-2**: a contract-shape divergence from the nearest sibling above (e.g. the client round-tripping an id the backend resolves server-side for the analogous feature) with no recorded justification is a finding.
 2. Read the OpenAPI specs for every endpoint listed above — note the exact request/response field names, nullability, and enum values.
 3. Read the diff: it is pre-computed at {run_dir}/review/{repo}.diff (DIFF FILE). Read that file — it is the complete set of changes to review. You have no Bash and never run git yourself; use Read/Glob/Grep over the worktree for any surrounding context a hunk needs.
 4. Walk every new typed model field-by-field against its spec schema. Flag any drift as Critical.
@@ -162,6 +176,7 @@ CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgo
 - **Classify every Critical.** Every Critical finding MUST carry `**Classification**: mechanical` or `**Classification**: architectural` in its prose entry, AND a 5th pipe field on its `critical` FINDINGS row. Missing classifications default to architectural — costs a user-gate round-trip.
 - **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
 - **Spec field-name fidelity.** Frontend types must match the OpenAPI spec field names byte-for-byte. Renaming a spec field (e.g., `bookId` → `id`) is a Critical type-drift finding. Walk every typed model field-by-field.
+- **Established patterns are a checklist + HC-2 applies.** Confirm the diff complies with each applicable rule in `platform.md § Established Patterns` and the repo conventions (a `/learn`-taught convention is as binding as any older one), and flag an unjustified contract-shape divergence from the nearest sibling (HC-2).
 - **Apply only your system-prompt passes.** Typing / data-fetching / routing / i18n / RTL / accessibility / tests / scope-drift are defined in your agent system prompt. Do not invent additional checks.
 - **Read-only — structurally enforced.** Your tool grant is `Read, Glob, Grep` only: no `Bash`, no `Edit`, no `Write`. You cannot mutate the worktree, run git, apply a fix, or run a formatter/build. Output is the report only. (The orchestrator also re-checks the worktree is clean after you return.)
 

@@ -55,6 +55,7 @@ Consult `{plugin_dir}/anti-patterns/spring-boot.md` for the canonical concern li
 
 ### 5e. Migrations
 
+- **Modified `@Entity` without a matching new migration (HC-1 — non-droppable)** = **Critical**. Any schema-affecting `@Column` change — nullability flip, name, length/precision, added/removed column, type change — MUST have a corresponding new Liquibase changeset (registered in the master changelog) or Flyway versioned script in the same diff. This is the deterministic Hard check from `reviewer-common.md`: **do not downgrade it to a false positive on a hunch.** The only valid "no migration needed" outcome is citing the **existing** changeset that already matches the new mapping (e.g. the column is already nullable) by file:line. "Probably already allows this" is not acceptable — when uncertain, raise the Critical.
 - **Migration file not registered in the master changelog** (Liquibase) or **missing version sequence** (Flyway) = **Critical** (won't apply).
 - **CHECK constraints that forget existing values** (a new constraint that breaks in-flight rows) = **Critical**.
 - **Index on a low-cardinality column** = **Non-critical** (wasted disk; may degrade writes).

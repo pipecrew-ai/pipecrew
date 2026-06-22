@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pipecrew crew member tipping the hat">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 -2 48 58" role="img" aria-label="Pipecrew crew member tipping the hat over a 3D pyramid">
   <style>
     .s{ fill:none; stroke:#1a1814; stroke-linecap:round; stroke-linejoin:round; }
     .a{ fill:#c8741b; stroke:none; }
     .node{ fill:#f3efe7; stroke:#1a1814; stroke-linecap:round; stroke-linejoin:round; }
+    .f1{ fill:#1a1814; }
+    .f2{ fill:#5f5749; }
   </style>
   <!-- head -->
   <circle class="node" stroke-width="2.6" cx="32" cy="27" r="11"/>
@@ -14,4 +16,7 @@
   <circle class="node" stroke-width="2" cx="15" cy="27" r="3"/>
   <line class="s" stroke-width="2.4" x1="41" y1="38" x2="48" y2="30"/>
   <circle class="node" stroke-width="2" cx="49" cy="27" r="3"/>
+  <!-- 3D pyramid: apex meets the bottom of the head; shadow face left, lit face right -->
+  <path class="f2" d="M32 38 L22 50 L32 54 Z"/>
+  <path class="f1" d="M32 38 L42 50 L32 54 Z"/>
 </svg>

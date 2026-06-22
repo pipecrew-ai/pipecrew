@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/pipecrew-logo.svg" alt="PipeCrew logo" width="96" height="96" />
+<img src="assets/pipecrew-logo.svg" alt="PipeCrew logo" width="160" height="160" />
 
 # PipeCrew
 

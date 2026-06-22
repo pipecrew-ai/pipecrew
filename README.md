@@ -11,7 +11,7 @@ context and learning your platform, so **every run starts smarter than the last*
 [![Website](https://img.shields.io/badge/pipecrew.ai-website-2563eb)](https://pipecrew.ai)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757)](https://claude.ai/claude-code)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/pipecrew-ai/pipecrew)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
 [**Website**](https://pipecrew.ai) · [**Install**](#install) · [**Quick start**](#quick-start) · [**Skills**](#skills) · [**Supported stacks**](#supported-tech-stacks)
 
@@ -280,4 +280,4 @@ or via `/update-config`.
 
 ## License
 
-[MIT](#license) · Learn more at **[pipecrew.ai](https://pipecrew.ai)**
+[Apache 2.0](LICENSE) · Learn more at **[pipecrew.ai](https://pipecrew.ai)**

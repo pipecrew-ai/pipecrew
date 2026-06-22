@@ -7,7 +7,7 @@
   },
   "homepage": "https://github.com/pipecrew-ai/pipecrew",
   "repository": "https://github.com/pipecrew-ai/pipecrew",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "pipecrew",
     "feature-pipeline",

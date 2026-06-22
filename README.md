@@ -2,7 +2,13 @@
 
 <img src="assets/pipecrew-logo.svg" alt="PipeCrew logo" width="160" height="160" />
 
-# PipeCrew
+<pre>
+██████   ██████  ██████   ██████   █████  ██████   ██████  ██   ██
+██   ██    ██    ██   ██  ██      ██      ██   ██  ██      ██   ██
+██████     ██    ██████   █████   ██      ██████   █████   ██ █ ██
+██         ██    ██       ██      ██      ██  ██   ██      ███████
+██       ██████  ██       ██████   █████  ██   ██  ██████   ██ ██ 
+</pre>
 
 ### A crew that learns your platform
 
@@ -18,14 +24,6 @@ context and learning your platform, so **every run starts smarter than the last*
 [**Website**](https://pipecrew.ai) · [**Install**](#install) · [**Quick start**](#quick-start) · [**Skills**](#skills) · [**Supported stacks**](#supported-tech-stacks)
 
 </div>
-
-```
-██████   ██████  ██████   ██████   █████  ██████   ██████  ██   ██
-██   ██    ██    ██   ██  ██      ██      ██   ██  ██      ██   ██
-██████     ██    ██████   █████   ██      ██████   █████   ██ █ ██
-██         ██    ██       ██      ██      ██  ██   ██      ███████
-██       ██████  ██       ██████   █████  ██   ██  ██████   ██ ██
-```
 
 ---
 

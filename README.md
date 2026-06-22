@@ -21,7 +21,7 @@ context and learning your platform, so **every run starts smarter than the last*
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/pipecrew-ai/pipecrew)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[**Website**](https://pipecrew.ai) · [**Install**](#install) · [**Quick start**](#quick-start) · [**Skills**](#skills) · [**Supported stacks**](#supported-tech-stacks)
+[**Website**](https://pipecrew.ai) · [**Install**](#install) · [**Quick start**](#quick-start) · [**Skills**](#skills) · [**Agents**](#agents) · [**Supported stacks**](#supported-tech-stacks)
 
 </div>
 
@@ -191,6 +191,54 @@ The full pipeline is one command — but **every capability is also a standalone
 > **Don't see your stack?** `/discover` auto-generates a tailored implementer for in-house or unusual
 > stacks (Rails, Phoenix, Laravel, Go, .NET, Kotlin…) by reading your repo's conventions — no plugin
 > change required. See [Extending PipeCrew](#extending-pipecrew).
+
+## Agents
+
+The crew is **33 specialized agents**. The orchestrator dispatches only the ones your workspace needs —
+stack-specific implementers and reviewers run in parallel, while cross-cutting agents wrap around them.
+
+### Orchestration &amp; planning
+
+| Agent | Role |
+|-------|------|
+| `product-brainstormer` | Greenfield idea → structured `PROJECT_BRIEF` |
+| `solution-architect` | Cross-repo technical design that drives all implementation |
+| `task-planner` | Hydrates the architect's task skeleton into per-task files |
+| `reporter` | Run report — waterfall timeline, per-agent tokens, trends |
+
+### Discovery, context &amp; learning
+
+| Agent | Role |
+|-------|------|
+| `repo-discoverer` | Profiles one repo (framework, entities, endpoints) during `/discover` |
+| `architecture-mapper` | Infers cross-repo topology from the code → Mermaid diagrams |
+| `context-manager` | Creates / refreshes agent-facing context (CLAUDE.md, `agent-context/`) |
+| `feedback-learner` | Turns a merged PR / run / diff into durable-context updates |
+
+### Contracts &amp; specs
+
+| Agent | Role |
+|-------|------|
+| `openapi-spec-editor` | Applies the approved API design to OpenAPI spec files |
+| `schema-implementer` | Applies contract changes — JSON Schema / Avro / Protobuf |
+
+### Review &amp; advisory
+
+| Agent | Role |
+|-------|------|
+| `security-consultant` | Security review of the design and of implementation diffs |
+| `ux-consultant` | Produces an implementation-ready UX spec for frontend features |
+
+### Stack implementers &amp; reviewers
+
+One implementer — and, where applicable, one reviewer — per stack. See [Supported tech stacks](#supported-tech-stacks)
+for each stack's `spec_policy`.
+
+- **Implementers** — `spring-boot` · `react` · `nextjs` · `nestjs` · `fastapi` · `flask` · `django` · `python-worker` · `cdk-stack` · `terraform` · `mock`
+- **Reviewers** — `spring-boot` · `react` · `nextjs` · `nestjs` · `fastapi` · `flask` · `django` · `python-worker` · `cdk` · `terraform`
+
+> Plus any **auto-generated implementers** `/discover` creates for in-house or unusual stacks — see
+> [Extending PipeCrew](#extending-pipecrew).
 
 ## The crew sizes itself
 

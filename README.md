@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🏗️ PipeCrew
+<img src="assets/pipecrew-logo.svg" alt="PipeCrew logo" width="96" height="96" />
+
+# PipeCrew
 
 ### A crew that learns your platform
 

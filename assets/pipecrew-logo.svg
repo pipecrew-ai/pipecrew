@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pipecrew crew member tipping the hat">
+  <style>
+    .s{ fill:none; stroke:#1a1814; stroke-linecap:round; stroke-linejoin:round; }
+    .a{ fill:#c8741b; stroke:none; }
+    .node{ fill:#f3efe7; stroke:#1a1814; stroke-linecap:round; stroke-linejoin:round; }
+  </style>
+  <!-- head -->
+  <circle class="node" stroke-width="2.6" cx="32" cy="27" r="11"/>
+  <!-- hat dome + brim -->
+  <path class="a" d="M20 16 Q20 5 32 4 Q44 5 44 16 Z"/>
+  <rect class="a" x="13" y="14" width="38" height="4.2" rx="2.1"/>
+  <!-- arms + hands tipping the brim -->
+  <line class="s" stroke-width="2.4" x1="23" y1="38" x2="16" y2="30"/>
+  <circle class="node" stroke-width="2" cx="15" cy="27" r="3"/>
+  <line class="s" stroke-width="2.4" x1="41" y1="38" x2="48" y2="30"/>
+  <circle class="node" stroke-width="2" cx="49" cy="27" r="3"/>
+</svg>

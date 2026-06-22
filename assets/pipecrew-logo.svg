@@ -1,22 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 -2 48 58" role="img" aria-label="Pipecrew crew member tipping the hat over a 3D pyramid">
-  <style>
-    .s{ fill:none; stroke:#1a1814; stroke-linecap:round; stroke-linejoin:round; }
-    .a{ fill:#c8741b; stroke:none; }
-    .node{ fill:#f3efe7; stroke:#1a1814; stroke-linecap:round; stroke-linejoin:round; }
-    .f1{ fill:#1a1814; }
-    .f2{ fill:#5f5749; }
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 52 54" role="img" aria-label="Pipecrew crew member tipping the hat on a 3D pyramid">
+  <!-- Static export of the HeroCrew mascot (src/components/HeroCrew.jsx).
+       Pyramid faces are the reduced-motion frame (spin angle -0.6), painted far -> near.
+       Colours: ink #1a1814, paper #f3efe7, accent #c8741b. -->
+
+  <!-- 3D build: four faces, far -> near -->
+  <g stroke="none">
+    <polygon points="32.00,33.22 34.35,40.75 19.49,44.73" fill="rgb(60,55,46)" />
+    <polygon points="32.00,33.22 44.51,46.56 34.35,40.75" fill="rgb(32,29,25)" />
+    <polygon points="32.00,33.22 19.49,44.73 29.65,50.53" fill="rgb(87,80,67)" />
+    <polygon points="32.00,33.22 29.65,50.53 44.51,46.56" fill="rgb(60,55,46)" />
+  </g>
+
   <!-- head -->
-  <circle class="node" stroke-width="2.6" cx="32" cy="27" r="11"/>
-  <!-- hat dome + brim -->
-  <path class="a" d="M20 16 Q20 5 32 4 Q44 5 44 16 Z"/>
-  <rect class="a" x="13" y="14" width="38" height="4.2" rx="2.1"/>
-  <!-- arms + hands tipping the brim -->
-  <line class="s" stroke-width="2.4" x1="23" y1="38" x2="16" y2="30"/>
-  <circle class="node" stroke-width="2" cx="15" cy="27" r="3"/>
-  <line class="s" stroke-width="2.4" x1="41" y1="38" x2="48" y2="30"/>
-  <circle class="node" stroke-width="2" cx="49" cy="27" r="3"/>
-  <!-- 3D pyramid: apex meets the bottom of the head; shadow face left, lit face right -->
-  <path class="f2" d="M32 38 L22 50 L32 54 Z"/>
-  <path class="f1" d="M32 38 L42 50 L32 54 Z"/>
+  <circle cx="32" cy="24" r="10" fill="#f3efe7" stroke="#1a1814" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M32 14 A10 10 0 0 1 32 34 Z" fill="#1a1814" opacity="0.13" />
+
+  <!-- hat + hands -->
+  <path d="M22 14 Q22 4 32 3 Q42 4 42 14 Z" fill="#c8741b" />
+  <path d="M32 3 Q42 4 42 14 L32 14 Z" fill="#1a1814" opacity="0.13" />
+  <ellipse cx="32" cy="14.2" rx="18" ry="4" fill="#c8741b" />
+  <line x1="24" y1="33" x2="17" y2="26" fill="none" stroke="#1a1814" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="15.5" cy="23.5" r="2.8" fill="#f3efe7" stroke="#1a1814" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" />
+  <line x1="40" y1="33" x2="47" y2="26" fill="none" stroke="#1a1814" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="48.5" cy="23.5" r="2.8" fill="#f3efe7" stroke="#1a1814" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" />
 </svg>

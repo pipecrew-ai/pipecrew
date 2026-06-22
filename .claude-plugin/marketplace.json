@@ -1,11 +1,12 @@
 {
   "name": "pipecrew",
   "owner": { "name": "Ramy Hassan" },
+  "description": "PipeCrew — a multi-repo agent crew for Claude Code that discovers a platform and ships features end-to-end across backend, frontend, mock, and infra repos. The crew learns your platform: it engineers durable, agent-facing context from your codebase (conventions, contracts, architecture) and keeps learning from every run and merged PR, so each feature lands better-grounded than the last.",
   "plugins": [
     {
       "name": "pipecrew",
       "source": "./",
-      "description": "Multi-repo agent crew for Claude Code — /discover, /deliver, /review, /assess, /context-refresh."
+      "description": "Multi-repo agent crew for Claude Code that learns your platform — /discover, /deliver, /review, /assess, plus /learn and /context-refresh to engineer durable agent-facing context that improves every run."
     }
   ]
 }

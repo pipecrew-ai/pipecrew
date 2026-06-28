@@ -219,6 +219,60 @@ test('no arg → exit 2 (usage)', () => {
   assert(r.status === 2, `expected 2, got ${r.status}`);
 });
 
+// --- provenance fields (schema_version 2, all OPTIONAL) --------------------
+
+test('profile WITHOUT provenance fields still valid (backward-compat)', () => {
+  const p = validProfile();
+  p.entities = [{ name: 'Book', purpose: 'x', key_states: ['DRAFT'], owning_module: 'm' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 0, `expected 0, got ${r.status}: ${r.stderr}`);
+});
+
+test('entity with states_source + entity_kind + roles[] → exit 0', () => {
+  const p = validProfile();
+  p.schema_version = 2;
+  p.entities = [{ name: 'Book', purpose: 'x', key_states: ['DRAFT'], states_source: 'BookStatus.java:3', entity_kind: 'authoritative', owning_module: 'm' }];
+  p.roles = [{ name: 'PUBLISHER', source: 'Role.java:4', description: 'submits books' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 0, `expected 0, got ${r.status}: ${r.stderr}`);
+});
+
+test('invalid entity_kind → exit 1', () => {
+  const p = validProfile();
+  p.entities = [{ name: 'Book', purpose: 'x', key_states: [], entity_kind: 'mirror', owning_module: 'm' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/entity_kind/.test(r.stderr), r.stderr);
+});
+
+test('non-string states_source → exit 1', () => {
+  const p = validProfile();
+  p.entities = [{ name: 'Book', purpose: 'x', key_states: [], states_source: 12, owning_module: 'm' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/states_source/.test(r.stderr), r.stderr);
+});
+
+test('roles not an array → exit 1', () => {
+  const p = validProfile(); p.roles = 'PUBLISHER,MANAGER';
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/roles.*array/.test(r.stderr), r.stderr);
+});
+
+test('role missing name → exit 1', () => {
+  const p = validProfile(); p.roles = [{ source: 'Role.java:4' }];
+  const r = run(writeProfile(p));
+  assert(r.status === 1, `expected 1, got ${r.status}`);
+  assert(/roles\[0\]\.name/.test(r.stderr), r.stderr);
+});
+
+test('roles null / omitted → exit 0 (optional)', () => {
+  const p = validProfile(); p.roles = null;
+  const r = run(writeProfile(p));
+  assert(r.status === 0, `expected 0, got ${r.status}: ${r.stderr}`);
+});
+
 // --- directory mode --------------------------------------------------------
 
 test('directory mode: all valid → exit 0', () => {

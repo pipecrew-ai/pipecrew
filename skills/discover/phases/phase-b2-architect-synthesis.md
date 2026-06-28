@@ -2,6 +2,8 @@
 
 Launch the `solution-architect` agent in discovery mode. It reads the per-repo profiles produced in B2.0 (NOT raw repo code) and synthesizes the platform context — entity map, integration topology, established patterns, audit findings aggregated, the two architecture diagrams.
 
+**Incremental mode** (`discover_mode == incremental`): dispatch the architect with `MODE: discovery-incremental` instead of `MODE: discovery`, and **merge** its output rather than rewriting. The architect reads the existing `context/platform.md` + `config.json` plus the NEW repos' profiles (only), and produces additive updates: new Service Map / Entity / Integration rows, new cross-repo edges, updated diagrams, and a dated "Added in this run" note — preserving all existing platform.md content. The config build below becomes a **merge**, never an overwrite. Full spec: `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2". The rest of this file describes full mode.
+
 **Tool**: `Agent`
 **subagent_type**: `solution-architect`
 **description**: `"Onboard — architect synthesis for {workspace.name}"`
@@ -219,6 +221,8 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
 **Render check**: before marking Phase B2 complete, validate both Mermaid files parse cleanly. Run a lightweight syntax check (or defer to the site-view render error) and surface any lexical errors to the user — most common cause is a period inside a dotted-edge label (`-.LABEL.->`) which the parser swallows.
 
 ### Build workspace config (config.json)
+
+**Incremental mode**: do NOT rebuild from scratch — **merge** the new repos into the existing `config.json` (deep-copy it, preserve every existing `repos.*` / `services.*` / `domain.*` / `workspace.*` entry and hand-edits, add one entry per new repo + new service, and re-run the `spec_copies` probe across `all_repos` in BOTH directions). Then validate. Full procedure: `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2 → Build workspace config". The "config already exists" warning (CRITICAL RULE 2) does NOT fire here — incremental merges by design. The from-scratch build below is full mode only.
 
 Now that the architect has returned the service map, entity list, and auth discovery, build `{workspace_root}/{slug}/config.json`. **This MUST happen here, at the end of B2 — not in Phase C — because Phase B2.6's observability extractor reads this file** (`extract-observability.js` needs `repos` paths/roles, `services`, and `workspace.envs`). Everything below is available by now: discovered repos (Phase A), domain answers (Phase B1), and the architect's service map / entities / auth (this phase).
 

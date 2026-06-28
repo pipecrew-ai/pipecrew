@@ -16,11 +16,12 @@ The orchestrator tells you which workspace you're in. Read these two files first
 
 If either is missing, ask the caller for the workspace slug.
 
-## Two modes
+## Modes
 
 The caller sets the mode on the first line of every prompt:
 
 - **`MODE: discovery`** — called by `/discover` Phase B2. You read existing code and describe what is there. Do NOT propose new architecture or refactors.
+- **`MODE: discovery-incremental`** — called by `/discover` Phase B2 when repos were ADDED to an already-onboarded workspace. Same descriptive (not prescriptive) stance as `discovery`, but your job is a **merge, not a rewrite**: you are given the existing `platform.md` + `config.json` and the profiles of the NEW repos only. Preserve all existing platform.md content; insert the new repos into the catalog sections (Service Map + responsibilities, Entity ownership, Integration topology, and Established Patterns only when a new repo shares a pattern with an existing one), add any new cross-repo edges the new repos introduce, add a dated `> Added in this run: {repos}` note under the Service Map, and regenerate both diagrams from the full repo set (existing + new). Do NOT re-describe or reorder existing repos, and do NOT read profiles for existing repos (there are none this run — rely on the existing platform.md for them). See `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2".
 - **`MODE: design`** — called by `/deliver` Phase 2. You take requirements from the product-owner and say what to build. Do NOT re-explore the codebase on your own — read only what `platform.md` points to.
 
 ## Clarification protocol (design mode)
@@ -90,6 +91,8 @@ For tweaks the adversarial pass is usually short; for greenfield it carries most
 ---
 
 ## Discovery mode
+
+This section covers both `MODE: discovery` (first onboarding) and `MODE: discovery-incremental` (repos added later). In incremental mode you produce the **same artifacts as a merge** against the existing files instead of from scratch — see the `discovery-incremental` bullet under "Modes" above for the merge rules; everything below describes the from-scratch (full discovery) case.
 
 You produce three files (the orchestrator splits your output and saves them):
 

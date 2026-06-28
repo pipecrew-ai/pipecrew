@@ -1,5 +1,12 @@
 ## Phase B1: Domain Interrogation (3 questions — name was already captured in Pre-phase 0)
 
+**Incremental mode** (`discover_mode == incremental`): **skip the three questions.**
+Adding repos doesn't change the domain. Load `workspace` + `domain` from the
+existing `config.json` and reuse them verbatim; offer the one-line confirmation in
+`{plugin_dir}/rules/incremental-discovery.md` § "Phase B1" (`yes` proceeds, `edit`
+amends the stored values for the Phase B2 config merge). Then go straight to Phase
+B2.0. The full-mode questions below run only in `full` mode.
+
 The project name was already collected in Pre-phase 0 (used to create the scratchpad dir). Do NOT re-ask it. Ask only the three remaining questions. The opener should echo the name back for confirmation so the user can catch a typo without another round-trip:
 
 ```

@@ -82,7 +82,9 @@ Old names are not aliased — the rename is breaking (which is free since the pl
 ## Per-skill flag inventory (current state)
 
 ### `/discover`
-`--workspace=<slug>`, `--resume`, `--greenfield`, `--skip-divergences`.
+`--workspace=<slug>`, `--resume`, `--greenfield`, `--full`, `--skip-divergences`, `--refresh-cache`, `--refresh-observability`, `--memory-remote[=<url>]`, `--memory-sync-mode=<commit|pr|hybrid>`.
+
+(`--resume`, `--greenfield`, `--full`, `--refresh-cache`, `--refresh-observability` are bare **run-mode selectors** — they pick how this invocation runs rather than fitting families 1–5. `--full` forces full re-discovery instead of the incremental auto-detect path.)
 
 ### `/deliver`
 `--workspace=<slug>`, `--resume`, `--feature=<slug>`, `--skip-requirements`, `--skip-assessment`, `--skip-spec-edit`, `--skip-backend`, `--frontend-only`, `--backend-only`, `--no-review`, `--no-security`, `--force-security-review`, `--no-context-update`, `--with-pr`.

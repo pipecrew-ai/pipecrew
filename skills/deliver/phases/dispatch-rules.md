@@ -111,7 +111,7 @@ Starting at Phase 4.5, implementation sub-tasks and reviewer findings are persis
 
 ### Learning notes capture (`run-notes.md`)
 
-Some dispatched agents (primarily the product-owner and solution-architect) surface **durable observations** that aren't part of the feature they're producing — a gap in `platform.md`, a domain rule the user corrected, a recurring clarification, a convention worth recording. Those used to scroll past in chat and get lost. Now each such agent ends its output with an optional `## Notes for /learn` section.
+Some dispatched agents (the product-owner, solution-architect, and ux-consultant) surface **durable observations** that aren't part of the feature they're producing — a gap in `platform.md`, a domain rule the user corrected, a recurring clarification, a cross-cutting design-system delta, a convention worth recording. Those used to scroll past in chat and get lost. Now each such agent ends its output with an optional `## Notes for /learn` section.
 
 **After any dispatch whose returned output contains a `## Notes for /learn` section, append that section's bullets to `{run_dir}/run-notes.md`** (create it on first write; one bullet per observation, prefixed with the source agent + phase, e.g. `- [product-owner / Phase 1] …`). Do not act on them mid-run — they are candidate learnings, applied (or discarded) at the end-of-run `/learn` offering in Phase 8.6, which reads this file. This is the write half of continuous learning; the read half is each agent mining `platform.md` § Established Patterns at the start of its run.
 

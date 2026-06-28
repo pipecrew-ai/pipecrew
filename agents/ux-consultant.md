@@ -275,9 +275,23 @@ At the end of your consultation, list what the implementer should put in the fea
 - Component primitives used
 - RTL/i18n edge cases you encountered and the solutions
 - Any new UI vocabulary introduced (new status labels, new interaction patterns)
-- Any design system inconsistencies you noticed during discovery — call them out so someone can address them later
+
+(Design-system changes that are **not** feature-specific — a new shared token, a component to deprecate, a new wrapper convention, or a stale/wrong fact in `DESIGN_SYSTEM.md` — do NOT belong in the feature doc; route them through **Cross-cutting design-system deltas** below.)
 
 This is not a separate memory store — it is content the implementer writes into the feature doc alongside the code. It keeps the repo's design knowledge alive instead of trapped in individual consultation outputs.
+
+---
+
+## Cross-cutting design-system deltas (`## Notes for /learn`)
+
+The feature doc above captures *feature-scoped* knowledge. Some observations are bigger than one feature and belong in the repo's `DESIGN_SYSTEM.md` itself — but you do **not** edit `DESIGN_SYSTEM.md` during a `/deliver` consultation (it's authored at discovery and refreshed under human approval, never rewritten mid-feature). Instead, when you notice a **cross-cutting** design-system delta, emit a `## Notes for /learn` section at the very end of your output — one bullet each for:
+
+- a new shared **design token / primitive** that should be added to the design system,
+- a component that should be **marked deprecated / "avoid"** (with the reason),
+- a new **wrapper / composition convention** the repo has adopted,
+- a **stale or wrong fact in `DESIGN_SYSTEM.md`** you found while orienting.
+
+The orchestrator routes that section to the run's `run-notes.md`; the end-of-run `/learn` offering then curates it into `DESIGN_SYSTEM.md` with user approval (it is one of `/learn`'s repo-durable targets). This is the same capture channel the product-owner and solution-architect use — *consultant proposes, `/learn` applies* — so the human-owned design doc is never silently rewritten. Omit the section entirely when there's nothing cross-cutting to report.
 
 ---
 

@@ -1,0 +1,71 @@
+# CLAUDE.md — {{REPO_NAME}}
+
+{{REPO_TAGLINE}}
+
+{{REPO_PURPOSE_PARAGRAPH}}
+
+## Before You Plan a Change
+
+1. Read `agent-context/AGENT_INDEX.md` — it maps tasks to docs.
+2. For common changes, the required reading is:
+
+{{DECISION_TABLE}}
+
+3. **Follow the conventions you find. Do not invent or "improve" them.**
+   If a convention is unclear, seems to conflict with existing code, or appears
+   outdated based on what you observe — stop, surface the issue, and propose
+   the change. Do NOT edit human-owned sections yourself.
+
+4. Update `agent-context/` ONLY when you added something new to the world:
+   a new stack, resource, IAM role, cross-stack export, or per-env tunable —
+   OR when you discovered a non-obvious invariant the next agent would miss.
+   Edits go in sections marked `<!-- agent-updatable -->`. Do NOT modify
+   sections marked `<!-- human-owned -->`. The git log is the changelog,
+   not these docs.
+
+5. Produce a plan/diff for review — never apply to a live environment. Run the
+   synth/plan/diff commands; an apply/deploy/destroy is a human action.
+
+## Quick Start
+
+```{{BUILD_LANG}}
+{{QUICK_START_COMMANDS}}
+```
+
+## Inviolable Rules
+
+These cause silent damage — synth/plan/lint will not catch them.
+
+{{INVIOLABLE_RULES}}
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{REPO_NAME}}: short repo name (e.g., "abvi-infra").
+- {{REPO_TAGLINE}}: one-line stack + role (e.g., "AWS CDK v2 / TypeScript
+  infrastructure for the Arabookverse platform.").
+- {{REPO_PURPOSE_PARAGRAPH}}: 1-2 sentences naming what this repo provisions and
+  its blast radius (which services depend on it).
+- {{BUILD_LANG}}: code-fence language for quick start (`bash`, `powershell`).
+- {{QUICK_START_COMMANDS}}: minimum viable commands — typically deps + synth +
+  diff (NOT deploy). 3-5 lines, no explanation.
+- {{DECISION_TABLE}}: a markdown table, columns "About to..." and "Read first".
+  4-7 rows for THIS repo's common change types. Examples (include if applicable):
+  | About to... | Read first |
+  |---|---|
+  | Add/modify a stack | `stacks.md`, `conventions.md` |
+  | Add a bucket/queue/table/function | `resources.md`, `conventions.md` |
+  | Grant or change an IAM permission | `iam.md` |
+  | Touch stage/region/env config | `stage-region.md` |
+  | Deploy / bootstrap / read a diff | `deployment.md` |
+- {{INVIOLABLE_RULES}}: a numbered list of 4-7 rules. EACH must pass all three:
+  (1) violating it causes SILENT damage (no synth/plan/lint failure), (2) applies
+  broadly, (3) not obvious from nearby code. Examples that pass: "never set
+  removalPolicy DESTROY on a stateful prod resource", "never hardcode an account
+  ID — derive from the stage map", "never widen an IAM action to *", "never
+  rename a cross-stack export without a migration". Style rules belong in
+  conventions.md, not here.
+
+Total file: aim for ≤60 lines after stripping these comments. Hard ceiling
+(validator-enforced): 200 lines.
+-->

@@ -103,7 +103,8 @@ Read {repo_path}/CLAUDE.md if it exists, and any existing agent-context/ directo
 Template dispatch (per your system prompt):
 - role = api-service OR worker → use templates/agent-context-backend/ + templates/repo-CLAUDE-backend.md.template
 - role = frontend             → use templates/agent-context-frontend/ + templates/repo-CLAUDE-frontend.md.template
-- role = mock-server / infrastructure / contract / other → downgrade to claude-only mode (use templates/repo-CLAUDE.md.template)
+- role = infrastructure       → use templates/agent-context-infra/ + templates/repo-CLAUDE-infra.md.template (top-level files only — no domains/ or integrations/ subfolders)
+- role = mock-server / contract / other → downgrade to claude-only mode (use templates/repo-CLAUDE.md.template)
 
 Output order:
 1. agent-context/ first — fill every *.md.template in the chosen bundle (AGENT_INDEX, business-context, architecture, conventions, plus role-specific singletons). Strip the <!-- AGENT INSTRUCTIONS --> blocks. Preserve <!-- agent-updatable --> / <!-- human-owned --> markers verbatim.

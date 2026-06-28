@@ -1,0 +1,35 @@
+# Stacks — {{REPO_NAME}}
+
+How this repo is decomposed into stacks / modules, what each one owns, and the
+dependency order between them.
+
+## Framework
+
+{{IAC_FRAMEWORK}}
+
+## Stack catalog
+
+<!-- agent-updatable -->
+
+{{STACK_CATALOG}}
+
+<!-- /agent-updatable -->
+
+## Dependencies & deploy order
+
+{{STACK_DEPENDENCIES}}
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{IAC_FRAMEWORK}}: the IaC tool + version + language (e.g. "AWS CDK v2
+  (TypeScript), Node 20" / "Terraform 1.7, AWS provider 5.x" / "Serverless
+  Framework 3"). Name the entrypoint (e.g. `bin/app.ts`, root `main.tf`).
+- {{STACK_CATALOG}}: a markdown table of every stack/module. Columns:
+  Stack | Source path | Owns (key resources) | Notes. One row per stack.
+  This is the agent-updatable inventory — add a row when a stack is added.
+- {{STACK_DEPENDENCIES}}: the dependency/deploy order and why (e.g. "network →
+  data → compute → edge; the data stack exports the table ARN the compute stack
+  imports"). Note any explicit `addDependency` / `depends_on` wiring and any
+  cross-stack export/import (detail lives in iam.md / resources.md).
+-->

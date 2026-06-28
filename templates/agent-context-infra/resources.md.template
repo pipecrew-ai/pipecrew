@@ -1,0 +1,43 @@
+# Resources — {{REPO_NAME}}
+
+The concrete cloud resources this repo provisions, and the **naming pattern**
+each follows per stage. Agents adding a resource must match the existing pattern
+— a name that doesn't follow the convention silently breaks cross-stack lookups
+and the troubleshooter's log routing.
+
+## Naming convention
+
+<!-- human-owned -->
+
+{{NAMING_CONVENTION}}
+
+<!-- /human-owned -->
+
+## Resource catalog
+
+<!-- agent-updatable -->
+
+{{RESOURCE_CATALOG}}
+
+<!-- /agent-updatable -->
+
+## Encryption, retention & removal defaults
+
+{{RESOURCE_DEFAULTS}}
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{NAMING_CONVENTION}}: the literal naming pattern resources follow, with the
+  stage/region tokens spelled out (e.g. "`{service}-{resource}-{stage}` plus a
+  region suffix for replicated buckets: `abvi-books-{stage}{regionSuffix}`").
+  Quote the helper/construct that builds names if there is one (file:line).
+- {{RESOURCE_CATALOG}}: a markdown table of provisioned resources. Columns:
+  Resource | Type | Name pattern | Stack | Purpose. Group by type (buckets,
+  queues/topics, tables, functions, distributions, secrets). The agent-updatable
+  inventory — add a row per new resource.
+- {{RESOURCE_DEFAULTS}}: the defaults the repo applies (or fails to) — encryption
+  at rest, versioning, `removalPolicy`/`prevent_destroy`, log retention, DLQ
+  wiring. Note any resource that diverges from the default and why. Flag a
+  missing-encryption or `RETAIN`-missing-on-prod as an audit finding.
+-->

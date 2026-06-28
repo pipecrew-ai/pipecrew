@@ -1,0 +1,17 @@
+# Business Context — {{REPO_NAME}}
+
+Product framing only — what this infrastructure repo provisions for the
+platform and why it exists. No construct code, no resource tables (those live in
+`stacks.md` / `resources.md`).
+
+{{BUSINESS_CONTEXT}}
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{BUSINESS_CONTEXT}}: 1-3 short paragraphs. What does this repo stand up for
+  the rest of the platform (the shared buckets/queues/networking/compute other
+  services depend on)? Who operates it? What's the blast radius — i.e. which
+  services break if this is misconfigured? Keep it to framing an agent needs
+  before touching the infra; no inventory.
+-->

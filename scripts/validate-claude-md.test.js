@@ -217,6 +217,63 @@ test('7. secret scan — example.com / anthropic.com emails NOT flagged', () => 
   assert(!hasErr(r, 'email address'), 'false positive on example/anthropic email');
 });
 
+// ── claude-only mode (B5) ──────────────────────────────────────────────
+const claudeOnlyBody = [
+  '<!-- claude-only-mode -->',
+  '# tiny-repo',
+  '',
+  'One-line purpose.',
+  '',
+  '## Agent guidelines',
+  '',
+  '- This repo is simple enough that all agent-facing guidance lives in this file.',
+  '- Write or update tests for every change; all tests must pass before a change is considered done.',
+  '',
+  '## Quick facts',
+  '- Stack: Node',
+  '',
+  '## Build & run',
+  '```bash',
+  'npm install',
+  '```',
+  '',
+  '## Must-know guidelines (repo-specific)',
+  '',
+  '1. Rule A',
+  ''
+].join('\n');
+
+test('claude-only — self-contained file passes (no mandatory-bullet failure)', () => {
+  const r = validate(claudeOnlyBody, tmpRepo);
+  assert(r.errors.length === 0, `unexpected errors: ${r.errors.join('; ')}`);
+  assert(!hasErr(r, 'mandatory-bullet'), 'claude-only must skip the mandatory-bullet check');
+});
+
+test('claude-only — dangling AGENT_INDEX anchor is a hard-fail', () => {
+  const body = claudeOnlyBody.replace(
+    '- This repo is simple enough that all agent-facing guidance lives in this file.',
+    '- Read `CLAUDE.md#AGENT_INDEX.md` — it maps tasks to docs.'
+  );
+  const r = validate(body, tmpRepo);
+  assert(hasErr(r, 'claude-only dangling-ref'), 'missed dangling AGENT_INDEX reference');
+  assert(hasErr(r, 'AGENT_INDEX'), 'error should name the broken ref');
+});
+
+test('claude-only — bare agent-context/ reference is a hard-fail', () => {
+  const body = claudeOnlyBody.replace(
+    '- Write or update tests for every change; all tests must pass before a change is considered done.',
+    '- Update the matching file under `agent-context/` in the same change.\n- Write or update tests for every change; all tests must pass before a change is considered done.'
+  );
+  const r = validate(body, tmpRepo);
+  assert(hasErr(r, 'claude-only dangling-ref'), 'missed dangling agent-context/ reference');
+});
+
+test('claude-only — still enforces coupling/secret scans', () => {
+  const body = claudeOnlyBody + '\nkey: AKIAIOSFODNN7EXAMPLE\n';
+  const r = validate(body, tmpRepo);
+  assert(hasErr(r, 'AWS access key'), 'claude-only must still run the secret scan');
+});
+
 test('10. idempotency — "Last Updated: YYYY-MM-DD" trailer warns', () => {
   const body = validBody + '\n---\n\n*Last Updated: 2026-04-15*\n';
   const r = validate(body, tmpRepo);

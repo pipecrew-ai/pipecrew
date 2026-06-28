@@ -126,11 +126,13 @@ Each row maps a task shape to the file(s) the agent must read FIRST. 4-7 rows ma
 **Process**:
 
 1. Deep-read the codebase — fewer files than `full` mode (4-6 representative sources).
-2. Write `CLAUDE.md` using the legacy template at `{plugin_dir}/templates/repo-CLAUDE.md.template`. Since there is no agent-context directory:
-   - The `## Deep context` table is omitted (no files to point to).
-   - The Agent guidelines section drops the mandatory bullets about `agent-context/AGENT_INDEX.md` and substitutes: "This repo is simple enough that all agent-facing guidance lives in this file." Keep the bullet about writing/updating tests.
+2. Write `CLAUDE.md` using the dedicated claude-only template at `{plugin_dir}/templates/repo-CLAUDE-claude-only.md.template`. It is purpose-built for this mode — no prose surgery required:
+   - It already carries the `<!-- claude-only-mode -->` sentinel on line 1 (do not remove it — the validator keys off it).
+   - It has **no** `## Deep context` table and **no** `AGENT_INDEX.md` / `agent-context/` bullets (a claude-only repo has neither); the Agent guidelines section is a self-contained note plus the keep-tests rule.
+   - Fill the placeholders (`{{REPO_NAME}}`, `{{REPO_PURPOSE}}`, `{{REPO_SPECIFIC_ABSOLUTES}}`, `{{QUICK_FACTS}}`, `{{BUILD_LANG}}`, `{{BUILD_COMMANDS}}`, `{{MUST_KNOW_GUIDELINES}}`).
    - Must-know guidelines can absorb up to the 10-bullet cap; anything over that is a signal this repo needs `full` mode instead — ask the orchestrator to re-dispatch.
-3. Validate with `validate-claude-md.js`. The validator skips the mandatory-bullet check if the file contains the explicit string `<!-- claude-only-mode -->` in the first 5 lines. Include that sentinel in the generated output.
+   - Do NOT introduce any `AGENT_INDEX` or `agent-context/` reference into the filled output — the validator hard-fails dangling references in claude-only mode (see step 3).
+3. Validate with `validate-claude-md.js`. Because the file carries `<!-- claude-only-mode -->` in its first 5 lines, the validator (a) **skips** the AGENT_INDEX/agent-context mandatory-bullet check and (b) **hard-fails** on any dangling `AGENT_INDEX` / `agent-context/` reference — so a self-contained file passes and one that still points at a non-existent index is caught. All other guardrails (coupling, absolute paths, size, must-know cap, secrets) still apply.
 
 **Hard constraints**: same as `full` mode (workspace-agnostic, no secrets, ≤150 lines, ≤10 must-knows).
 

@@ -2279,8 +2279,12 @@ function enableSound() {
   // autoplay gate and unlocks the context for subsequent playBeep() calls.
   playBeep();
   syncSoundPills();
-  // If we're already paused, kick off the peeping loop immediately.
-  if (currentPaused) startBeeping();
+  // Kick off the peeping loop immediately if a gate is active right now. Check
+  // the live banner state (activeGateSince) in addition to currentPaused: the
+  // user often clicks "enable sound" in the window between a gate appearing and
+  // the next applyState() that flips currentPaused — which is why sound used to
+  // start only after a manual mute/unmute cycle. startBeeping() is idempotent.
+  if (currentPaused || activeGateSince()) startBeeping();
 }
 
 function syncSoundPills() {

@@ -48,11 +48,13 @@ The template bundle you use depends on the repo's role from `config.repos[*].rol
 | `worker` | `templates/agent-context-backend/` | `templates/repo-CLAUDE-backend.md.template` |
 | `frontend` | `templates/agent-context-frontend/` | `templates/repo-CLAUDE-frontend.md.template` |
 | `mock-server` | (none — fall back to `claude-only` mode) | `templates/repo-CLAUDE.md.template` |
-| `infrastructure` | (none — fall back to `claude-only` mode) | `templates/repo-CLAUDE.md.template` |
+| `infrastructure` | `templates/agent-context-infra/` | `templates/repo-CLAUDE-infra.md.template` |
 | `contract` | (none — fall back to `claude-only` mode) | `templates/repo-CLAUDE.md.template` |
 | `other` | (none — fall back to `claude-only` mode) | `templates/repo-CLAUDE.md.template` |
 
 If the role doesn't have a dedicated bundle, downgrade to `claude-only` mode automatically and inform the orchestrator. Don't try to force a generic agent-context structure on a role that doesn't fit.
+
+The `agent-context-infra/` bundle is **top-level files only** — it has no `domains/` / `integrations/` plural subfolders, so Step 4's per-bounded-context / per-integration sub-file step simply doesn't apply when generating for an `infrastructure` repo (fill the top-level `*.md.template` files and stop).
 
 ---
 
@@ -78,7 +80,7 @@ If the role doesn't have a dedicated bundle, downgrade to `claude-only` mode aut
    - For each external system the repo integrates with (cloud provider, message broker, third-party SaaS), copy the equivalent template (`integrations/_template.md` for backend, or the frontend equivalent), rename, and fill.
    - **Preserve marker comments verbatim** — agents downstream rely on them being present and well-formed (matching open/close pairs).
 
-5. **Write `CLAUDE.md`** using the role-specific template (`templates/repo-CLAUDE-backend.md.template` or `templates/repo-CLAUDE-frontend.md.template`). Fill placeholders with the authoritative facts you've already written to agent-context — CLAUDE.md is the always-loaded entry point, sized at ~50 lines, and contains:
+5. **Write `CLAUDE.md`** using the role-specific template (`templates/repo-CLAUDE-backend.md.template`, `templates/repo-CLAUDE-frontend.md.template`, or `templates/repo-CLAUDE-infra.md.template`). Fill placeholders with the authoritative facts you've already written to agent-context — CLAUDE.md is the always-loaded entry point, sized at ~50 lines, and contains:
    - Identity (name, tagline, 1-2 sentence purpose)
    - Workflow ritual ("Before You Plan a Change", placed at the top right after the purpose so agents see it first: read AGENT_INDEX, follow the decision table, follow conventions, update agent-context only for new things, write/update tests for every change)
    - Decision table (4-7 rows mapping common task shapes to specific agent-context files)
@@ -119,7 +121,7 @@ Each row maps a task shape to the file(s) the agent must read FIRST. 4-7 rows ma
 
 ### Mode: claude-only
 
-**When**: during `/discover` Phase C, for repos where the user chose "(b) CLAUDE.md only — lighter, self-contained, no subdirectory". For small/simple repos OR for repo roles that have no dedicated template bundle (`mock-server`, `infrastructure`, `contract`, `other`).
+**When**: during `/discover` Phase C, for repos where the user chose "(b) CLAUDE.md only — lighter, self-contained, no subdirectory". For small/simple repos OR for repo roles that have no dedicated template bundle (`mock-server`, `contract`, `other`). Note: `infrastructure` now has its own bundle (`agent-context-infra/`) and defaults to `full` mode — it only lands here if the user explicitly picks "(b) CLAUDE.md only" for a trivial IaC repo.
 
 **Input**: repo path, repo type, repo role, optional repo-specific absolute facts.
 

@@ -1,0 +1,41 @@
+# Conventions — {{REPO_NAME}}
+
+How IaC code is written here. Follow what exists; don't introduce a second way
+of doing something that already has one.
+
+## Construct / module patterns
+
+<!-- human-owned -->
+
+{{CONSTRUCT_PATTERNS}}
+
+<!-- /human-owned -->
+
+## Tagging & naming
+
+{{TAGGING_AND_NAMING}}
+
+## What NOT to Do
+
+<!-- human-owned -->
+
+{{WHAT_NOT_TO_DO}}
+
+<!-- /human-owned -->
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{CONSTRUCT_PATTERNS}}: how resources are organized — L2/L3 constructs vs raw
+  Cfn, reusable construct/module dirs, where shared config lives, prop interfaces
+  vs positional args. Cite a representative file (file:line).
+- {{TAGGING_AND_NAMING}}: the mandatory tag set (and the helper that applies it),
+  the name-builder convention (cross-ref `resources.md`), and stack-naming.
+- {{WHAT_NOT_TO_DO}}: the silent-damage footguns specific to THIS repo. Each must
+  pass: (1) violating it does NOT fail synth/plan/lint, (2) applies broadly,
+  (3) not obvious from nearby code. Examples that qualify: "never set
+  `removalPolicy: DESTROY` on a stateful resource in prod", "never hardcode an
+  account ID — derive from the stage map", "never widen an IAM action to `*`",
+  "never rename a stack export consumed cross-stack without a migration". Drop
+  generic style rules — those are not silent-damage.
+-->

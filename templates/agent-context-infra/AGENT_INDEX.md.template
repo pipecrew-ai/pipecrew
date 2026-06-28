@@ -1,0 +1,90 @@
+# Agent Index — {{REPO_NAME}}
+
+This file is the router for all agent-facing context in this infrastructure /
+IaC repo. Stable rules and the quick start live in the root `CLAUDE.md`. Detail
+lives in the files below.
+
+---
+
+## Section Markers (read this once)
+
+Inside every doc, sections are marked for who owns them:
+
+- `<!-- agent-updatable -->` ... `<!-- /agent-updatable -->`
+  Catalogs and inventories of things that exist (the stack list, the resource
+  table, IAM role table). Add a row when you add a new stack/resource/role.
+  Do not rewrite existing rows for routine changes.
+
+- `<!-- human-owned -->` ... `<!-- /human-owned -->`
+  Conventions, patterns, "What NOT to Do" sections. Agents must read these and
+  follow them. **Never edit human-owned sections.** Surface a needed change; the
+  human decides.
+
+Anything unmarked defaults to **human-owned**.
+
+### When you think a human-owned section needs to change
+
+- **Confused** — the rule is unclear. → Ask before acting.
+- **Outdated** — the rule no longer matches what the code does. → Flag it with
+  file:line evidence, propose the new wording, wait for the human.
+- **In conflict** — your task seems to require violating the rule. → Stop and
+  surface the conflict.
+
+The agent surfaces, the human decides. Never silently edit a human-owned
+section, never silently violate a convention.
+
+---
+
+## Directory Tree (agent-context/)
+
+```
+agent-context/
+├── AGENT_INDEX.md         <- this file
+├── business-context.md    <- what this repo provisions for the platform, and why
+├── stacks.md              <- the stacks / modules and what each one owns
+├── resources.md           <- catalog of provisioned resources + naming patterns
+├── iam.md                 <- roles, policies, least-privilege + cross-stack refs
+├── stage-region.md        <- stage / env / region handling + naming conventions
+├── deployment.md          <- synth / diff / deploy flow, bootstrap, approvals
+└── conventions.md         <- IaC code conventions, tagging, removal policies
+```
+
+---
+
+## Topic → File Mapping
+
+{{TOPIC_FILE_MAPPING}}
+
+---
+
+## Boundary Rules (where new content goes)
+
+- **`stacks.md`** — the authoritative list of stacks/modules and the resources
+  each owns. Add a row when you add a stack. If one stack grows a genuinely
+  complex sub-domain, note it inline — this repo does not use plural subfolders.
+- **`resources.md`** — the catalog of concrete provisioned resources (buckets,
+  queues, tables, functions, distributions) with their naming pattern per stage.
+  This is the `<!-- agent-updatable -->` inventory; keep it current.
+- **`iam.md`** — every role/policy and the least-privilege reasoning, plus the
+  cross-stack / cross-account references other workspaces or repos consume.
+- **`conventions.md`** ends with a `## What NOT to Do` section listing real
+  footguns in the existing code that agents must not copy.
+
+<!--
+AGENT INSTRUCTIONS (strip these comments before writing the final file):
+
+- {{REPO_NAME}}: short repo name (e.g., "abvi-infra").
+- {{TOPIC_FILE_MAPPING}}: a markdown table mapping common topics to the file
+  that owns them. Adapt the file list above to what was actually generated.
+  Example rows:
+  | Topic | File |
+  |---|---|
+  | What this repo provisions, for whom | `business-context.md` |
+  | Which stack owns a resource | `stacks.md` |
+  | A bucket / queue / table / function name + pattern | `resources.md` |
+  | An IAM role / policy / cross-stack export | `iam.md` |
+  | Stage / region / env naming + per-env config | `stage-region.md` |
+  | How to synth / diff / deploy / bootstrap | `deployment.md` |
+  | Construct patterns, tagging, removalPolicy | `conventions.md` |
+- Drop rows for files you didn't generate.
+-->

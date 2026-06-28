@@ -1,0 +1,43 @@
+# IAM & Cross-Stack References — {{REPO_NAME}}
+
+Who can do what, and which resources this repo exports for other stacks /
+repos / workspaces to consume. Getting an IAM grant wrong is the classic
+silent infra bug — too broad ships a security hole, too narrow fails only at
+runtime in the target environment.
+
+## IAM roles & policies
+
+<!-- agent-updatable -->
+
+{{IAM_CATALOG}}
+
+<!-- /agent-updatable -->
+
+## Least-privilege patterns
+
+<!-- human-owned -->
+
+{{LEAST_PRIVILEGE_PATTERNS}}
+
+<!-- /human-owned -->
+
+## Cross-stack / cross-account references
+
+{{CROSS_STACK_REFS}}
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{IAM_CATALOG}}: a markdown table of roles/policies. Columns:
+  Role/Policy | Granted to | Allows (actions on resources) | Defined in.
+  Agent-updatable inventory.
+- {{LEAST_PRIVILEGE_PATTERNS}}: how the repo scopes grants (e.g. "use
+  `bucket.grantRead(fn)` / `queue.grantConsumeMessages(fn)` helpers, never a
+  raw `*` action or `Resource: *`"). Name the helper/module. Call out any
+  observed over-broad grant as an audit finding (file:line).
+- {{CROSS_STACK_REFS}}: what this repo EXPORTS (CloudFormation outputs / SSM
+  params / Terraform outputs / `Fn::ImportValue` keys) and what it IMPORTS from
+  elsewhere — the contract other stacks/repos depend on. Renaming or removing an
+  export is a breaking change; note that explicitly. "None" if the repo is
+  self-contained.
+-->

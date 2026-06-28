@@ -1,0 +1,36 @@
+# Deployment — {{REPO_NAME}}
+
+How changes in this repo reach a real environment. Agents implementing infra
+changes produce a **plan/diff artifact for a human to review** — they never
+apply to a live environment themselves.
+
+## Synth / plan / diff
+
+{{SYNTH_PLAN_DIFF}}
+
+## Deploy & bootstrap
+
+<!-- human-owned -->
+
+{{DEPLOY_AND_BOOTSTRAP}}
+
+<!-- /human-owned -->
+
+## Verification artifact
+
+{{VERIFICATION_ARTIFACT}}
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{SYNTH_PLAN_DIFF}}: the exact commands to render the change without applying
+  it (`cdk synth`, `cdk diff`, `terraform plan`, `sls package`), incl. how to
+  scope to one stack and how to pass the stage. This is what an implementer runs.
+- {{DEPLOY_AND_BOOTSTRAP}}: how a human actually deploys (pipeline vs manual
+  `cdk deploy` / `terraform apply`), any one-time bootstrap (`cdk bootstrap`,
+  TF backend/state, remote-state locking), and approval gates. **Note that
+  agents must NOT run apply/deploy/destroy** — the plan/diff is the deliverable.
+- {{VERIFICATION_ARTIFACT}}: what a reviewer reads to verify a change — the
+  `cdk diff` / `terraform plan` output (and where it lands). Note that `cdk
+  synth` failing = the implementer reported a failed verification.
+-->

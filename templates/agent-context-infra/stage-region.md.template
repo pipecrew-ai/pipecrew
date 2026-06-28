@@ -1,0 +1,36 @@
+# Stages, Environments & Regions — {{REPO_NAME}}
+
+How this repo parameterizes per environment. Every resource name, account, and
+config value flows from here — an agent that hardcodes a value that should be
+stage-derived breaks the next environment silently.
+
+## Stages & accounts
+
+<!-- human-owned -->
+
+{{STAGES_AND_ACCOUNTS}}
+
+<!-- /human-owned -->
+
+## Region handling
+
+{{REGION_HANDLING}}
+
+## Per-environment configuration
+
+{{PER_ENV_CONFIG}}
+
+<!--
+AGENT INSTRUCTIONS (strip before writing):
+
+- {{STAGES_AND_ACCOUNTS}}: the stages this repo deploys (dev / staging / prod /
+  …), how the stage is selected (context var, `--context stage=`, workspace,
+  TF var, env var), and the account mapping if multi-account. Quote the helper
+  that resolves the current stage (file:line).
+- {{REGION_HANDLING}}: single vs multi-region; how the region (and any
+  `regionSuffix` used in names) is derived; which resources are replicated.
+- {{PER_ENV_CONFIG}}: where per-env values live (a `config/{stage}.ts`, a
+  `tfvars` file, SSM, etc.) and the rule for adding a new tunable — point at the
+  config source rather than restating every value. Note any value that MUST
+  differ per env (sizes, retention, removal policy, log levels).
+-->

@@ -995,26 +995,48 @@ function repoMatches(extracted, charRepo) {
   return a === b || a.includes(b) || b.includes(a);
 }
 
-// Derive a repo token from a checkpoint instance's free-form `description`.
-// Implementer/reviewer descriptions lead with the repo short-name in practice
-// ("auth review", "infra F3", "notifications F4", "workflow F1b+F2"). We take
-// the first whitespace token, strip the `abvi-` prefix, and return it ONLY when
-// it loosely matches a known repo label (gathered from Implementation-Tasks
-// rows + Architecture Flags) — normalising to that label so a reviewer's "auth"
-// lands on the same repo string as the implementer's "auth-service" card.
+// Derive a repo token from a checkpoint instance's free-form `description` by
+// finding the first word in it that loosely matches a KNOWN repo label
+// (gathered from Implementation-Tasks rows + Architecture Flags), normalising to
+// that label so a reviewer's "auth" lands on the same repo string as the
+// implementer's "auth-service" card.
 //
-// We deliberately do NOT fall back to the raw leading token: phase-level
-// singleton roles carry prose descriptions ("requirements document",
-// "technical design", "cross-repo assessment", "execution report") whose first
-// word is repo-shaped but is not a repo — returning it would mislabel those
-// cards. An unrecognised leading token → null (the card stays repo-less, or
-// the instance matches its role's existing card by role-only fallback).
+// Two real description shapes must both resolve:
+//   - leading repo:  "auth review", "infra F3", "notifications F4"
+//   - trailing repo: "Backend implementer — publisher-service",
+//                     "Code review — publisher-service"  (the canonical
+//                     repo-encoded form the dispatch rules now mandate)
+// The old code looked at ONLY the first token, so the trailing form resolved to
+// null and every per-repo reviewer collapsed onto one role-only "cross-repo"
+// card. We now also accept a parenthetical hint ("review (publisher-service)")
+// and scan every token.
+//
+// We still match ONLY against known repos, so phase-level singleton prose
+// ("requirements document", "technical design", "cross-repo assessment",
+// "execution report") whose words match no repo returns null — the card stays
+// repo-less / matches its role's card by role-only fallback, exactly as before.
 function repoHintFromDescription(desc, knownRepos) {
   if (!desc || !knownRepos) return null;
-  const first = String(desc).trim().split(/\s+/)[0].toLowerCase().replace(/^abvi-/, '');
-  if (!first || !/^[a-z][a-z0-9-]{1,}$/.test(first)) return null;
-  for (const r of knownRepos) {
-    if (repoMatches(first, r)) return r;
+  const text = String(desc);
+  const norm = (raw) => raw.toLowerCase()
+    .replace(/^[^a-z0-9]+/, '').replace(/[^a-z0-9-]+$/, '')   // strip surrounding punctuation
+    .replace(/^abvi-/, '');                                   // strip workspace prefix
+  const matchTok = (tok) => {
+    if (!tok || !/^[a-z][a-z0-9-]{1,}$/.test(tok)) return null;
+    for (const r of knownRepos) if (repoMatches(tok, r)) return r;
+    return null;
+  };
+  // 1) Parenthetical hint, e.g. "review (publisher-service)".
+  const paren = text.match(/\(([^)]+)\)/);
+  if (paren) {
+    const hit = matchTok(norm(paren[1].trim().split(/\s+/)[0]));
+    if (hit) return hit;
+  }
+  // 2) First whitespace token that loosely matches a known repo (handles both
+  //    leading and trailing repo placement).
+  for (const raw of text.split(/\s+/)) {
+    const hit = matchTok(norm(raw));
+    if (hit) return hit;
   }
   return null;
 }

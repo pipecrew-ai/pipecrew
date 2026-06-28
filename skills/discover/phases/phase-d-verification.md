@@ -183,7 +183,7 @@ Per-agent detail:
 | Agent                       | Phase | Tokens   | Duration | Status   | Findings |
 |-----------------------------|-------|----------|----------|----------|----------|
 | solution-architect          | B2    |  77,922  | 4:03     | ok       | —        |
-| general-purpose (design-sys)| B3    |  46,687  | 2:16     | ok       | —        |
+| ux-consultant (discovery)   | B3    |  46,687  | 2:16     | ok       | —        |
 | context-manager:full (auth)      | C2 |  48,702  | 3:12     | ok       | 2        |
 | context-manager:full (publisher) | C2 |  71,521  | 4:05     | ok       | 5        |
 | context-manager:full (backoffice) | C2 | 38,400  | 2:45     | retry→ok | 1        |

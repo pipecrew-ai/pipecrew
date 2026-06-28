@@ -169,21 +169,31 @@ function onNotification() {
       payload = { message: raw.slice(0, 400) };
     }
   }
-  // Claude Code fires Notification for several reasons. We only care about the
-  // "waiting for permission" variant. The message text is the most reliable
-  // signal; fall back to always-write if we can't tell (better false-positive
-  // than miss the real case).
+  // Claude Code fires Notification whenever it needs the user to act — both
+  // permission prompts AND idle "waiting for your input" notices. Surface a
+  // banner for any of those. The previous filter matched only four keywords and
+  // SKIPPED everything else, so any message phrased differently was silently
+  // dropped — the cause of "Claude Code notifications not reflected in the view".
+  // Honor the documented intent ("better a false positive than miss the real
+  // case"): write the flag unless the message is clearly *informational*.
   const msg = payload && payload.message ? String(payload.message).toLowerCase() : '';
-  const isPermissionPrompt =
-    msg.includes('permission') ||
-    msg.includes('approval') ||
-    msg.includes('waiting for') ||
-    msg.includes('needs your');
+  const WAIT_HINTS = [
+    'permission', 'approval', 'approve', 'waiting for', 'is waiting',
+    'needs your', 'needs you', 'requires your', 'your input', 'your response',
+    'your attention', 'awaiting', 'idle', 'confirm', 'respond', 'review',
+  ];
+  const INFORMATIONAL_HINTS = [
+    'completed', 'finished', 'succeeded', 'success', ' done', 'all set',
+  ];
+  const looksWaiting = WAIT_HINTS.some((h) => msg.includes(h));
+  const looksInformational = INFORMATIONAL_HINTS.some((h) => msg.includes(h));
 
-  // If we can't decide, default to writing the flag — the UI will clear it as
-  // soon as the user responds (UserPromptSubmit / PostToolUse hooks below).
-  if (msg && !isPermissionPrompt) {
-    debug(`skip non-permission notification: ${msg.slice(0, 80)}`);
+  // Skip only when the message is present, clearly informational, and NOT a wait.
+  // Empty/unrecognized messages fall through to writing the flag — the UI clears
+  // it the moment the user responds (UserPromptSubmit / PostToolUse below), so a
+  // transient false banner is cheap; a missed wait is not.
+  if (msg && looksInformational && !looksWaiting) {
+    debug(`skip informational notification: ${msg.slice(0, 80)}`);
     return;
   }
 

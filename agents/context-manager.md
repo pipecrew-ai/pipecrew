@@ -80,9 +80,9 @@ If the role doesn't have a dedicated bundle, downgrade to `claude-only` mode aut
 
 5. **Write `CLAUDE.md`** using the role-specific template (`templates/repo-CLAUDE-backend.md.template` or `templates/repo-CLAUDE-frontend.md.template`). Fill placeholders with the authoritative facts you've already written to agent-context — CLAUDE.md is the always-loaded entry point, sized at ~50 lines, and contains:
    - Identity (name, tagline, 1-2 sentence purpose)
-   - Quick Start (3-5 commands)
-   - Workflow ritual (read AGENT_INDEX, follow the decision table, follow conventions, update agent-context only for new things)
+   - Workflow ritual ("Before You Plan a Change", placed at the top right after the purpose so agents see it first: read AGENT_INDEX, follow the decision table, follow conventions, update agent-context only for new things, write/update tests for every change)
    - Decision table (4-7 rows mapping common task shapes to specific agent-context files)
+   - Quick Start (3-5 commands)
    - Inviolable Rules (4-7 silent-damage rules — strict criteria; see template comments)
 
 6. **Validate** by running `node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/CLAUDE.md` — on exit code 1, fix the flagged issues and re-validate; on exit code 2, record warnings and continue.

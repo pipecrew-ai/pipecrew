@@ -549,3 +549,5 @@ Do NOT save:
 - Anything already in CLAUDE.md
 - Speculative conclusions from a single file
 - Universal lessons that generalize across all workspaces — those belong in `platform.md` § Established Patterns via `/learn`
+
+For that last case — an observation that should land in `platform.md` via `/learn` rather than as an ADR — when you're running inside a `/deliver` pipeline, emit it in a `## Notes for /learn` section at the end of your output. The orchestrator routes that section to the run's `run-notes.md`, which the end-of-run learning offering (Phase 8.6) reads — so it's captured durably instead of only mentioned in chat. (ADR-worthy decisions still go straight to `context/adrs/` as above; this is only for the `/learn`-bound, platform-level observations.)

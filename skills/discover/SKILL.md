@@ -30,6 +30,7 @@ After `/discover` completes, you have:
 | `--workspace=<slug>` | Required with `--resume` and `--refresh-observability` if multiple workspaces exist |
 | `--refresh-cache` | Force a fresh scan of every repo in Phase B2.0 *and* update the saved cache with the new results. Treats every prior cache entry as a miss; on completion, writes the new profiles back to `state.json`. Use when you've made repo changes the cache can't detect (e.g., test fixture edits that don't move `HEAD`, schema-internal changes). |
 | `--greenfield` | Skip repo scan, start with brainstorm + scaffold (see Phase Greenfield) |
+| `--full` | Force a full re-discovery when re-running against an already-onboarded workspace, bypassing the incremental auto-detect gate (Phase A Step 1.5). Re-profiles ALL repos and rebuilds `config.json` + `platform.md` from scratch. Without this flag, a re-run that finds new repos defaults to **incremental** (onboard + merge only the new repos). See `{plugin_dir}/rules/incremental-discovery.md`. |
 | `--memory-remote=<url>` | Enable GitHub-backed workspace memory and use `<url>` as the private remote. Sets `config.workspace.memory = { enabled: true, remote: <url>, visibility: "private", sync_mode: "hybrid" }` (the repo is meant to be shared across the team, so `hybrid` is the default — structural canon changes open a PR, bookkeeping commits directly; override with `--memory-sync-mode`); Phase D Step 8 bootstraps + syncs. Omit the value (`--memory-remote`) to have bootstrap create `{slug}-memory` via `gh repo create --private`. Memory is OFF by default. See `docs/design/github-memory.md`. |
 | `--memory-sync-mode=<commit\|pr\|hybrid>` | Sets `config.workspace.memory.sync_mode` (only meaningful with memory enabled). `commit` = push straight to `main` (solo). `pr` = every sync opens a `memory/*` PR. `hybrid` (default for a shared repo) = PR for `platform.md`/ADR changes, direct commit for bookkeeping. |
 | `--refresh-observability` | Run only Phase B2.6 against an existing workspace — refreshes (or first-time backfills) the observability routing table at `context/observability.json` (and ensures `platform.md § Observability` points at it). Re-runs the IaC extractor across CDK / Terraform / k8s / docker-compose / Ansible, presents the draft for user curation (trace correlation header, dashboards, runbooks), validates, and writes the sidecar. If the workspace predates the routing table (no `observability.json` and no inline block), this flag performs a first-time backfill; if it has a **legacy inline OBSERVABILITY block** in platform.md, the refresh migrates it out to the sidecar. Requires `--workspace=<slug>` if more than one workspace exists. Skips Phase A/B1/B2.0/B2/B3/C/D. |
@@ -41,6 +42,8 @@ After `/discover` completes, you have:
 /discover --resume
 /discover --resume --workspace=my-saas
 /discover --refresh-observability --workspace=my-saas
+/discover C:/ABVI            # re-run after adding repos → auto-detects + offers incremental
+/discover C:/ABVI --full     # force a full re-discovery instead of incremental
 ```
 
 ## Instructions
@@ -48,7 +51,7 @@ After `/discover` completes, you have:
 ### CRITICAL RULES
 
 1. **Never overwrite existing CLAUDE.md files** without asking. If a repo already has one, read it and skip generation. The user may have hand-curated it.
-2. **Never overwrite an existing workspace config** without asking. If `{workspace_root}/{slug}/config.json` exists, warn and offer to update or abort.
+2. **Never overwrite an existing workspace config.** If `{workspace_root}/{slug}/config.json` exists, you are re-running against an onboarded workspace — do NOT rebuild it from scratch. Phase A Step 1.5 auto-detects this: it diffs the scan against the config and, if repos were **added**, offers **incremental** onboarding (the default — onboard only the new repos and MERGE them into config.json / platform.md / diagrams) vs a full re-discovery vs abort. See `{plugin_dir}/rules/incremental-discovery.md`. The only time the whole config is rewritten is when the user explicitly chooses "full" (or passes `--full`).
 3. **CLAUDE.md is required for every repo** that will participate in the pipeline. Agents read it first. No exceptions.
 4. **Agent-context is optional.** Recommend it for complex repos. Skip for simple ones.
 5. **Domain agents are templates.** The plugin ships template files; `/discover` fills in placeholders and writes finished agents to the workspace's `agents/` directory.
@@ -172,6 +175,7 @@ Both are kept; neither replaces the other.
 - **Workspace**: {name} ({slug})
 - **Parent dirs**: {parent_dir list}
 - **Flags**: {flags used}
+- **Discover mode**: full | incremental  (set by Phase A Step 1.5)
 - **Started**: {date}
 - **Current Phase**: {phase name}
 - **Status**: IN_PROGRESS | INTERRUPTED | COMPLETED | FAILED
@@ -213,6 +217,8 @@ Both are kept; neither replaces the other.
 Apply the shared resume rules at `{plugin_dir}/rules/interruption-and-resume.md` — how to find interrupted runs, pick a target, confirm with the user, and re-enter without creating a new run dir.
 
 `/discover`-specific state to restore from scratchpad: the `## Discovered Repos` table (Phase A output) and the `## Domain Answers` block (Phase B1 output). Both must already be populated before Phase C can resume cleanly.
+
+If `Discover mode: incremental`, also restore the `## Incremental` block (mode, existing config path, `new_repos` list). A resumed incremental run MUST continue with that same working set — do not fall back to full mode. If the block is missing (older run), treat the run as `full`. See `{plugin_dir}/rules/incremental-discovery.md` § "Resume interaction".
 
 ### PRE-PHASE 0: Workspace name + usage gate
 
@@ -283,6 +289,8 @@ Phase B3: Design System ────────── (only if frontend) discov
 Phase C:  Generation ──────────── CLAUDE.md + platform.md + agents + agent-context (config.json built in B2; validated here)
 Phase D:  Verification ────────── validate paths, check git status, summary
 ```
+
+**Incremental re-runs**: when `/discover` runs against an already-onboarded workspace and finds added repos, Phase A Step 1.5 switches the run to `incremental` mode (the default — `--full` forces full). The same phases run, but scoped to the new repos and **merging** into the existing config / platform.md / diagrams instead of rewriting: B1 is skipped (domain reused), B2.0 profiles only new repos, B2 merges, B3 runs only for new frontends, C generates docs only for new repos and skips domain-agent regeneration. Authoritative spec: `{plugin_dir}/rules/incremental-discovery.md`.
 
 ### PHASE FILES
 

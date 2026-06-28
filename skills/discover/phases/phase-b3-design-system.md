@@ -2,6 +2,8 @@
 
 **Skip if**: no repo in the config has `role: "frontend"`. Proceed directly to Phase C.
 
+**Incremental mode** (`discover_mode == incremental`): run this phase **only for `new_repos` that are frontends**. If no new frontend was added, skip entirely (existing frontends' `DESIGN_SYSTEM.md` is untouched). A new frontend that shares an existing one's design system still gets its own per-repo `DESIGN_SYSTEM.md` via the refresh/diff semantics below. See `{plugin_dir}/rules/incremental-discovery.md` § "Phase B3".
+
 **Design-system output location — per-repo, not workspace-wide.** Each frontend repo gets its own `{repo_path}/agent-context/common/DESIGN_SYSTEM.md` because different frontend repos often use different component libraries (e.g., publisher-frontend on MUI, admin-portal on Ant Design). Storing at the workspace level would overwrite when the second frontend is processed. If a repo already has `agent-context/common/DESIGN_SYSTEM.md` (hand-written by the team), the discovery agent uses refresh semantics — read + merge, never destroy-and-rewrite.
 
 **Step 1: Detect design system presence**

@@ -2,6 +2,8 @@
 
 Phase B2.0 runs BEFORE B2's architect dispatch. It walks each repo in parallel via the `repo-discoverer` agent (Sonnet) and emits a structured `REPO_PROFILE` JSON per repo. The architect (Opus) then consumes the JSON profiles in B2 to synthesize platform.md — drastically cutting the architect's token load (each profile is ~3 KB; the architect reads ~30 KB total instead of all repos' source code).
 
+**Incremental mode** (`discover_mode == incremental`): the working set is `new_repos` only — profile just the new repos. Existing repos are NOT re-profiled (their facts already live in `platform.md` and their own `CLAUDE.md`); the architect reads the existing `platform.md` for them in B2. Everywhere this phase says "each repo" / "every repo", read it as "each new repo". See `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2.0".
+
 **Pre-step — create the output directory:**
 
 ```bash

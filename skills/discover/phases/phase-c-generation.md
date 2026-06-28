@@ -2,6 +2,8 @@
 
 Generate all workspace-layer files. This phase creates the config, CLAUDE.md files, domain agents, and optional agent-context docs.
 
+**Incremental mode** (`discover_mode == incremental`): scope this phase to `new_repos`. Specifically: (1) config.json was already MERGED in B2 — Step 1 just re-validates; (2) Step 2 generates CLAUDE.md + agent-context for the new repos only — existing repos' docs are never touched; (3) **skip domain-agent generation** (Step 3 and the implementer-agent publish) — the workspace `agents/` and published `~/.claude/agents/{slug}-*` already exist and don't change when repos are added; if a new repo's stack has no matching plugin implementer/reviewer, note it for the user instead of generating one; (4) Step 4 appends the new repos' audit findings to the existing `context/audit-findings.md`. Full spec: `{plugin_dir}/rules/incremental-discovery.md` § "Phase C". The steps below otherwise run as written, looping over the new repos.
+
 ---
 
 ### Transient failure handling (applies to every Agent dispatch in this phase)

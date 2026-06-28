@@ -2,6 +2,8 @@
 
 Populate the workspace's observability **routing table** — the standalone sidecar `{workspace_root}/{slug}/context/observability.json` — and point `platform.md § Observability` at it (the JSON no longer lives inline in platform.md; this mirrors how the architecture diagrams are split out). The routing table is what the future `{slug}-troubleshooter` agent reads to know which log destination to query for a given `(service, env)` pair, plus operator dashboards and runbook pointers. Schema lives at [`templates/blocks/block-schemas.md#observability`](../../../templates/blocks/block-schemas.md) and the canonical example at [`templates/blocks/observability.example.json`](../../../templates/blocks/observability.example.json).
 
+**Incremental mode** (`discover_mode == incremental`): re-run this phase **only if** a `new_repo` is `role: "infrastructure"` or otherwise carries IaC / log-destination definitions. Otherwise keep the existing `context/observability.json` untouched and proceed to B3. When it does re-run, it reads the merged config (so it sees the new repos) and merges new destinations into the existing sidecar rather than rewriting it. See `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2.6".
+
 **Skip if**: the workspace has no repo with `role: "infrastructure"` AND no `mock-server` repo with a `docker-compose.yml`. In that case write an empty sidecar `{workspace_root}/{slug}/context/observability.json` (`{"log_destinations": [], "trace": {}, "dashboards": [], "runbooks": {}}`), substitute the `{{OBSERVABILITY_PROSE}}` placeholder in platform.md with a one-line "no infra repo — routing table empty" note, and proceed to B3 — the troubleshooter still works (it'll ask the user to paste logs) but its routing table is empty.
 
 ---

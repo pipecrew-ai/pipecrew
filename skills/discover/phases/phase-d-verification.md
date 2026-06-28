@@ -2,6 +2,8 @@
 
 Final checks and summary. Make sure everything generated is valid and the workspace is ready for `/deliver`.
 
+**Incremental mode** (`discover_mode == incremental`): verification focuses on the new repos — confirm each new repo's path resolves and its CLAUDE.md exists, that the MERGED `config.json` validates, and that `platform.md` now references the new repos. The final summary states the mode and lists what was added, e.g. `Incremental: +{N} repos onboarded, merged into config.json + platform.md`. See `{plugin_dir}/rules/incremental-discovery.md` § "Phase D".
+
 ---
 
 ### Step 1: Validate workspace config

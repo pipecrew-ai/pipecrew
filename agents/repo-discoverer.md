@@ -76,6 +76,8 @@ Populate `framework`:
 - `name` — class / model name as written.
 - `purpose` — one sentence (≤120 chars) on what this entity represents in the domain. Pull from the class-level Javadoc / docstring when present; otherwise infer from the field set + entity name (e.g., a `Book` entity with `title`, `author`, `status`, `publishedAt` → "A publication moving through editorial review toward release."). Leave empty string only if the entity is opaque and you'd be guessing.
 - `key_states` — values an enum/state field can take, if there's a clear lifecycle.
+- `states_source` — the `file:line` where that state enum / constant set is defined (e.g. `domain/BookStatus.java:3`). Lets the architect cite the source and detect when two repos define the same entity's states differently. `null` when `key_states` is empty / there's no enum.
+- `entity_kind` — `authoritative` if THIS repo owns and defines the entity + its state enum; `projection` if it keeps its own (often extended) copy of an entity another service owns; `consumed` if it only reads the entity over the wire. This is what tells the architect to render two same-named entities **separately** instead of flattening when their `key_states` diverge. Omit if you genuinely can't tell.
 - `owning_module` — top-level package this entity sits in.
 
 You DO NOT extract state transitions (which method triggers DRAFT → REVIEW, under what guard). Those live scattered across service-layer business logic and require deep walking to recover correctly — out of scope for B2.0. If an entity has a complex lifecycle (4+ states) and you noticed transition-shaped methods like `submitForReview` / `approve` / `terminate`, flag it in `notes_for_architect` as "Book has a non-trivial lifecycle; transitions live in BookService.* — architect may want a targeted read". The architect will decide whether to spend a targeted read on it in B2.
@@ -137,6 +139,8 @@ For infra repos, leave `entities`, `endpoints`, `auth`, `persistence`, `frontend
 - `library` — `spring-security` / `passport` / `fastapi.security` / etc.
 - `enforcement_pattern` — describe what you see: `@PreAuthorize on controllers` / `manual SecurityContextHolder reads in services` / `Guards on routes` / etc. If inconsistent, name both patterns.
 - `role_decisions` — short bullet list of role-related observations.
+
+`roles` (top-level array, optional but high-value for api-services): the actual role / authority enum the code authorizes against — NOT the product-level role names. Walk the role/authority enum (e.g. `Role.java`, an `enum Authority`, a permissions constants file) or the distinct values used in `@PreAuthorize` / `hasRole(...)` / guard checks. For each: `{ name, source, description }` where `source` is the `file:line` of the enum value (or the check you read it from) and `description` is one short phrase on what the role can do. This is what lets the architect build platform.md's role table from real values and surface roles the product summary (`config.domain.user_roles`) omits. Emit `[]` (or omit) when the repo has no role concept.
 
 `persistence`:
 - `orm`: `spring-data-jpa` / `typeorm` / `prisma` / `sqlalchemy` / etc.
@@ -227,7 +231,8 @@ When you emit, the architect uses the field set to populate platform.md sections
 | Your field | Architect uses it for |
 |---|---|
 | `framework` | Service Map row + Tech Stack section |
-| `entities` | Entities & Ownership table |
+| `entities` (+ `entity_kind` / `states_source`) | Entities & Ownership table + Status Lifecycles (divergent same-named entities rendered separately, with citations) |
+| `roles` | User Roles & Permissions table — built from real role values, cited by `source` |
 | `endpoints` (+ `auth.role_decisions`) | User Roles & Permissions + Service Map |
 | `integrations.outbound_*` / `inbound_*` | Integration Patterns + Architecture Diagram |
 | `auth.scheme` / `enforcement_pattern` | Established Patterns (when consistent across repos) or Known Constraints (when inconsistent) |

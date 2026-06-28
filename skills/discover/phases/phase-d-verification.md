@@ -44,6 +44,15 @@ test -f {workspace_root}/{slug}/context/platform.md && echo "OK" || echo "MISSIN
 
 If missing, Phase B2 failed — ask user whether to re-run the architect discovery or create a minimal stub.
 
+### Step 4.5: Role-table provenance cross-check (soft — flag, don't fail)
+
+If this run's repo-profiles carry a `roles[]` array (schema_version ≥ 2 — older profiles won't, so skip silently when absent), spot-check that platform.md's `## User Roles & Permissions` table is grounded in real role values:
+
+- Every role named in the platform.md table should trace to some profile's `roles[].name` (or an endpoint `auth`). A role in the table with **no** profile source is a likely hallucination — flag it.
+- Every distinct `roles[].name` across the profiles should appear in the table **or** in `## Open Questions`. A profile role missing from both was dropped — flag it.
+
+This catches both the "invented an actor" and the "dropped a real role" failure modes the `roles[]`/citation provenance was added to prevent. **Flag mismatches for the user to confirm — do not block onboarding.** Skip entirely if no profile carries `roles[]`.
+
 ### Step 5: Check git status of repos
 
 For each repo, check if CLAUDE.md or agent-context files were generated (meaning they're untracked):

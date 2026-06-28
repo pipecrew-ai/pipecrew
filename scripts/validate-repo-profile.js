@@ -37,6 +37,7 @@ const path = require('path');
 
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const SPEC_POLICIES = ['api-first', 'code-first', 'no-api'];
+const ENTITY_KINDS = ['authoritative', 'projection', 'consumed'];
 const INTEGRATION_SUBARRAYS = [
   'outbound_http', 'outbound_events', 'outbound_storage',
   'inbound_http', 'inbound_events',
@@ -102,6 +103,15 @@ function validateProfile(p) {
         errors.push(`${where}.purpose missing (use "" when the discoverer would be guessing, never omit)`);
       } else if (typeof e.purpose !== 'string') {
         errors.push(`${where}.purpose must be a string`);
+      }
+      // Optional provenance fields (schema_version 2). states_source = file:line
+      // where key_states is defined; entity_kind distinguishes the owning enum
+      // from a projection/consumer copy so the architect can reconcile divergence.
+      if ('states_source' in e && e.states_source !== null && typeof e.states_source !== 'string') {
+        errors.push(`${where}.states_source must be a string (file:line) or null when present`);
+      }
+      if ('entity_kind' in e && !ENTITY_KINDS.includes(e.entity_kind)) {
+        errors.push(`${where}.entity_kind "${e.entity_kind}" not in ${ENTITY_KINDS.join('/')} (omit if unknown)`);
       }
     });
   }
@@ -175,6 +185,28 @@ function validateProfile(p) {
   for (const f of ['frontend_signals', 'infra_signals']) {
     if (f in p && p[f] !== null && !isPlainObject(p[f])) {
       errors.push(`"${f}" must be an object or null`);
+    }
+  }
+
+  // --- roles[]: optional role/authority registry (schema_version 2) --------
+  // The code's actual role/authority enum, each with a file:line `source`, so
+  // the architect builds platform.md's role table from real values instead of
+  // the product-level config.domain.user_roles (which often omits roles).
+  if ('roles' in p && p.roles !== null) {
+    if (!Array.isArray(p.roles)) {
+      errors.push('"roles" must be an array (or null/omitted) — the code\'s role/authority enum with file:line sources');
+    } else {
+      p.roles.forEach((r, i) => {
+        const where = `roles[${i}]`;
+        if (!isPlainObject(r)) { errors.push(`${where} must be an object`); return; }
+        if (!nonEmptyString(r.name)) errors.push(`${where}.name must be a non-empty string`);
+        if ('source' in r && r.source !== null && typeof r.source !== 'string') {
+          errors.push(`${where}.source must be a string (file:line) or null when present`);
+        }
+        if ('description' in r && typeof r.description !== 'string') {
+          errors.push(`${where}.description must be a string when present`);
+        }
+      });
     }
   }
 

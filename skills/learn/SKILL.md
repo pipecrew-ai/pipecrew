@@ -458,6 +458,7 @@ Append to `{workspace_root}/{slug}/history/learn-log.md` (create if missing). Fo
 ## {ISO-date} — {source-mode} {identifier}
 
 **Source**: {mode} ({PR URL / run_id / branch / "text"})
+**Source run ID**: {deliver-run-id — ONLY in `run` mode; omit this line for pr / branch / text}
 **Signal strength**: {strong|moderate|weak}
 **Workspace at time of feedback**: {git rev of workspace config.json, or "n/a"}
 
@@ -726,9 +727,21 @@ If `/learn` was invoked with `--run=<deliver-run-id>` (i.e. /learn was dispatche
 
 Use a single `Edit` (not `Write`) — append-only is wrong here, the row is being mutated. The file must keep its existing structure; only this row changes.
 
-If the row is not found (e.g. /learn was invoked manually with `--run` outside the Phase 8 path, so /deliver never wrote the placeholder), skip silently. Do not synthesize a row in that case — the user is running /learn ad-hoc and the /deliver run is already finalized.
+If the row is not found (e.g. /learn was invoked manually with `--run` outside the Phase 8 path, so /deliver never wrote the placeholder), skip the row update silently. Do not synthesize a row in that case — the user is running /learn ad-hoc and the /deliver run is already finalized.
 
-If `--run` was not supplied (PR / branch / free-form modes), this step is a no-op.
+**Record the reverse link (`learn_runs.json`).** The forward link (this learn run → its source deliver run) is the learn-log entry's `**Source run ID**` line. To make the *reverse* link queryable — a deliver run → the learn runs that analyzed it — write/merge `{workspace_root}/{slug}/runs/deliver/{deliver-run-id}/learn_runs.json` (the same machine-readable sidecar pattern Phase 8 uses for `pr_urls.json`):
+
+```json
+{
+  "analyzed_by": [
+    { "learn_run_id": "{this learn run_id}", "ts": "{ISO-8601}", "findings_applied": {A}, "findings_rejected": {R}, "findings_flagged": {F} }
+  ]
+}
+```
+
+Read-and-merge if the file already exists (a deliver run can be analyzed more than once) — append one `analyzed_by[]` entry, never overwrite prior ones. Do this even when the dispatch-log row above was absent (the ad-hoc `--run` case still benefits from the back-reference). Downstream tooling then has a direct "which learn runs touched this deliver run, and what did they change?" lookup without scanning every workspace's `history/learn-log.md`.
+
+If `--run` was not supplied (PR / branch / free-form modes), this entire step is a no-op.
 
 ---
 

@@ -133,6 +133,8 @@ See `rules/observability.md` for the exact shape of both events.
 
 **Slow bash commands** (> 5000 ms) → emit `bash_slow` with `duration_ms` and `cmd_summary` (first 60 chars).
 
+**Approval gates** → no manual emission needed. `scripts/gate.js open`/`close` (which you already call to drive the site-view banner — CRITICAL RULE 5) now also appends `gate_open` / `gate_close` events to `checkpoints.jsonl`, so every gate the run paused at is in the audit trail and the reporter can show gate wait-times.
+
 **Orchestrator overhead tracking** — the orchestrator itself consumes tokens (loading skills, reading files, approval gates, scratchpad updates). Capture this with the `orch_checkpoint` event at every phase boundary:
 
 1. **Record the session JSONL byte-offset**:

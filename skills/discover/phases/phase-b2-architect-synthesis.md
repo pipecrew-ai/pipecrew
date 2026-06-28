@@ -211,14 +211,19 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
 ```
 
 **After the architect returns**:
-1. Save the platform.md output (everything except the two mermaid blocks) to `{workspace_root}/{slug}/context/platform.md`.
-2. Extract the block delimited by `<!-- BEGIN architecture-overview.mmd -->` / `<!-- END architecture-overview.mmd -->`. Strip the inner ```` ```mermaid ... ``` ```` fence and save the Mermaid source to `{workspace_root}/{slug}/context/diagrams/architecture-overview.mmd` (create `diagrams/` if it doesn't exist).
-3. Extract the block delimited by `<!-- BEGIN architecture.mmd -->` / `<!-- END architecture.mmd -->`. Strip the inner ```` ```mermaid ... ``` ```` fence and save to `{workspace_root}/{slug}/context/diagrams/architecture.mmd`.
-4. Verify the `## Architecture Diagram` section in platform.md contains the pointer stub pointing to BOTH files, not the full mermaid source for either.
-
-**If either `.mmd` file already exists** (re-run or hand-edited): show a diff for that specific file and ask the user whether to overwrite, merge, or keep. Default is **keep** for each — a hand-edited diagram is load-bearing and must not be silently clobbered. The two files are treated independently: the user may choose to regenerate the overview but keep the detailed, or vice versa.
-
-**Render check**: before marking Phase B2 complete, validate both Mermaid files parse cleanly. Run a lightweight syntax check (or defer to the site-view render error) and surface any lexical errors to the user — most common cause is a period inside a dotted-edge label (`-.LABEL.->`) which the parser swallows.
+1. Save the architect's **full raw output** (the platform.md sections PLUS both `<!-- BEGIN/END *.mmd -->` blocks) to `{run_dir}/outputs/phase-b2-architect-output.md`. This makes the extraction below deterministic and re-runnable on `--resume`. Then write `platform.md` (everything except the two `*.mmd` blocks) to `{workspace_root}/{slug}/context/platform.md`, and `mkdir -p {workspace_root}/{slug}/context/diagrams`.
+2. **Extract both diagrams deterministically with `extract-block.js --unfence`** — it pulls the `<!-- BEGIN/END {name} -->` body AND strips the inner ```` ```mermaid ``` ```` fence in one step, so there is no hand fence-stripping to get wrong. For each of `architecture-overview.mmd` and `architecture.mmd`:
+   - **Target doesn't exist yet** → extract straight to it:
+     ```bash
+     node {plugin_dir}/scripts/extract-block.js {run_dir}/outputs/phase-b2-architect-output.md architecture-overview.mmd --unfence > {workspace_root}/{slug}/context/diagrams/architecture-overview.mmd
+     ```
+     (and the same for `architecture.mmd`).
+   - **Target already exists** (re-run or hand-edited) → extract to a temp path first (`{run_dir}/outputs/architecture-overview.mmd`), show a diff vs the existing file, and ask the user **overwrite / merge / keep**. Default **keep** — a hand-edited diagram is load-bearing and must not be silently clobbered. The two files are independent: the user may regenerate one and keep the other.
+3. **Verify — deterministic gate (replaces the old "lightweight syntax check"):**
+   ```bash
+   node {plugin_dir}/scripts/verify-sa-output.js {workspace_root}/{slug}/context
+   ```
+   Exit `0` = clean. Exit `2` = warnings only (e.g. a period inside a dotted-edge label `-.LABEL.->`, the most common Mermaid footgun — the parser swallows it; surface to the user). Exit `1` = a hard failure (a `.mmd` missing / empty / still wrapped in a code fence, a non-Mermaid first line, or platform.md missing a pointer link or carrying an inline ```` ```mermaid ```` block). On exit 1, fix and re-run before marking Phase B2 complete.
 
 ### Build workspace config (config.json)
 

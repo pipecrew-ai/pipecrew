@@ -13,9 +13,11 @@
  * Usage:
  *   node extract-block.js <file-path> <block-name>           # JSON mode (default)
  *   node extract-block.js <file-path> <block-name> --raw     # raw block body, no JSON parse
+ *   node extract-block.js <file-path> <block-name> --unfence # raw body with a single wrapping ```lang fence stripped
  *
  *   e.g.  node extract-block.js outputs/phase-2-architecture.md AFFECTED_SERVICES
  *         node extract-block.js outputs/phase-2-architecture.md FRONTEND_ARCHITECTURE --raw
+ *         node extract-block.js platform-raw.md architecture-overview.mmd --unfence  # → bare Mermaid source
  *
  * Exit codes:
  *   0 — block found, output emitted to stdout
@@ -33,11 +35,12 @@ const fs = require('fs');
 
 const args = process.argv.slice(2);
 const rawMode = args.includes('--raw');
-const positional = args.filter(a => a !== '--raw');
+const unfenceMode = args.includes('--unfence');
+const positional = args.filter(a => a !== '--raw' && a !== '--unfence');
 const [filePath, blockName] = positional;
 
 if (!filePath || !blockName) {
-  console.error('Usage: extract-block.js <file-path> <block-name> [--raw]');
+  console.error('Usage: extract-block.js <file-path> <block-name> [--raw|--unfence]');
   process.exit(2);
 }
 
@@ -61,10 +64,18 @@ if (begin === -1 || end === -1 || end < begin) {
 
 const blockBody = content.slice(begin + beginMarker.length, end);
 
-if (rawMode) {
-  // Emit the block body verbatim — used for prose-only sections like
-  // FRONTEND_ARCHITECTURE, RISKS, ARCHITECTURE_DECISION.
-  process.stdout.write(blockBody.trim() + '\n');
+if (rawMode || unfenceMode) {
+  // --raw: emit the block body verbatim — used for prose-only sections like
+  //   FRONTEND_ARCHITECTURE, RISKS, ARCHITECTURE_DECISION.
+  // --unfence: same, but strip ONE wrapping ```lang … ``` code fence (any
+  //   language, e.g. ```mermaid) so the output is the bare source — used to
+  //   extract the architecture .mmd diagrams deterministically (no hand fence-strip).
+  let out = blockBody.trim();
+  if (unfenceMode) {
+    const m = out.match(/^```[^\n]*\r?\n([\s\S]*?)\r?\n```$/);
+    if (m) out = m[1].trim();
+  }
+  process.stdout.write(out + '\n');
   process.exit(0);
 }
 

@@ -208,6 +208,24 @@ test('default mode unchanged after --raw flag added', () => {
   assert(JSON.parse(r.stdout).frontend_required === false);
 });
 
+// -------- --unfence mode: strip one wrapping code fence --------
+
+test('--unfence strips a ```mermaid wrapper, yielding bare diagram source', () => {
+  const md = '<!-- BEGIN architecture-overview.mmd -->\n```mermaid\ngraph TB\n  A --> B\n```\n<!-- END architecture-overview.mmd -->\n';
+  const r = run(writeFixture(md), 'architecture-overview.mmd', '--unfence');
+  assert(r.exitCode === 0, `exit ${r.exitCode}; stderr: ${r.stderr}`);
+  assert(r.stdout.startsWith('graph TB'), `expected bare mermaid, got: ${JSON.stringify(r.stdout.slice(0, 30))}`);
+  assert(!r.stdout.includes('```'), '--unfence must drop the code fence');
+  assert(r.stdout.includes('A --> B'), 'diagram body missing');
+});
+
+test('--unfence on an unfenced body returns it verbatim (no-op)', () => {
+  const md = '<!-- BEGIN X -->\ngraph LR\n  A --> B\n<!-- END X -->\n';
+  const r = run(writeFixture(md), 'X', '--unfence');
+  assert(r.exitCode === 0, `exit ${r.exitCode}; stderr: ${r.stderr}`);
+  assert(r.stdout.startsWith('graph LR'), 'unfenced body should pass through');
+});
+
 // Cleanup
 fs.rmSync(TMP, { recursive: true, force: true });
 

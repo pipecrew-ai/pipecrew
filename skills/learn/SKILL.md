@@ -155,6 +155,7 @@ run_dir={workspace_root}/{slug}/runs/feature/{run_id}
 Read:
 - `{run_dir}/scratchpad.md` — overview of what ran, which phases, what task files were created.
 - `{run_dir}/corrections.md` — the captured user pushbacks during gates (if the run used a version of `/deliver` that wrote this file).
+- `{run_dir}/run-notes.md` — durable observations the product-owner / solution-architect flagged during the run (their `## Notes for /learn` sections, appended by `/deliver`'s capture rule). **Strong signal** — these are the agents pointing at gaps in the workspace docs; treat each bullet as a candidate finding to tier-classify.
 - `{run_dir}/outputs/phase-1-requirements.md`, `phase-2-architecture.md`, `phase-3-diffs.md`, `phase-5-5-code-review.md` — the intermediate run outputs.
 - `{run_dir}/assessment.md` — Phase 6 output, if present.
 - `{run_dir}/report.md` — Phase 7 summary, if present.

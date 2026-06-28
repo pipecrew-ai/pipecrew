@@ -185,6 +185,8 @@ Both files MUST be written even if some repos failed. The JSON file's `failed[]`
 
 #### Step 8.6: Feedback offering (always runs)
 
+**First, read `{run_dir}/run-notes.md`** if it exists. It holds the durable observations the product-owner / solution-architect flagged during this run (appended by the `## Notes for /learn` capture rule in `dispatch-rules.md`). If it has any bullets, include them verbatim in the offering below under a `Pending learning notes from this run:` header — the agents already surfaced candidate learnings, so lean the recommendation toward `yes`. An empty or absent file just means nothing was flagged — show the normal offering. Either way, `/learn --run={run_id}` reads this file as part of the run signal, so a `yes` curates these notes (plus the run's corrections) into the workspace docs.
+
 Show the wrap-up summary. Two variants depending on whether Steps 8.2–8.5 ran:
 
 **If PRs were published**:

@@ -10,6 +10,7 @@ The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `{workspac
 └── {run_id}/                          <- THIS run's {run_dir}
     ├── scratchpad.md                  <- lean phase index
     ├── checkpoints.jsonl              <- unified event log (see observability.md)
+    ├── run-notes.md                   <- durable observations agents flagged this run (the end-of-run /learn offering reads it)
     ├── outputs/
     │   ├── phase-1-requirements.md
     │   ├── phase-2-architecture.md

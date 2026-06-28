@@ -16,7 +16,10 @@ const ALLOWED_EVENTS = new Set([
   'phase_start', 'phase_end',
   'agent_start', 'agent_end', 'orch_checkpoint',
   'bash_slow', 'retry',
+  'gate_open', 'gate_close',
 ]);
+
+const ALLOWED_GATE_KINDS = new Set(['approval', 'clarify', 'fix-round']);
 
 const ALLOWED_SKILLS = new Set([
   'discover', 'deliver', 'learn', 'review', 'assess', 'context-refresh',
@@ -131,6 +134,15 @@ function validate(lines) {
         break;
       case 'retry':
         require_(ev, ['agent_type', 'description', 'retry_reason'], lineNo, errors);
+        break;
+      case 'gate_open':
+        require_(ev, ['phase', 'gate', 'question'], lineNo, errors);
+        if (ev.gate && !ALLOWED_GATE_KINDS.has(ev.gate)) {
+          errors.push(`line ${lineNo}: gate_open gate "${ev.gate}" not in ${[...ALLOWED_GATE_KINDS].join('|')}`);
+        }
+        break;
+      case 'gate_close':
+        checkNonNegInt(ev, 'duration_ms', lineNo, errors);
         break;
     }
   });

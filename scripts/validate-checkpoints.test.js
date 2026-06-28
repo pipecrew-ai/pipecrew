@@ -203,6 +203,44 @@ test('retry requires agent_type + description + retry_reason', () => {
   assert(hasErr(r, 'retry missing required field "retry_reason"'));
 });
 
+test('gate_open valid shape passes', () => {
+  const ev = { ts: '2026-04-15T09:18:30Z', event: 'gate_open', skill: 'deliver',
+               run_id: '2026-04-15-104502-book-upload', phase: '3', gate: 'approval',
+               question: 'Approve these spec changes?' };
+  const r = validate(toLines([ev]));
+  assert(r.errors.length === 0, `unexpected errors: ${r.errors.join('; ')}`);
+});
+
+test('gate_open requires phase + gate + question', () => {
+  const ev = { ts: '2026-04-15T09:18:30Z', event: 'gate_open', skill: 'deliver',
+               run_id: '2026-04-15-104502-book-upload' };
+  const r = validate(toLines([ev]));
+  assert(hasErr(r, 'gate_open missing required field "phase"'));
+  assert(hasErr(r, 'gate_open missing required field "gate"'));
+  assert(hasErr(r, 'gate_open missing required field "question"'));
+});
+
+test('gate_open gate-kind enum enforced', () => {
+  const ev = { ts: '2026-04-15T09:18:30Z', event: 'gate_open', skill: 'deliver',
+               run_id: '2026-04-15-104502-book-upload', phase: '3', gate: 'yolo', question: 'x?' };
+  const r = validate(toLines([ev]));
+  assert(hasErr(r, 'not in approval|clarify|fix-round'), r.errors.join(';'));
+});
+
+test('gate_close valid (with duration_ms) passes', () => {
+  const ev = { ts: '2026-04-15T09:19:05Z', event: 'gate_close', skill: 'deliver',
+               run_id: '2026-04-15-104502-book-upload', duration_ms: 35000 };
+  const r = validate(toLines([ev]));
+  assert(r.errors.length === 0, `unexpected errors: ${r.errors.join('; ')}`);
+});
+
+test('gate_close rejects negative duration_ms', () => {
+  const ev = { ts: '2026-04-15T09:19:05Z', event: 'gate_close', skill: 'deliver',
+               run_id: '2026-04-15-104502-book-upload', duration_ms: -1 };
+  const r = validate(toLines([ev]));
+  assert(hasErr(r, 'duration_ms must be non-negative integer'));
+});
+
 test('non-monotonic ts warns', () => {
   const evs = JSON.parse(JSON.stringify(baseRun));
   evs[3].ts = '2026-04-15T09:10:00Z';  // before phase_start

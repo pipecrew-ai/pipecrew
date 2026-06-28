@@ -60,7 +60,7 @@ Every line in `checkpoints.jsonl` is one JSON event on its own line. Append-only
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `ts` | ISO8601 UTC | always | Emission time (e.g., `"2026-04-15T14:27:44Z"`) |
-| `event` | enum | always | One of the 9 event types below |
+| `event` | enum | always | One of the 11 event types below |
 | `skill` | enum | always | `"discover" \| "deliver" \| "learn" \| "review" \| "assess" \| "context-refresh"` |
 | | | | Legacy runs may carry the pre-rename values `"onboard"` / `"feature"`; the validator accepts both for backcompat. |
 | `run_id` | string | always | Matches the directory name |
@@ -69,7 +69,7 @@ Every line in `checkpoints.jsonl` is one JSON event on its own line. Append-only
 
 Fields that have no source data → **omit the key entirely**. Do not fabricate zero values. The validator rejects fabricated `0` for fields the caller couldn't have measured.
 
-### Event types — the 9 canonical events
+### Event types — the 11 canonical events
 
 #### `run_start` — first line of every log
 
@@ -236,6 +236,36 @@ Required: `duration_ms`, `cmd_summary` (first 60 chars of the command, trimmed).
 ```
 
 Required: `agent_type`, `description`, `retry_reason`. The subsequent retry produces its own `agent_end` event with `status` = `ok` (retry succeeded) or `deferred` (retry also failed).
+
+#### `gate_open` — a user-approval / clarification gate is shown
+
+```json
+{
+  "ts": "2026-04-15T09:18:30Z",
+  "event": "gate_open",
+  "skill": "deliver",
+  "run_id": "2026-04-15-104502-book-upload",
+  "phase": "3",
+  "gate": "approval",
+  "question": "Approve these spec changes to continue to Phase 4?"
+}
+```
+
+Required: `phase`, `gate`, `question`. `gate` enum: `approval` | `clarify` | `fix-round`. Optional: `context_summary`. Emitted by `scripts/gate.js open` (it derives `skill` + `run_id` from the run-dir path) so the **audit trail** records every gate the run paused at — the live banner comes from the `awaiting_input.json` flag the same script writes; this event is the replayable record the reporter reads. (Claude Code's own permission prompts are surfaced via `awaiting_claude_approval.json` by `notify-hook.js` and are **not** checkpoint events — they're not the pipeline's gates.)
+
+#### `gate_close` — the gate was answered / dismissed
+
+```json
+{
+  "ts": "2026-04-15T09:19:05Z",
+  "event": "gate_close",
+  "skill": "deliver",
+  "run_id": "2026-04-15-104502-book-upload",
+  "duration_ms": 35000
+}
+```
+
+Required: none beyond the common fields. Optional: `duration_ms` (how long the gate was open — `gate.js close` computes it from the open flag's `since`). Pairs with the preceding `gate_open`.
 
 ## Parsing the `<usage>` block
 

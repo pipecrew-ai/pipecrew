@@ -69,6 +69,12 @@ function validate(body, repoRoot) {
   const warnings = [];
   const lines = body.split(/\r?\n/);
 
+  // Claude-only mode: the repo has NO agent-context/ dir and NO AGENT_INDEX.md
+  // (sentinel emitted by context-manager's claude-only template, repo-CLAUDE-claude-only.md.template).
+  // In that mode the AGENT_INDEX / agent-context mandatory bullets do not apply, and
+  // any reference to those paths is a dead link by construction.
+  const claudeOnly = /<!--\s*claude-only-mode\s*-->/.test(lines.slice(0, 5).join('\n'));
+
   // 1. Coupling scan (hard-fail)
   for (const { pattern, label } of COUPLING_PATTERNS) {
     const m = body.match(pattern);
@@ -80,29 +86,49 @@ function validate(body, repoRoot) {
 
   // 2. Mandatory bullets present (hard-fail). Each bullet is a list of
   //    alternative regex patterns — match ANY one to satisfy the bullet.
-  for (let i = 0; i < MANDATORY_BULLETS.length; i++) {
-    const alternatives = MANDATORY_BULLETS[i];
-    const matched = alternatives.some(re => re.test(body));
-    if (!matched) {
-      errors.push(`mandatory-bullet: required preamble bullet ${i + 1} missing — must match one of ${alternatives.length} accepted phrasings (legacy or role-specific template)`);
+  //    Skipped in claude-only mode: those bullets point at AGENT_INDEX.md /
+  //    agent-context/, which a claude-only repo deliberately does not have.
+  if (!claudeOnly) {
+    for (let i = 0; i < MANDATORY_BULLETS.length; i++) {
+      const alternatives = MANDATORY_BULLETS[i];
+      const matched = alternatives.some(re => re.test(body));
+      if (!matched) {
+        errors.push(`mandatory-bullet: required preamble bullet ${i + 1} missing — must match one of ${alternatives.length} accepted phrasings (legacy or role-specific template)`);
+      }
     }
   }
 
-  // 3. Dead-link check (hard-fail)
-  //    Match `agent-context*/<path>` references inside backticks or markdown links.
-  const linkRegex = /`(agent-context[^`]*?\.md)`|\]\((agent-context[^)]*?\.md)\)/g;
-  const seen = new Set();
-  let linkMatch;
-  while ((linkMatch = linkRegex.exec(body)) !== null) {
-    const rel = linkMatch[1] || linkMatch[2];
-    if (seen.has(rel)) continue;
-    seen.add(rel);
-    // Skip glob / brace-expansion forms — they're doc shorthand, not exact paths.
-    if (rel.includes('*') || rel.includes('{')) continue;
-    const abs = path.join(repoRoot || '.', rel);
-    if (!fs.existsSync(abs)) {
-      const lineNo = lineOf(body, linkMatch.index);
-      errors.push(`dead-link: ${rel} at line ${lineNo} — file not found at ${abs}`);
+  // 3. Dead-link check (hard-fail).
+  if (!claudeOnly) {
+    //  Match `agent-context*/<path>` references inside backticks or markdown links.
+    const linkRegex = /`(agent-context[^`]*?\.md)`|\]\((agent-context[^)]*?\.md)\)/g;
+    const seen = new Set();
+    let linkMatch;
+    while ((linkMatch = linkRegex.exec(body)) !== null) {
+      const rel = linkMatch[1] || linkMatch[2];
+      if (seen.has(rel)) continue;
+      seen.add(rel);
+      // Skip glob / brace-expansion forms — they're doc shorthand, not exact paths.
+      if (rel.includes('*') || rel.includes('{')) continue;
+      const abs = path.join(repoRoot || '.', rel);
+      if (!fs.existsSync(abs)) {
+        const lineNo = lineOf(body, linkMatch.index);
+        errors.push(`dead-link: ${rel} at line ${lineNo} — file not found at ${abs}`);
+      }
+    }
+  } else {
+    // Claude-only: there is no agent-context/ dir or AGENT_INDEX.md, so ANY reference
+    // to them is broken by construction. This catches the forms the generic dead-link
+    // check above misses — e.g. `CLAUDE.md#AGENT_INDEX.md` and a bare `agent-context/`.
+    const danglingRe = /(AGENT_INDEX(?:\.md)?|agent-context\/?[A-Za-z0-9._/-]*)/g;
+    const seenDangling = new Set();
+    let dm;
+    while ((dm = danglingRe.exec(body)) !== null) {
+      const ref = dm[1];
+      if (seenDangling.has(ref)) continue;
+      seenDangling.add(ref);
+      const lineNo = lineOf(body, dm.index);
+      errors.push(`claude-only dangling-ref: "${ref}" at line ${lineNo} — this file is claude-only (no agent-context/ dir or AGENT_INDEX.md exists), so the reference is broken. Remove it, or switch the repo to full mode.`);
     }
   }
 

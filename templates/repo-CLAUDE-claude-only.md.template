@@ -1,0 +1,26 @@
+<!-- claude-only-mode -->
+# {{REPO_NAME}}
+
+{{REPO_PURPOSE}}
+
+## Agent guidelines
+
+- This repo is simple enough that all agent-facing guidance lives in this file — there is no separate deep-context directory to consult or keep in sync.
+- Write or update tests for every change; all tests must pass before a change is considered done.
+{{REPO_SPECIFIC_ABSOLUTES}}
+
+## Quick facts
+
+<!-- One concept per bullet. Group by dimension (Language/build · Data · Integrations · Testing · Tooling · …). Don't emit a single paragraph-style bullet. Strip this comment before writing. -->
+{{QUICK_FACTS}}
+
+## Build & run
+
+```{{BUILD_LANG}}
+{{BUILD_COMMANDS}}
+```
+
+## Must-know guidelines (repo-specific)
+
+<!-- Max 10 bullets (validator enforces). Each bullet ≤ one line. One concept per bullet — split "fact + rule" into two bullets if they mix. If you need more than 10, this repo wants full mode instead. Strip this comment before writing. -->
+{{MUST_KNOW_GUIDELINES}}

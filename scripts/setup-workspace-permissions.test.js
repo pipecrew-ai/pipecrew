@@ -85,6 +85,23 @@ test('allow-list is safe-only: includes Edit + git commit, excludes push/rm/depl
   assert(!/cdk deploy|terraform apply|docker push/.test(joined), 'deploys must NOT be allowed');
 });
 
+test('allow-list covers build stacks, worktrees, and the chrome-devtools MCP — still safe-only', () => {
+  const ws = makeWorkspace();
+  run(ws.configPath);
+  const allow = readSettings(ws.reposParent).permissions.allow;
+  // E10: Phase 6 browser verification MCP is pre-allowed.
+  assert(allow.includes('mcp__chrome-devtools__*'), 'chrome-devtools MCP not allowed');
+  // E9 + worktree friction: build verbs and worktree lifecycle present.
+  assert(allow.some((a) => a.includes('gradle')), 'gradle not allowed');
+  assert(allow.some((a) => a.includes('git worktree')), 'git worktree not allowed');
+  assert(allow.some((a) => a.includes('git merge-base')), 'git merge-base not allowed');
+  // The newly-added stack verbs must NOT have opened install/publish subcommands.
+  const joined = allow.join('\n');
+  assert(!/go install|cargo install|cargo publish|dotnet nuget|dotnet publish/.test(joined),
+    'install/publish subcommands must NOT be allowed');
+  assert(!/git push/.test(joined), 'git push must NOT be allowed');
+});
+
 test('merges into an existing file without clobbering, union is order-stable', () => {
   const ws = makeWorkspace();
   const claudeDir = path.join(ws.reposParent, '.claude');

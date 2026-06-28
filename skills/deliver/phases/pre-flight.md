@@ -343,13 +343,30 @@ auto-opens the browser, reads `scratchpad.md` + `checkpoints.jsonl` +
 
 Do not wait for the server process to finish. Continue immediately to Phase 1.
 
-**One-time permission tip (print once, then proceed).** Phase 5 implementers each make dozens of `Bash`/`Edit`/`Write` calls, and Claude Code prompts to approve each one that isn't pre-approved — this is separate from the pipeline's own approval gates and is the usual cause of "why am I being asked so much during implementation?". Print this single line in chat after launching the site-view, then continue (do NOT block on it):
+**One-time permission setup (check + tip — print once, then proceed).** Phase 5 implementers each make dozens of `Bash`/`Edit`/`Write` calls, and Claude Code prompts to approve each one that isn't pre-approved — separate from the pipeline's own approval gates, and the usual cause of "why am I being asked so much during implementation?". The same gap is behind two specific failures: a dispatched agent's ADR write under `context/adrs/` being denied, and the backend compile prompting because the implementer lacked build permission. The `setup-workspace-permissions.js` helper fixes all of these at once, but it is currently only offered in `/discover` — so surface it here too.
+
+First run a **non-writing** check to see whether this workspace already has a persistent allowlist (skip the whole step on `--resume`):
+
+```bash
+node {plugin_dir}/scripts/setup-workspace-permissions.js --config={workspace_root}/{slug}/config.json --dry-run
+```
+
+- If every target reports `+0 dirs, +0 allow rules` (already fully configured), print nothing — the allowlist is in place.
+- Otherwise (not set up, or missing rules) print this block once, then continue (do **NOT** block the pipeline on it):
 
 ```
-[tip] To cut Claude Code's per-tool-call approval prompts during implementation: press Shift+Tab → "accept edits", or add an allowlist (see {plugin_dir}/docs/permissions.md). This is separate from the pipeline's phase-boundary gates.
+[tip] Cut Claude Code's per-tool-call approval prompts during implementation (this is separate from the pipeline's phase-boundary gates):
+  • This run: press Shift+Tab → "accept edits", or re-run with --auto-approve.
+  • Persistently: run once, then restart claude —
+      node {plugin_dir}/scripts/setup-workspace-permissions.js --config={workspace_root}/{slug}/config.json
+    It writes a safe-only allowlist (file edits, read-only + local-only git, worktree
+    lifecycle, build/test for your stacks, and the Phase-6 chrome-devtools MCP) plus the
+    cross-repo additionalDirectories at your repos' shared parent — so cross-repo edits,
+    builds, the ADR write, and Phase-6 browser verification stop prompting. Destructive
+    commands (push, reset --hard, rm, deploys) still prompt. See {plugin_dir}/docs/permissions.md.
 ```
 
-Do not gate the pipeline on this; it is informational. Skip the line on `--resume` (the user has already seen it for this run).
+Note the settings file loads on the **next** `claude` launch, so it quiets future runs; for the current run, Shift+Tab / `--auto-approve` is the immediate lever. Do not gate the pipeline on any of this; it is informational.
 
 **Why checkpoints discipline matters for the UI:** the site-view derives the
 agent lifecycle (which agents ran, per-repo identity, tokens, duration,

@@ -158,9 +158,19 @@ writes/merges a `.claude/settings.local.json` there with:
   any repo from inside another no longer prompts. Because Claude Code walks up
   from the launch cwd to find settings, one file at the shared parent loads for
   **every** repo and worktree beneath it.
-- a **safe-only** allowlist (Edit/Write, read-only + local-only git, build/test/read).
-  `git push`, `reset --hard`, `clean`, `rm`, deploys, and `docker push` are
-  deliberately omitted, so they keep prompting.
+- a **safe-only** allowlist (Edit/Write, read-only + local-only git, the `git
+  worktree` lifecycle the pipeline drives, build/test for the common stacks, read
+  tools, and the Phase-6 `chrome-devtools` MCP `mcp__chrome-devtools__*` for live
+  browser verification). `git push`, `reset --hard`, `clean`, `rm`, deploys,
+  `docker push`, and language `install`/`publish` subcommands (`go install`,
+  `cargo install`/`publish`, `npm publish`, `dotnet nuget push`) are deliberately
+  omitted, so they keep prompting.
+
+Both `/discover` Step 3.5 and **`/deliver` pre-flight** surface this helper: pre-flight
+runs it in `--dry-run` and, if the workspace has no allowlist yet, prints the exact
+command to run (then a `claude` restart loads it). This is what stops the cross-repo
+edit flood, the dispatched-agent ADR write being denied under `context/adrs/`, the
+backend-compile prompt, and the Phase-6 browser-verification MCP prompts.
 
 It MERGES (union, order-stable) and never clobbers a hand-curated file; an
 unparseable existing file is left untouched. Re-runnable on an already-onboarded

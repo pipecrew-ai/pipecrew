@@ -138,8 +138,35 @@ const SAFE_ALLOW = [
   'Bash(./mvnw:*)',
   'Bash(mvn:*)',
   'Bash(./gradlew:*)',
+  'Bash(gradle:*)',
   'Bash(pytest:*)',
+  'Bash(python -m pytest:*)',
+  'Bash(python3 -m pytest:*)',
+  'Bash(poetry run:*)',
+  'Bash(ruff:*)',
+  'Bash(mypy:*)',
+  // Build/test for additional stacks — verb-scoped so the dangerous subcommands
+  // (go/cargo/dotnet install/publish/nuget push) keep prompting.
   'Bash(go test:*)',
+  'Bash(go build:*)',
+  'Bash(go vet:*)',
+  'Bash(cargo build:*)',
+  'Bash(cargo test:*)',
+  'Bash(cargo check:*)',
+  'Bash(dotnet build:*)',
+  'Bash(dotnet test:*)',
+  'Bash(npx jest:*)',
+  'Bash(npx prettier:*)',
+  // The /deliver orchestrator drives worktree lifecycle (add/remove/list) and
+  // diffs against the merge-base — worktrees are disposable, merge-base is read-only.
+  'Bash(git worktree:*)',
+  'Bash(git merge-base:*)',
+  // The plugin's own zero-dep scripts (gate.js, extract-block.js, validate-*.js, …).
+  'Bash(node *pipecrew/scripts/*)',
+  // chrome-devtools MCP — Phase 6 live browser verification (navigate / click /
+  // screenshot / read console+network). Server name matches scripts/ensure-mcp.js
+  // (`--name=chrome-devtools`); the assessor only drives it against localhost.
+  'mcp__chrome-devtools__*',
   // Read / inspect.
   'Bash(ls:*)',
   'Bash(cat:*)',

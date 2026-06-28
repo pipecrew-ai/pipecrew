@@ -16,6 +16,8 @@
 
 ## Schema
 
+> Thin index — the owning entity classes and the migration changesets are the source of truth for columns and types. The rows below name the entity per table and flag only the columns with non-obvious semantics; they deliberately do not restate every column.
+
 {{TABLE_DEFINITIONS}}
 
 ## Migrations
@@ -47,8 +49,15 @@ else is human-owned.
   setting, migration tool.
 - {{CONNECTION_CONFIG}}: where credentials come from (Secrets Manager,
   env vars, etc.), per-profile differences.
-- {{TABLE_DEFINITIONS}}: one subsection per table, with markdown table
-  Column | Type | Notes columns. Include indices, constraints, JSONB shapes.
+- {{TABLE_DEFINITIONS}}: a **thin index**, NOT a full column dump — the entity
+  classes + migration changesets are the column/type source of truth, and a
+  restated copy here drifts out of date. One row per table:
+  Table | Owning entity (file:line) | Non-obvious columns. List ONLY columns the
+  entity declaration doesn't make obvious — a status enum constrained by a CHECK,
+  a JSONB shape, a soft-delete / derived / denormalized column, a legacy column
+  to avoid. If a table's columns are all self-explanatory from its entity, put
+  '—' in the Non-obvious column. (Indices/constraints worth knowing go in the
+  Non-obvious cell too; the exhaustive list lives in the migrations.)
 - {{MIGRATION_HISTORY_OR_PATTERN}}: either a chronological history of
   migrations (preferred for small repos) or just the master changelog
   pattern + how to add new migrations (for large repos with 50+ migrations).

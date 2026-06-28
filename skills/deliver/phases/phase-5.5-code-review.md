@@ -9,7 +9,7 @@ Reviewers **raise issues only** — they do not fix anything. If fixes are neede
 This phase runs for:
 - **Backend + Workers**: one reviewer per affected service whose repo type has a matching reviewer agent (see `TYPE_TO_AGENT` table in `dispatch-rules.md`). The reviewer prompt is shaped by the service's `spec_policy` (see Step 1).
 - **Frontend**: one reviewer for the frontend worktree if Phase 5b ran. Type-aware via `TYPE_TO_AGENT` (`react` → `react-reviewer`, `nextjs` → `nextjs-reviewer`) — resolved from the frontend repo's `type` in config.
-- **Infrastructure**: one reviewer per affected infra repo. Type-aware via `TYPE_TO_AGENT` (`cdk` → `cdk-reviewer`, `terraform` → `terraform-reviewer`). The reviewer's contract is the per-repo entry in the architect's `INFRASTRUCTURE_IMPACT` block (Phase 2); `spec_policy: infra`. The implementer's `cdk synth` / `terraform plan` output is consumed as a verification artifact alongside the source diff. The reviewer NEVER runs `terraform apply` or `cdk deploy` — it produces findings only.
+- **Infrastructure**: one reviewer per affected infra repo. Type-aware via `TYPE_TO_AGENT` (`cdk` → `cdk-reviewer`, `terraform` → `terraform-reviewer`). The reviewer's contract is the per-repo entry in the architect's `INFRASTRUCTURE_IMPACT` block (Phase 2); `spec_policy: infra`. The implementer's `cdk diff` (the delta — preferred; full `cdk synth` is the fallback) / `terraform plan` output is consumed as a verification artifact alongside the source diff. The reviewer NEVER runs `terraform apply` or `cdk deploy` — it produces findings only.
 
 This phase is SKIPPED for:
 - **Mock server** — mocks are transient and reviewed implicitly by the frontend tests consuming them

@@ -328,11 +328,20 @@ Self-check before returning:
 
 ---
 
-### Step 3.5: Offer to write a `settings.local.json` for approval-free operation (C1 / C2 / C3)
+### Step 3.5: Offer to write `settings.local.json` files for approval-free operation (C1 / C2 / C3)
+
+Approval prompts come from two distinct contexts, so this step offers **two** settings files (both user-scoped, git-ignored, written only with explicit consent):
+
+- **Part A — workspace-dir settings** (for `/deliver` runs launched from the workspace dir): pre-allows the Edit / Write / Bash patterns the pipeline uses under `{workspace_root}/{slug}/**`.
+- **Part B — repo-scoped settings** (for interactive sessions launched from a repo): grants `additionalDirectories` + a safe command allow-list at the repos' common parent, so cross-repo edits and routine safe commands stop prompting no matter which repo you launch from.
+
+Offer both. Part A's file only loads when `claude` is launched from the workspace dir; most users launch from a repo, which is exactly what Part B covers — so Part B is usually the one that removes the day-to-day friction.
+
+#### Part A — workspace-dir settings (for /deliver from the workspace dir)
 
 The `/deliver` pipeline triggers many Edit / Write / Bash calls scoped to paths under `{workspace_root}/{slug}/**` and the repos in `config.repos`. Without pre-allow rules, every one prompts for approval, slowing the run and fragmenting flow.
 
-Offer to write a `settings.local.json` under the workspace directory's `.claude/` folder (not in the repos — that scope is each team's decision) that pre-allows the common patterns this pipeline uses. The file is user-scoped (not committed to any repo), so it's safe to write but ONLY with explicit user consent.
+Offer to write a `settings.local.json` under the workspace directory's `.claude/` folder that pre-allows the common patterns this pipeline uses. The file is user-scoped (not committed to any repo), so it's safe to write but ONLY with explicit user consent.
 
 **Path matters:** Claude Code only auto-loads project settings from `<dir>/.claude/settings.local.json`, discovered by walking up from the directory `claude` is launched in. A bare `settings.local.json` at the workspace root is **not** on the settings search path and would silently have no effect. Always write it to `{workspace_root}/{slug}/.claude/settings.local.json`.
 
@@ -370,9 +379,44 @@ On `yes`:
 5. Suggest to the user:
    > "These allow rules load automatically when you start `claude` with the working directory at (or below) `{workspace_root}/{slug}/` — Claude Code reads `.claude/settings.local.json` from the cwd and its parents. If you run `/deliver` from a different directory (e.g. your repos root), the rules won't apply there; in that case either launch from the workspace dir, or copy the `permissions.allow` entries into the `.claude/settings.local.json` of wherever you do launch `claude`. To pick them up mid-session, run `/permissions` and reload."
 
-On `no`: skip. Note in the Phase D summary: "settings.local.json skipped per user choice. Approval prompts will continue during feature runs."
+On `no`: skip. Note in the Phase D summary: "workspace-dir settings.local.json skipped per user choice. Approval prompts will continue during feature runs launched from the workspace dir."
 
-**Update scratchpad**: add a `Settings file` row to `## Generation Status` — `WRITTEN`, `SKIPPED`, or `EXISTED` (if a file was already present and we chose not to overwrite without extra consent).
+#### Part B — repo-scoped settings (for interactive work in the repos)
+
+When the user works **interactively** in a repo (editing, reviewing, committing, running tests — not a `/deliver` run), two things prompt repeatedly: (1) edits/commands in a *sibling* repo or worktree (outside the launch cwd's trusted root), and (2) routine safe commands (read-only git, `git add`/`commit`, build/test). The Part A file does not help here because it only loads from the workspace dir, and it grants no `additionalDirectories`.
+
+`scripts/setup-workspace-permissions.js` closes this gap deterministically: it reads `config.repos`, computes the repos' common parent directory(ies), and writes/merges a `.claude/settings.local.json` there granting:
+- `additionalDirectories` = every repo parent + the workspace dir (so editing any repo from inside another no longer prompts), and
+- a **safe-only** allow-list (Edit/Write, read-only + local-only git, build/test/read commands). Outward-facing / destructive commands (`git push`, `reset --hard`, `clean`, `rm`, deploys, `docker push`) are deliberately omitted, so they keep prompting.
+
+Because Claude Code walks up from the launch cwd to discover settings, a single file at the repos' shared parent loads for **every** repo and git worktree beneath it. The script MERGES (union, order-stable) and never clobbers a hand-curated file.
+
+Prompt:
+```
+I can also reduce prompts for interactive work in your repos. I'll write/merge a
+.claude/settings.local.json at your repos' common parent that:
+  - trusts all workspace repos + the workspace dir (additionalDirectories), so
+    cross-repo edits don't prompt
+  - allows safe commands only (file edits, read-only & local git, build/test)
+  - leaves push / reset --hard / rm / deploys prompting
+
+Preview first? (yes / no / show-me-first)
+```
+
+On `show-me-first`: run the script in preview mode and show the output, then re-prompt `(yes / no)`:
+```bash
+node {plugin_dir}/scripts/setup-workspace-permissions.js --config={workspace_root}/{slug}/config.json --dry-run
+```
+
+On `yes`: run it for real:
+```bash
+node {plugin_dir}/scripts/setup-workspace-permissions.js --config={workspace_root}/{slug}/config.json
+```
+Then tell the user: "Restart `claude` (or run `/permissions`) in any repo to load the new rules. Edit the file(s) it reports to tighten or loosen the allow-list."
+
+On `no`: skip. Note it in the Phase D summary.
+
+**Update scratchpad**: add a `Settings files` row to `## Generation Status` capturing both parts — e.g. `Part A: WRITTEN / SKIPPED / EXISTED · Part B: WRITTEN(<file>) / SKIPPED`.
 
 ---
 

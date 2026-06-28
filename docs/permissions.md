@@ -133,6 +133,43 @@ After a plugin install/upgrade the hook needs a **`claude` restart** to load
 (confirm with `/hooks`); until then `--auto-approve` writes a harmless marker
 that simply has no effect.
 
+## Plugin-native fix (interactive) — `setup-workspace-permissions.js`
+
+The `--auto-approve` hook above only fires during an active `/deliver` run. When
+you work **interactively** in a workspace — editing across repos, reviewing,
+committing, running tests — two things prompt repeatedly:
+
+1. **Cross-repo edits/commands.** Claude Code trusts the launch cwd's tree; a
+   sibling repo or git worktree is outside it, so every edit there prompts.
+2. **Routine safe commands** the allowlist above would cover, if you'd set one up.
+
+`/discover` Step 3.5 (Part B) offers to fix both at once, deterministically:
+
+```bash
+node {plugin_dir}/scripts/setup-workspace-permissions.js --config={workspace_root}/{slug}/config.json
+# preview without writing:
+node {plugin_dir}/scripts/setup-workspace-permissions.js --config=… --dry-run
+```
+
+It reads `config.repos`, finds the repos' common parent directory, and
+writes/merges a `.claude/settings.local.json` there with:
+
+- **`additionalDirectories`** = every repo parent + the workspace dir — so editing
+  any repo from inside another no longer prompts. Because Claude Code walks up
+  from the launch cwd to find settings, one file at the shared parent loads for
+  **every** repo and worktree beneath it.
+- a **safe-only** allowlist (Edit/Write, read-only + local-only git, build/test/read).
+  `git push`, `reset --hard`, `clean`, `rm`, deploys, and `docker push` are
+  deliberately omitted, so they keep prompting.
+
+It MERGES (union, order-stable) and never clobbers a hand-curated file; an
+unparseable existing file is left untouched. Re-runnable on an already-onboarded
+workspace — it's idempotent. Restart `claude` (or run `/permissions`) afterward
+to load the rules.
+
+This is the right tool for the everyday cross-repo friction; the `--auto-approve`
+hook is the right tool for an unattended `/deliver` run. They're complementary.
+
 ## Scope note
 
 Subagents inherit the session's permission mode and allowlist, so configuring

@@ -185,7 +185,9 @@ Replace placeholders using data from B1 + B2:
 |-------------|--------|
 | `{{WORKSPACE_SLUG}}` | workspace config |
 | `{{WORKSPACE_NAME}}` | workspace config |
-| `{{QUALITY_STANDARDS}}` | Default quality bar (can be customized later). Include: "Backend: all spec endpoints implemented, DTOs match, tests cover happy path + main error. Frontend: all FR- requirements implemented, types match spec, i18n both languages. Mock: all endpoints covered, shapes match spec." |
+| `{workspace_root}` | Absolute workspace root — run `node {plugin_dir}/scripts/workspace-root.js --get` and substitute the value verbatim, normalized to forward slashes (e.g. `C:/ABVI/pipecrew-workspaces`). **This is a single-brace *runtime* token and it MUST be substituted now, at generation time.** A dispatched agent reads its own system prompt verbatim — the orchestrator's runtime token substitution never touches a sub-agent's baked-in prompt — so a leftover `{workspace_root}` is an unresolvable path at runtime: the agent guesses (e.g. `~/.claude/{slug}-context/...`) and reads the wrong file or nothing. |
+| `{plugin_dir}` | Absolute path to this plugin directory (normalized to forward slashes). Substitute verbatim so `node {plugin_dir}/scripts/...` and doc references baked into the agent (e.g. the troubleshooter's `extract-block.js` call, the product-owner's block-schema references) resolve at runtime. Same single-brace runtime-token rule as `{workspace_root}`. |
+| `{{QUALITY_STANDARDS}}` | **Assessor only.** Default quality bar (can be customized later). Include: "Backend: all spec endpoints implemented, DTOs match, tests cover happy path + main error. Frontend: all FR- requirements implemented, types match spec, i18n both languages. Mock: all endpoints covered, shapes match spec." Do **not** inject into the troubleshooter — it is a read-only incident-triage agent, not a quality gate; its template no longer carries this placeholder. |
 
 Note: the older `{{DOMAIN_CONTEXT}}` and `{{DESIGN_SYSTEM_CONTEXT}}` placeholders were removed from the templates. Agents now read `{workspace_root}/{slug}/context/platform.md` and `design-system.md` directly at dispatch time. This keeps the agents' knowledge always fresh (no summary-drift risk) and leaves no baked-in copy of workspace context to go stale between onboarding refreshes. If older templates with these placeholders are encountered, treat them as pointers — replace their value with the "read the file" instruction already present in the current templates.
 
@@ -238,14 +240,15 @@ Placeholders may appear more than once in a template (e.g., a shared slug refere
 
 - When using `Edit`, pass `replace_all: true` for every placeholder replacement.
 - When using `sed`, use the `g` flag (`s|{{PLACEHOLDER}}|value|g`).
+- The single-brace **runtime tokens** `{workspace_root}` and `{plugin_dir}` must be substituted globally too (their absolute values from the table above) — they are easy to miss because they don't use the `{{…}}` form, and a leftover one is a silent runtime failure, not a visible placeholder.
 
-After writing each agent file, verify zero placeholders remain:
+After writing each agent file, verify no placeholders **and no unresolved runtime tokens** remain:
 
 ```bash
-grep -c '{{' {workspace_root}/{slug}/agents/{product-owner,assessor,troubleshooter}.md
+grep -cE '\{\{|\{(workspace_root|plugin_dir|slug)\}' {workspace_root}/{slug}/agents/{product-owner,assessor,troubleshooter}.md
 ```
 
-Every file must report `0`. If any file reports ≥1, halt, run `grep -n '{{' <file>` to list remaining placeholders by line, and fix before continuing. Do **not** ship an agent file with an unfilled placeholder — it will produce confusing behavior at runtime when the agent reads its own system prompt.
+Every file must report `0`. If any file reports ≥1, halt, run `grep -nE '\{\{|\{(workspace_root|plugin_dir|slug)\}' <file>` to list the remaining placeholders/tokens by line, and fix before continuing. Do **not** ship an agent file with an unfilled `{{placeholder}}` or an unresolved single-brace `{workspace_root}` / `{plugin_dir}` / `{slug}` token — both produce confusing or broken behavior at runtime when the agent reads its own system prompt.
 
 **Update scratchpad**: set `Domain agents` to COMPLETED in `## Generation Status`.
 

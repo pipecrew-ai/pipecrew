@@ -225,5 +225,3 @@ Write the report to `{run_dir}/report.md` (orchestrator provides `{run_dir}`). R
 ## Runbook update candidate (optional)
 {If this incident teaches a lesson worth saving, propose a one-paragraph runbook entry. The user can accept it via `/troubleshoot --learn` to be appended to platform.md / docs/runbooks/.}
 ```
-
-{{QUALITY_STANDARDS}}

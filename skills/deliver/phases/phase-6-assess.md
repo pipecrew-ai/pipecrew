@@ -37,6 +37,7 @@ To keep token cost proportional to that value, **pass only these inputs** (do NO
 4. **Updated spec file paths** — one per affected service (the assessor reads them directly to verify wire shapes)
 5. **Files-modified list per repo** — extract from the scratchpad's Implementation Tasks "Files Changed" column. This lets the assessor target its reads to what actually changed, not the whole repo.
 6. **Endpoint inventory** — a flat list of `method path → DTO` entries extracted from the spec diffs. Pre-compute this in the orchestrator from Phase 3 output; the assessor uses it as its wire-shape checklist.
+7. **Recurring cross-repo gap checklist** — IF `{workspace_root}/{slug}/context/cross-repo-checklist.md` exists, pass its **contents**. It is a small, bounded, curated list of gap *classes* this workspace has hit before (written by `/learn` from prior assessor findings); the assessor folds it into its plan at Step 1.5 to check those classes proactively. This is a deliberately separate sidecar — passing it does **not** breach the "no `platform.md`" rule below, because the whole point of the sidecar is to stay small and assessor-only. Skip this input if the file doesn't exist yet.
 
 Do NOT pass requirements or architecture files in the prompt. The assessor is forbidden from re-reading them — if it needs a specific FR/EC detail, it reads the `phase-5-5-code-review.md` which already maps findings to requirements. This is a deliberate scope narrowing.
 
@@ -67,6 +68,10 @@ FILES CHANGED (target your reads to these):
 
 ENDPOINT INVENTORY (pre-computed from spec diffs — use as your wire-shape checklist):
 {flat list: method path → response DTO | request DTO}
+
+{if {workspace_root}/{slug}/context/cross-repo-checklist.md exists, include:}
+RECURRING CROSS-REPO GAP CHECKLIST (gap classes this workspace has shipped before — check each proactively per Step 1.5):
+{paste the contents of context/cross-repo-checklist.md}
 
 SCOPE: cross-repo integration only.
 1. Wire shapes agree across backend ↔ frontend ↔ mock for every endpoint in the inventory.

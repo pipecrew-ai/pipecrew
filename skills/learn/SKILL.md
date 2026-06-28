@@ -15,6 +15,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 
 **Output scopes** (tier classification for every finding):
 - **Workspace durable** → updates `{workspace_root}/{slug}/context/platform.md` (typically the `Established Patterns` section)
+  - **Exception — recurring cross-repo integration gap *classes*** (surfaced by the assessor via its `## Notes for /learn`, e.g. "role-gated backend endpoints repeatedly ship without the matching frontend route guard") go to the dedicated sidecar `{workspace_root}/{slug}/context/cross-repo-checklist.md`, **not** `platform.md`. Only the Phase 6 assessor loads that sidecar, so keeping these out of `platform.md` keeps the always-loaded doc lean. **Dedupe** against existing entries (merge a near-duplicate, don't add a second) and **cap** the file at ~150 lines — if it would exceed that, drop the least-recurring entry. It is a tight checklist of gap *classes*, not an append-only log; create it on the first such finding.
 - **Repo durable** → updates `{repo}/CLAUDE.md` or `{repo}/agent-context/*` or `DESIGN_SYSTEM.md` (frontend — path resolved via `config.repos[repo].design_system_path`, falling back to standard candidates)
 - **Plugin-level** → flagged in the log only (not auto-applied; requires maintainer review)
 - **Run-local** → no propagation; already captured in the run's outputs, mentioned but not acted on

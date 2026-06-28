@@ -60,7 +60,7 @@ Every line in `checkpoints.jsonl` is one JSON event on its own line. Append-only
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `ts` | ISO8601 UTC | always | Emission time (e.g., `"2026-04-15T14:27:44Z"`) |
-| `event` | enum | always | One of the 8 event types below |
+| `event` | enum | always | One of the 9 event types below |
 | `skill` | enum | always | `"discover" \| "deliver" \| "learn" \| "review" \| "assess" \| "context-refresh"` |
 | | | | Legacy runs may carry the pre-rename values `"onboard"` / `"feature"`; the validator accepts both for backcompat. |
 | `run_id` | string | always | Matches the directory name |
@@ -69,7 +69,7 @@ Every line in `checkpoints.jsonl` is one JSON event on its own line. Append-only
 
 Fields that have no source data → **omit the key entirely**. Do not fabricate zero values. The validator rejects fabricated `0` for fields the caller couldn't have measured.
 
-### Event types — the 8 canonical events
+### Event types — the 9 canonical events
 
 #### `run_start` — first line of every log
 
@@ -129,6 +129,25 @@ Extra fields: `status` (`completed` | `failed` | `aborted` | `resumed_later`), `
 ```
 
 Extra fields: `duration_ms` (computed from matching `phase_start`).
+
+#### `agent_start` — immediately before every `Agent` tool call
+
+```json
+{
+  "ts": "2026-04-15T09:14:05Z",
+  "event": "agent_start",
+  "skill": "deliver",
+  "run_id": "2026-04-15-104502-book-upload",
+  "phase": "5a",
+  "stage": "Backend implementation",
+  "agent_type": "spring-boot-implementer",
+  "description": "Backend implementer — publisher-service"
+}
+```
+
+Required: `agent_type`, `description`. Optional: `task` (the task-file id, when the dispatch is task-scoped). Like all phase-scoped events it also carries `phase` + `stage`.
+
+**Lifecycle rule — emit `agent_start` before EVERY `Agent` dispatch, background and inline alike.** This explicitly includes the agents the orchestrator runs inline (product-owner, solution-architect, openapi-spec-editor, ux-consultant), not just the parallel background dispatches. The matching `agent_end` closes it; the pair is matched on `agent_type` + `description` (and `task` when present). Without a preceding `agent_start`, the live site-view has no "working" interval to render — the agent only ever appears once it has already finished, and its tokens attach only at completion. For agents that run per-repo (implementers, reviewers), the `description` MUST encode the repo (e.g. `Code review — publisher-service`) so the view keys each instance to its own repo instead of collapsing them into a single "cross-repo" card.
 
 #### `agent_end` — every `Agent` tool call returns (success or failure)
 
@@ -238,6 +257,8 @@ Parse with:
 ```
 
 Split the captured body by newlines, parse each `key: value` pair, coerce numeric values to integers. Copy whatever keys are present into the `agent_end` event (normalize key names to snake_case).
+
+> **Token field name:** emit the grand total as `total_tokens` (the name the `<usage>` block uses). Some older logs carry it as bare `tokens`; consumers (e.g. the site-view) MUST accept either `total_tokens` or `tokens` so per-agent and total token counts populate regardless of the producer's vintage.
 
 If `<usage>` is absent (tool error before usage was reported), emit `agent_end` with `status: "failed"` and no token fields — but keep `agent_type`, `description`, `phase`, `stage`, `duration_ms` if you have them.
 

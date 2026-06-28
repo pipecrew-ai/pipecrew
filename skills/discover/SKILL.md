@@ -108,6 +108,7 @@ Stable workspace-level outputs (`config.json`, `context/platform.md`, `agents/`,
 | `run_end` | Last event, after Phase D | `status`, `duration_ms` |
 | `phase_start` | Entering any phase | `phase`, `stage` |
 | `phase_end` | Phase complete, scratchpad updated | `phase`, `stage`, `duration_ms` |
+| `agent_start` | **Immediately before** every `Agent` tool call (incl. the inline solution-architect in B2 and ux-consultant in B3) | `agent_type`, `description` (encode the repo for per-repo agents) |
 | `agent_end` | Every `Agent` tool call returns | `agent_type`, `description`, token fields, `status`, optional `audit_findings_count` |
 | `orch_checkpoint` | **At every phase boundary** (mandatory — see "Orchestrator overhead tracking" below) | `jsonl_offset`, `orch_since_last.{input,output,cache_read}_tokens` |
 | `bash_slow` | Bash call > 5000 ms | `duration_ms`, `cmd_summary` (first 60 chars) |

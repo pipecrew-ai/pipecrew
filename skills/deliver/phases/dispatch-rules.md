@@ -113,7 +113,11 @@ Starting at Phase 4.5, implementation sub-tasks and reviewer findings are persis
 
 All events go to `{run_dir}/checkpoints.jsonl` in the unified schema defined at `{plugin_dir}/rules/observability.md`. The schema is shared with `/discover`, `/review`, and `/assess` so the reporter can consume every skill the same way.
 
-**Agent dispatches** → emit `agent_end` after every `Agent` tool call returns. Parse the `<usage>` block from the tool result, copy the token/tool_uses/duration fields into the event, include `agent_type`, `description`, `phase`, `stage`, `status`. See `rules/observability.md` for the exact shape.
+**Agent dispatches** → emit `agent_start` **immediately before** every `Agent` tool call, then `agent_end` after it returns. This applies to **every** dispatch — the parallel background agents (Phase 5a/5c/5d implementers, Phase 5.5 reviewers) *and* the agents the orchestrator runs inline (Phase 1 product-owner, Phase 2 solution-architect, Phase 3 openapi-spec-editor, Phase 5b ux-consultant). Without the leading `agent_start` the live site-view never shows the agent in its "working" state — it appears only after it has already finished, and its tokens attach only at completion.
+- `agent_start`: include `agent_type`, `description`, `phase`, `stage` (and `task` when task-scoped). For per-repo agents the `description` MUST encode the repo (e.g. `Backend implementer — publisher-service`, `Code review — publisher-service`) so the view keys each instance to its repo instead of collapsing them into one "cross-repo" card.
+- `agent_end`: parse the `<usage>` block from the tool result, copy the token (`total_tokens` + the per-type counts) / `tool_uses` / `duration_ms` fields into the event, and reuse the **same** `agent_type` + `description` (+ `task` if the `agent_start` carried one) so the two pair up. Include `status`.
+
+See `rules/observability.md` for the exact shape of both events.
 
 **Retries** → emit `retry` between a failed `agent_end` and the redispatch.
 

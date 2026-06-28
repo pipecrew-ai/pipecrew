@@ -12,7 +12,7 @@
       "description": "ISO8601 UTC emission time"
     },
     "event": {
-      "enum": ["run_start", "run_end", "phase_start", "phase_end", "agent_end", "orch_checkpoint", "bash_slow", "retry"]
+      "enum": ["run_start", "run_end", "phase_start", "phase_end", "agent_start", "agent_end", "orch_checkpoint", "bash_slow", "retry"]
     },
     "skill": {
       "enum": ["discover", "deliver", "learn", "review", "assess", "context-refresh", "onboard", "feature"],
@@ -60,6 +60,17 @@
         "required": ["phase", "stage", "duration_ms"],
         "properties": {
           "duration_ms": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event": { "const": "agent_start" } } },
+      "then": {
+        "required": ["agent_type", "description"],
+        "properties": {
+          "agent_type": { "type": "string" },
+          "description": { "type": "string" },
+          "task": { "type": "string" }
         }
       }
     },

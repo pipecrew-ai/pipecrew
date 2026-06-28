@@ -14,7 +14,7 @@ const fs = require('fs');
 const ALLOWED_EVENTS = new Set([
   'run_start', 'run_end',
   'phase_start', 'phase_end',
-  'agent_end', 'orch_checkpoint',
+  'agent_start', 'agent_end', 'orch_checkpoint',
   'bash_slow', 'retry',
 ]);
 
@@ -92,6 +92,9 @@ function validate(lines) {
       case 'phase_end':
         require_(ev, ['phase', 'stage', 'duration_ms'], lineNo, errors);
         checkNonNegInt(ev, 'duration_ms', lineNo, errors);
+        break;
+      case 'agent_start':
+        require_(ev, ['agent_type', 'description'], lineNo, errors);
         break;
       case 'agent_end':
         require_(ev, ['agent_type', 'description', 'status'], lineNo, errors);

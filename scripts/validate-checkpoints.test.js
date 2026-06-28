@@ -58,10 +58,27 @@ test('invalid ISO timestamp', () => {
 
 test('unknown event type rejected', () => {
   const evs = JSON.parse(JSON.stringify(baseRun));
-  evs.push({ ts: '2026-04-15T09:20:00Z', event: 'agent_start', skill: 'onboard',
+  evs.push({ ts: '2026-04-15T09:20:00Z', event: 'agent_begin', skill: 'onboard',
              run_id: '2026-04-15-091234-dal' });
   const r = validate(toLines(evs));
-  assert(hasErr(r, 'unknown event "agent_start"'));
+  assert(hasErr(r, 'unknown event "agent_begin"'));
+});
+
+test('agent_start is a valid event type', () => {
+  const evs = JSON.parse(JSON.stringify(baseRun));
+  evs.splice(2, 0, { ts: '2026-04-15T09:17:00Z', event: 'agent_start', skill: 'onboard',
+                     run_id: '2026-04-15-091234-dal', phase: 'B2', stage: 'Architect Discovery',
+                     agent_type: 'solution-architect', description: 'Architect discovery' });
+  const r = validate(toLines(evs));
+  assert(r.errors.length === 0, `unexpected errors: ${r.errors.join('; ')}`);
+});
+
+test('agent_start requires agent_type + description', () => {
+  const ev = { ts: '2026-04-15T09:17:00Z', event: 'agent_start', skill: 'onboard',
+               run_id: '2026-04-15-091234-dal', phase: 'B2', stage: 'Architect Discovery' };
+  const r = validate(toLines([ev]));
+  assert(hasErr(r, 'agent_start missing required field "agent_type"'));
+  assert(hasErr(r, 'agent_start missing required field "description"'));
 });
 
 test('unknown skill rejected', () => {

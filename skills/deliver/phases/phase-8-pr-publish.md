@@ -209,12 +209,17 @@ Pull Requests:
    repo CLAUDE.md / agent-context). You approve each finding before
    anything is applied. Run it once per PR after meaningful review activity.
 
-Want INSTANT feedback on this run right now? Captures corrections you
-made during dispatch, decisions you pushed back on, gates you reshaped —
-useful for the architect / implementers learning your conventions.
+Want feedback captured into your workspace docs?
 
-  yes   → run /learn --run={run_id} now
-  later → skip (you can run /learn --run={run_id} or /learn --pr=<url> any time)
+  yes   → run /learn --run={run_id} now — captures THIS pipeline run
+          (corrections you made at gates, decisions you pushed back on,
+          the notes the agents flagged this run)
+  later → if you'll keep tweaking the code in this session, that's often the
+          BETTER moment to learn: finish your fixes, then run
+          /learn --branch=feature/{feature-slug}  (add --note="why" for intent
+          a diff can't show). It diffs the whole branch against base, so it
+          learns from your follow-up hand-edits too — not just what the
+          pipeline produced. Or /learn --pr=<url> once the PR has review activity.
   no    → permanently skip for this run
 
 Choice?
@@ -228,11 +233,15 @@ Choice?
 📌 You can publish PRs later with:
      /deliver --resume --workspace={slug} --with-pr
 
-Want INSTANT feedback on this run right now? Captures corrections you
-made during dispatch, decisions you pushed back on, gates you reshaped.
+Want feedback captured into your workspace docs?
 
-  yes   → run /learn --run={run_id} now
-  later → skip (you can run /learn --run={run_id} any time)
+  yes   → run /learn --run={run_id} now — captures THIS pipeline run
+          (corrections at gates, decisions you pushed back on, agent notes)
+  later → if you'll keep tweaking the code in this session, that's often the
+          BETTER moment to learn: finish your fixes, then run
+          /learn --branch=feature/{feature-slug}  (add --note="why" for intent
+          a diff can't show). It diffs the whole branch against base, so it
+          learns from your follow-up hand-edits too — not just the pipeline output.
   no    → permanently skip for this run
 
 Choice?

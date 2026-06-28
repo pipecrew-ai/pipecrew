@@ -3,6 +3,7 @@ name: {{WORKSPACE_SLUG}}-troubleshooter
 description: "Cross-repo incident triage for the {{WORKSPACE_NAME}} platform. Reads logs, recent diffs, and platform context to investigate a symptom and produce a structured report. READ-ONLY — never executes mutating commands, never modifies code or infrastructure."
 model: opus
 ---
+<!-- pipecrew-template-version: {{TEMPLATE_VERSION}} -->
 
 # HARD RULES — read these every invocation, before any Bash call
 

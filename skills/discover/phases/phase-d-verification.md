@@ -216,9 +216,31 @@ Re-run `/discover --resume --workspace={slug}` to fill the gaps.
 
 ---
 
-### Step 8: Sync workspace memory to GitHub (only if `config.workspace.memory.enabled`)
+### Step 8: Sync workspace memory to GitHub
 
-If the workspace opted into GitHub-backed memory (`config.workspace.memory.enabled === true` — absent ⇒ skip this entire step, current default), persist the durable docs to the workspace's **private** memory repo. Full design: `docs/design/github-memory.md`.
+Workspace memory publishes the durable onboarding output — `context/` (incl. `platform.md`), `agents/`, `history/` — to a **private** GitHub repo so the team shares one source of truth. Full design: `docs/design/github-memory.md`.
+
+There are three entry states. Resolve which one you're in, then proceed:
+
+1. **Already enabled** (`config.workspace.memory.enabled === true`, e.g. via `--memory-remote`): skip the prompt below and go straight to **Bootstrap + Sync**.
+2. **Not enabled — offer it now** (`config.workspace.memory` absent or `enabled !== true`): present the opt-in prompt below. This is the common path, so a user who didn't know the flag still gets the chance to publish.
+3. **Explicitly declined earlier this run**: skip silently.
+
+**Opt-in prompt (state 2 only — default is NO, preserving off-by-default):**
+
+> "Publish this workspace's context (`platform.md`, agent files, history) to a **private** GitHub memory repo so your team shares it? Future `/discover`, `/deliver`, `/learn`, and `/context-refresh` runs would then pull at pre-flight and sync automatically. Secrets are redacted before every push. (yes / no — default no)"
+
+- On **no** (or no answer): skip the rest of Step 8. Note in the Phase D summary: "Workspace memory not enabled — context stays local. Run `/memory-sync enable` anytime to turn it on." Then jump to **Update scratchpad** below.
+- On **yes**: write `config.workspace.memory` into `{workspace_root}/{slug}/config.json` (mirrors the `/memory-sync enable` path), then continue to **Bootstrap + Sync**:
+  ```jsonc
+  "workspace": { "memory": {
+    "enabled": true,
+    "remote": "",                 // filled in after gh repo create, below
+    "visibility": "private",
+    "sync_mode": "hybrid"         // shared-team default; PR for platform.md/ADR changes, commit for bookkeeping
+  }}
+  ```
+  If the user names a remote URL when answering, use it as `remote` and skip the `gh repo create` step. If the URL resolves to a public repo, STOP and ask — never push memory to a public repo.
 
 **Bootstrap (first time — when `{workspace_root}/{slug}/` is not yet a git repo):**
 ```bash
@@ -237,6 +259,6 @@ node {plugin_dir}/scripts/sync-memory.js {workspace_root}/{slug} --message "disc
 ```
 This **redacts secrets first** (mandatory), regenerates the machine-independent `config.portable.json`, commits the durable docs (`context/`, `agents/`, `history/`, `config.portable.json`) per the `.gitignore`, rebases onto the team's latest, and publishes per `config.workspace.memory.sync_mode` (the first-ever bootstrap is always a direct push since it creates `main`; later re-onboards in `hybrid`/`pr` open a `memory/*` PR when `platform.md`/ADRs change). `config.json` and `runs/` are gitignored. If push/PR fails (no auth / diverged), it warns and leaves the commit local — do NOT fail the run; surface the warning.
 
-**Update scratchpad**: Set Phase D status to COMPLETED. Set top-level Status to COMPLETED. Emit a `run_end` event to `checkpoints.jsonl` with `status: "completed"` and `duration_ms` computed from the initial `run_start`. The entire `runs/discover/{run_id}/` directory stays as the permanent record — scratchpad for humans, checkpoints.jsonl for the reporter and cross-workspace trending.
+**Update scratchpad**: Record the memory outcome in `## Generation Status` — `Memory: ENABLED+SYNCED` (state 1 or accepted opt-in), `Memory: SYNCED` (was already enabled), `Memory: DECLINED` (user said no / no answer), or `Memory: SYNC FAILED (<reason>)` (commit left local). Set Phase D status to COMPLETED. Set top-level Status to COMPLETED. Emit a `run_end` event to `checkpoints.jsonl` with `status: "completed"` and `duration_ms` computed from the initial `run_start`. The entire `runs/discover/{run_id}/` directory stays as the permanent record — scratchpad for humans, checkpoints.jsonl for the reporter and cross-workspace trending.
 
 ---

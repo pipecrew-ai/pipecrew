@@ -4,14 +4,6 @@
 
 {{REPO_PURPOSE_PARAGRAPH}}
 
-## Quick Start
-
-```{{BUILD_LANG}}
-{{QUICK_START_COMMANDS}}
-```
-
-{{ENDPOINT_BASE_PATH_LINE}}
-
 ## Before You Plan a Change
 
 1. Read `agent-context/AGENT_INDEX.md` — it maps tasks to docs.
@@ -30,6 +22,17 @@
    Edits go in sections marked `<!-- agent-updatable -->`. Do NOT modify
    sections marked `<!-- human-owned -->`. The git log is the changelog,
    not these docs — don't record routine fixes, refactors, or version bumps.
+
+5. Write or update tests for every change; all tests must pass before a change
+   is considered done.
+
+## Quick Start
+
+```{{BUILD_LANG}}
+{{QUICK_START_COMMANDS}}
+```
+
+{{ENDPOINT_BASE_PATH_LINE}}
 
 ## Inviolable Rules
 

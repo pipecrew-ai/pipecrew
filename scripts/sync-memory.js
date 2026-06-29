@@ -126,7 +126,15 @@ if (DRY) {
   console.log(`sync-memory: --dry-run (mode=${syncMode}), would commit:\n` + (st.stdout || '(no changes)'));
   process.exit(0);
 }
-git(['add', '-A']);
+// Stage an explicit ALLOW-LIST of durable-doc paths only — never `git add -A`.
+// A deny-list (.gitignore) can't anticipate arbitrary junk a user may drop in the
+// workspace dir (e.g. a "copy of claude code session/" transcript dump), and such
+// content would otherwise be committed UN-redacted (redaction only runs over
+// context/agents/history). Allow-listing guarantees only known docs are published.
+const ALLOW = ['context', 'agents', 'history', 'config.portable.json', '.gitignore'];
+const toStage = ALLOW.filter((rel) => fs.existsSync(path.join(wsDir, rel)));
+// `-A` scoped to each pathspec so deletions within the durable dirs are captured too.
+if (toStage.length) git(['add', '-A', '--', ...toStage]);
 const staged = git(['diff', '--cached', '--name-only']).stdout.trim();
 if (!staged) { console.log('sync-memory: nothing changed — no commit'); process.exit(0); }
 

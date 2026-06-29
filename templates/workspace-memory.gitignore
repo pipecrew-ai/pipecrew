@@ -1,29 +1,31 @@
 # pipecrew workspace memory repo — .gitignore
-# Versions the DURABLE workspace memory (context/, agents/, history/,
-# config.portable.json). Everything below is local-only / machine-specific /
-# run noise and must NOT be pushed. See docs/design/github-memory.md.
+# ALLOW-LIST by design: ignore everything, then un-ignore ONLY the durable
+# workspace memory (context/, agents/, history/, config.portable.json).
+# This is defense-in-depth alongside sync-memory.js's allow-listed `git add`:
+# anything a user drops into the workspace dir (e.g. a "copy of claude code
+# session/" transcript dump, scratch files, exports) is ignored by default and
+# can never be committed/pushed — even by a stray `git add -A`.
+# See docs/design/github-memory.md.
 
-# --- machine-specific config (absolute repo paths) ---
-config.json
-config.local.json
+# 1. Ignore everything at the root.
+/*
 
-# --- run artifacts (scratchpads, checkpoints, outputs, reports) ---
-# Large + churny; token trends come from the reporter locally, not git.
-runs/
+# 2. Un-ignore the .gitignore itself and the durable-doc paths.
+!/.gitignore
+!/context/
+!/agents/
+!/history/
+!/config.portable.json
 
-# --- transient / in-flight markers ---
-.observability-draft.json
-.in_use/
-awaiting_input.json
-*.autoapprove
-.autoapprove-*
+# 3. Within the un-ignored durable dirs, still exclude transient/in-flight noise.
+context/**/.observability-draft.json
+**/.in_use/
+**/awaiting_input.json
+**/*.autoapprove
+**/.autoapprove-*
 
-# --- local Claude Code settings (may contain machine paths / allow-rules) ---
-.claude/settings.local.json
-.claude/worktrees/
-
-# --- OS / editor cruft ---
-.DS_Store
-Thumbs.db
-*.swp
-*~
+# 4. OS / editor cruft (in case it lands inside a durable dir).
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*~

@@ -114,8 +114,13 @@ const RULES = [
     kind: 'token',
     // Charset deliberately EXCLUDES path separators (. / -) so dotted/slashed/
     // hyphenated code identifiers and paths split into short harmless segments.
-    // Underscore and base64 chars (+/=) are kept (real secrets use them).
-    re: /(?<![A-Za-z0-9_+/=~])([A-Za-z0-9_+/=~]{20,})(?![A-Za-z0-9_+/=~])/g,
+    // NOTE: '/' MUST stay out of this class — including it makes long slash-paths
+    // (e.g. /v1/publishers/publishers/user/) and slash-joined enum lists
+    // (PASSED_LEVEL_1/2/3) match, and isCredentialish()'s base64ish test then
+    // flags the lone '/' as a secret. Keep underscore + base64 padding chars
+    // (+ = ~) only; real base64 secrets also carry mixed case / length and are
+    // caught by isCredentialish without needing '/'.
+    re: /(?<![A-Za-z0-9_+=~])([A-Za-z0-9_+=~]{20,})(?![A-Za-z0-9_+=~])/g,
     replace: (full, tok) => (isCredentialish(tok) ? '[REDACTED-token]' : full),
   },
 ];

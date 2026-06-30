@@ -1,6 +1,6 @@
 ---
 name: learn
-description: "Learn from user feedback about a shipped feature — from a merged PR, a recorded /deliver run, a branch diff, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md § Established Patterns, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to history/learn-log.md for institutional memory."
+description: "Learn from user feedback — from a merged PR, a recorded /deliver run, a branch diff, a Claude Code session transcript, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md § Established Patterns, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to history/learn-log.md for institutional memory."
 ---
 
 ## Description
@@ -11,7 +11,10 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 - Merged PR (GitHub via `gh` CLI) — reads review comments + post-plugin fix commits to learn from what humans had to correct
 - Recorded /deliver run — reads `corrections.md` + the run's outputs to learn from what the user had to push back on during dispatch
 - Branch diff — reads a diff between a branch and its base, no PR required
+- **Claude Code session** — a conversation transcript (a `.jsonl` under `~/.claude/projects/.../{sessionId}.jsonl`, or the live session via `--session=current`). Learns from what the user steered, corrected, or repeated across a working session. **No prior /deliver run required** — point it at any session and it reasons about whether anything is worth persisting.
 - Free-form text — conversational user feedback from any channel
+
+> **Session / free-form text are the weakest signal class** — they are *exploratory* (most of a session is normal work, not a reusable rule). `/learn` biases hard toward "no update" for these: it lists what it noticed and recommends a context change **only** when a structural, repeatable convention is revealed. A clear "no change recommended, here's why" is a first-class, successful outcome — not a failed run.
 
 **Output scopes** (tier classification for every finding):
 - **Workspace durable** → updates `{workspace_root}/{slug}/context/platform.md` (typically the `Established Patterns` section)
@@ -31,6 +34,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 /pipecrew:learn --pr=<url> [--note="..."] [--workspace=<slug>]
 /pipecrew:learn --run=<run_id> [--workspace=<slug>]
 /pipecrew:learn --branch=<name> [--base=<main>] [--workspace=<slug>]
+/pipecrew:learn --session=<path|id|current> [--note="..."] --workspace=<slug>
 /pipecrew:learn "<free-form text>" [--workspace=<slug>]
 
 # Optional fix-round flags (combine with any source mode above):
@@ -48,6 +52,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 | `--run=<run_id>` | A `/deliver` run directory name under `{workspace_root}/{slug}/runs/feature/`. Reads that run's `corrections.md` + outputs. |
 | `--branch=<name>` | Branch name to diff (local). Base defaults to `main` or `dev` — whichever the workspace uses. |
 | `--base=<name>` | Override the base branch for `--branch` mode. |
+| `--session=<path\|id\|current>` | Learn from a Claude Code session. `current` = the live conversation (the orchestrator distills its salient feedback turns); a `.jsonl` path or a bare session id = a past transcript (collected via `collect-session-feedback.js`). Weakest signal class — see the source-reliability note. Composes with `--note` (that **is** the "free text + session" combination — no separate flag needed). Requires `--workspace` (no repo to auto-detect from). |
 | `--workspace=<slug>` | Which workspace's docs to update. Auto-detects if omitted (scans `{workspace_root}/*/config.json` for repo paths that match the PR / branch). |
 | `--dry-run` | Show findings + proposed updates, but skip the apply step. Implies `--no-fix` (a dry run never dispatches implementers). |
 | `--apply-all` | Skip per-finding approval and apply every non-plugin-level finding. Does NOT imply `--auto-fix` — the fix-round prompt still runs after applies unless `--auto-fix` / `--no-fix` is also passed. |
@@ -62,6 +67,9 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 /pipecrew:learn --pr=https://github.com/.../pull/42 --note="we fixed the auth approach, see commit d28808e"
 /pipecrew:learn --run=2026-04-16-120338-book-content-upload
 /pipecrew:learn --branch=fix/contract-detail-modals --base=main
+/pipecrew:learn --session=current --workspace=dal-platform          # learn from the conversation we just had
+/pipecrew:learn --session=2ed98d97-4d59-4e46-... --workspace=dal-platform   # a past session by id
+/pipecrew:learn --session=current --workspace=dal-platform --note="focus on the modal-vs-route discussion"
 /pipecrew:learn "the plugin keeps putting details in a separate route, we always want a modal"
 
 # With fix-round:
@@ -78,7 +86,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 2. **Never auto-apply plugin-level findings.** The target would be the plugin's own prompts/templates, which are shared across all workspaces. Plugin-level findings are logged with the flag `plugin-level-review-needed` so the maintainer can assess.
 3. **Tier classification is the first filter.** Run-local findings are visible in the summary but don't become proposals. Only repo-scope, workspace-scope, and plugin-scope findings become actionable items.
 4. **Log every invocation.** Append to `{workspace_root}/{slug}/history/learn-log.md` — even if every finding was rejected. The record matters.
-5. **Be explicit about source reliability.** PR review comments from a human reviewer are strong signal. Post-merge fix commits are strong signal (the truth shipped). Free-form user text is strong signal but filtered through the user's recall. Run corrections are moderate signal (may have been one-off decisions).
+5. **Be explicit about source reliability.** PR review comments from a human reviewer are strong signal. Post-merge fix commits are strong signal (the truth shipped). Free-form user text is strong signal but filtered through the user's recall. Run corrections are moderate signal (may have been one-off decisions). **A Claude Code session is the weakest signal** — exploratory, mostly normal work, lots of dead ends; treat it the same class as free-form text and default to recommending no change unless a structural, repeatable convention clearly emerges.
 6. **Never dispatch a fix-round implementer without explicit user consent.** The fix round modifies real code on a real branch — it is the only step in `/learn` that touches anything outside the workspace docs. Default behavior is to ask the user (per repo, with the resolved branch named) before each dispatch. Only `--auto-fix` skips that gate, and only after the standard per-finding doc-approval gate has already run. `--dry-run` always implies `--no-fix`. Plugin-level findings never become fix-round dispatches (their target is the plugin, not workspace code).
 
 ---
@@ -106,7 +114,7 @@ If `--workspace=<slug>` is provided, use `{workspace_root}/{slug}/config.json`. 
 
 - For `--pr` / `--branch`: extract the repo path from the PR URL or current working directory. Scan `{workspace_root}/*/config.json` for any workspace whose `repos.*.path` matches. If exactly one matches, use it. If multiple, ask the user.
 - For `--run`: the run ID contains the workspace slug inherently — `{workspace_root}/*/runs/feature/{run_id}/` unique match.
-- For free-form text: no auto-detection possible. If `--workspace` is omitted, ask.
+- For `--session` and free-form text: no repo to auto-detect from. If `--workspace` is omitted, ask.
 
 Validate the resolved config via `node {plugin_dir}/scripts/validate-config.js {config-path}`. Halt on errors.
 
@@ -177,6 +185,31 @@ No PR, no review comments — just the raw diff. Weakest of the structured modes
 
 The signal IS the text. No collection step beyond capturing the user's prompt verbatim. The learner reads it alongside the current tier-1 docs and proposes what the text implies.
 
+#### 2e. Session mode (`--session`)
+
+Learn from a Claude Code conversation. Two sub-cases:
+
+**`--session=<path>` or `--session=<id>`** (a past transcript) — use the canonical collector; do NOT hand-walk the JSONL. The transcript is mostly noise (assistant turns, tool results, local-command stdout, system reminders, sub-agent sidechains) and a real user turn can be missed before the coverage guard sees it. The script keeps only genuine human turns, drops the rest into an audit list, and assigns **stable `C-n` ids** the learner adopts verbatim:
+
+```bash
+node {plugin_dir}/scripts/collect-session-feedback.js --session={path-or-id} --out={run_dir}/signal/session.json
+```
+
+Exit codes: `0` ok · `1` usage / transcript-or-id not found / ambiguous id · `3` unparseable transcript. The script prints only a one-line count to stdout — the turn bodies stay in the file, out of your context. Pass `{run_dir}/signal/session.json` to the learner (Step 3); it Reads the file and builds its `C-n` inventory from the ids already assigned. (A bare id resolves under `~/.claude/projects/*/{id}.jsonl`; pass an absolute `.jsonl` path if the id is ambiguous.)
+
+**`--session=current`** (the live conversation) — you are *in* the session, so do NOT try to self-read the whole transcript (it would blow the context budget). Instead, distill the salient feedback turns from the conversation you are currently in — the corrections, the "no, do it this way", the things the user repeated or insisted on — and write them yourself into `{run_dir}/signal/session.json` in the **same shape the collector emits**:
+
+```json
+{ "session": { "id": "current", "path": null, "turns": N },
+  "counts": { "signal": N, "excluded": 0, "lines": 0 },
+  "comments": [ { "id": "C-1", "kind": "user-turn", "ts": null, "body": "<verbatim or close-paraphrase of one feedback turn>" } ],
+  "excluded": [] }
+```
+
+Keep `comments[]` to the turns that actually carry steering/feedback — skip routine "ok", "continue", "thanks". This is the cheap default path: finish a conversation, run `/learn --session=current`, and it proposes what (if anything) is worth persisting.
+
+Either way, the resulting `session.json` is the signal bundle handed to the learner. Include `--note` verbatim if provided (that is the "free text + session" combination).
+
 ---
 
 ### Step 3: Dispatch the feedback-learner agent
@@ -232,6 +265,24 @@ sub-ids C-n-a / C-n-b for the split.)
 ### User feedback text
 {paste verbatim}
 
+{For session mode:}
+### Session feedback — canonical list (read this file)
+The session's human turns are pre-collected, de-noised, and numbered at:
+  {run_dir}/signal/session.json
+Read that file. Each entry has a stable `C-n` id, `kind: user-turn`, and the turn
+body (assistant turns, tool results, local-command echoes, system reminders and
+sub-agent sidechains are already excluded). **Adopt those `C-n` ids verbatim as
+your inventory spine** (Step 3.5) — do not renumber or drop them. Every `C-n`
+MUST appear in your Comment coverage table with a disposition.
+
+NOTE — this is the **weakest** signal class. A session is exploratory: most turns
+are normal back-and-forth, dead ends, or one-off decisions, NOT reusable
+conventions. Default each turn to `run-local` or `already-satisfied`. Only emit a
+durable (`repo-durable` / `workspace-durable`) finding when a turn reveals a
+**structural, repeatable** convention the user clearly wants applied beyond this
+one conversation (e.g. "we ALWAYS use a modal", "NEVER split publisher modules").
+When in genuine doubt, do NOT propose an update — recommend no change and say why.
+
 ## Current workspace durable docs (read and compare)
 
 Read each of these before proposing any update:
@@ -285,6 +336,12 @@ Per finding, answer:
 
 ```markdown
 # Feedback analysis — {source identifier}
+
+## Recommendation
+{update | no-update} — {one sentence. If no-update, this is a complete, successful
+answer: say WHY nothing durable should change, e.g. "the session was normal
+feature work; no repeatable convention emerged." If update, name how many durable
+findings follow.}
 
 ## Summary
 - Source: {mode} / {identifier}
@@ -350,7 +407,11 @@ Per finding, answer:
    the workspace level applies to future repos of the same type too.
 4. **If the signal is weak or ambiguous, say so.** Mark low-confidence findings
    with "Confidence: low" and explain why. A finding with weak evidence is
-   better rejected than forced.
+   better rejected than forced. For `session` / free-form `text` sources,
+   default to **no durable finding** — these are exploratory, and recommending
+   "no change" with a clear reason is a correct, complete answer, not a failure.
+   Always emit the top-level `## Recommendation` line stating `update` or
+   `no-update`.
 5. **No file edits.** You propose, the orchestrator applies after user
    approval. Do NOT use Write or Edit tools.
 6. **No plugin-level edits.** Even if a finding is clearly plugin-level,
@@ -393,6 +454,7 @@ Code-fix items (`CF-n`) are carried into the Step 6.5 fix-round bundles (the "as
 ```
 ## Feedback findings — {source}
 
+Recommendation: {update | no-update} — {the learner's one-sentence justification}
 Signal strength: {strong|moderate|weak}
 Workspace-durable: {N}   Repo-durable: {N}   Plugin-level (flagged): {N}   Run-local (FYI): {N}
 
@@ -432,6 +494,8 @@ For `run-local` findings, do not prompt at all — just list them in the summary
 Batch mode (`--apply-all`): skip per-finding prompts, show a combined summary + one confirmation. Reject-per-finding is not available in this mode.
 
 Dry-run mode (`--dry-run`): show findings + proposed changes, emit a single "would apply N findings" summary, skip both apply AND log write. Nothing persists.
+
+**No actionable findings (common for `session` / `text`):** if the learner's `## Recommendation` is `no-update` and there are zero repo/workspace/plugin findings, skip the per-finding prompts entirely. Still write the learn-log entry (Step 6) — the reasoning is worth keeping — and go straight to the Step 7 summary, rendering it as the positive "no change recommended" outcome, not a warning. There is nothing to apply and (unless `--fix-branch` was given) no fix round.
 
 ---
 
@@ -535,6 +599,7 @@ Doc updates from Step 5 only steer **future** runs. The branch the feedback came
 - `--dry-run` was passed (no docs were applied either, so there's nothing to "match" the branch to).
 - Zero findings were applied at Step 5 **AND** the learner produced zero `code-fix` (CF-n) items (nothing to fix in code).
 - Every applied finding is `plugin-level` **AND** there are no CF-n items (no workspace repo to fix).
+- The source is `session` or free-form `text` **AND** `--fix-branch` was not passed. A session/text signal need not correspond to any branch, so the fix round is **opt-in** for these sources: run it only when the user explicitly names the branch to bring in line via `--fix-branch`. (With `--fix-branch`, proceed normally.)
 
 > **Code-fix items are first-class fix-round input.** The fix round addresses two kinds of work: (a) approved doc findings whose convention the branch still violates, and (b) the learner's `code-fix` (CF-n) items — real defects a reviewer flagged that aren't reusable conventions. Both flow through the same per-repo bundling below. CF-n items make the round worth running even when every doc finding was rejected.
 
@@ -689,7 +754,17 @@ Emit the standard one-line phase-done status. Include a fix-round suffix when St
 
 Always print the coverage line — it is the at-a-glance proof that no reviewer comment was silently dropped. If coverage is < 100%, use ⚠ and name the unmapped ids.
 
-If no findings were applied AND no fix-round ran, use ⚠:
+**No durable change — distinguish deliberate from incomplete.** When 0 findings were applied:
+
+- If the learner's `## Recommendation` was `no-update` (it looked and concluded nothing reusable emerged — the common, *correct* outcome for `session` / `text`), render it as a clean ✔ with the recommendation as the headline. This is a successful run, not a warning:
+
+```
+[feedback ✔] no context change recommended — session "modal-vs-route" (1:48, 12k tokens)
+  Looked at 9 turns; all run-local (normal feature work). Reasoning recorded in learn-log.md.
+  ↳ coverage: 9/9 turns dispositioned
+```
+
+- If findings WERE proposed but the user rejected them all (or coverage is incomplete), keep the ⚠ — something actionable was surfaced and nothing landed:
 
 ```
 [feedback ✔⚠] 0 applied, 4 rejected, 1 plugin-flagged — PR #31 (2:15, 18k tokens)
@@ -767,6 +842,6 @@ Every `/pipecrew:learn` run emits the same event schema as `/deliver` / `/discov
 - `phase_end` — one per pipeline step above. Step 6.5 emits its own `phase_end` only when at least one bundle was dispatched; otherwise a skip-reason is recorded as `phase_end` with `status: "skipped"` and `reason` set to one of `no-fix-flag` / `dry-run` / `no-applied-findings` / `all-plugin-level` / `user-declined`.
 - `run_end` — with applied/rejected/flagged counts AND fix-round counts (`fix_repos`, `fix_findings_applied`, `fix_findings_skipped`).
 
-Run directory: `{workspace_root}/{slug}/runs/learn/{run_id}/` where `{run_id}` = `{YYYY-MM-DD-HHMMSS}-{source-slug}`. `source-slug` = `pr-31`, `run-2026-04-16-xxx`, `branch-fix-foo`, or `text` (truncated first 24 chars of text).
+Run directory: `{workspace_root}/{slug}/runs/learn/{run_id}/` where `{run_id}` = `{YYYY-MM-DD-HHMMSS}-{source-slug}`. `source-slug` = `pr-31`, `run-2026-04-16-xxx`, `branch-fix-foo`, `session-current` or `session-{id-prefix}` (first 8 chars of the session id), or `text` (truncated first 24 chars of text).
 
 Keep the learner's raw output under `{run_dir}/learner-output.md` for post-hoc debugging. The log entry is the human-facing summary; the raw output is the full reasoning trail.

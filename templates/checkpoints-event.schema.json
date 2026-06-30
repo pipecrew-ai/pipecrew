@@ -24,7 +24,14 @@
       "description": "{YYYY-MM-DD-HHMMSS}-{slug} with optional -N collision suffix"
     },
     "phase": { "type": "string" },
-    "stage": { "type": "string" }
+    "stage": {
+      "type": "string",
+      "description": "Human-readable phase label for reports (free text, e.g. \"Backend implementation\")."
+    },
+    "stage_group": {
+      "enum": ["understand", "contract", "build", "verify", "ship", "learn"],
+      "description": "Optional canonical /deliver chapter. DERIVED data (the source of truth is `phase` via scripts/stages.js) — emit only as self-describing hardening; consumers fall back to deriving from `phase` when absent. Validated for enum membership when present."
+    }
   },
   "allOf": [
     {

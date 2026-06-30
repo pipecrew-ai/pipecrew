@@ -10,6 +10,9 @@
  */
 
 const fs = require('fs');
+const { STAGES } = require('./stages.js');
+
+const ALLOWED_STAGE_GROUPS = new Set(STAGES);
 
 const ALLOWED_EVENTS = new Set([
   'run_start', 'run_end',
@@ -73,6 +76,10 @@ function validate(lines) {
       errors.push(`line ${lineNo}: run_id "${ev.run_id}" does not match {YYYY-MM-DD-HHMMSS}-{slug}`);
     }
     if (ev.run_id) seenRunIds.add(ev.run_id);
+    // stage_group is optional, but when present must be a canonical chapter.
+    if ('stage_group' in ev && !ALLOWED_STAGE_GROUPS.has(ev.stage_group)) {
+      errors.push(`line ${lineNo}: stage_group "${ev.stage_group}" not in ${[...ALLOWED_STAGE_GROUPS].join('|')}`);
+    }
 
     // Event-specific
     switch (ev.event) {

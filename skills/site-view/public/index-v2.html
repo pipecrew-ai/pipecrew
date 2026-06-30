@@ -1,0 +1,3470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pipeline View</title>
+<style>
+  :root {
+    --bg:      #0f0f14;
+    --line:    #f5a623;
+    --line-d:  #7a5a20;
+    --accent:  #fef3c7;
+    --text:    #fef3c7;
+    --muted:   #8a7a4a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; overflow-y: auto; overflow-x: hidden; }
+  body {
+    background: linear-gradient(180deg, #1a1a24 0%, #0a0a14 60%, #2a1f10 100%);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  header {
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line-d);
+    position: relative;
+    z-index: 10;
+  }
+  /* PipeCrew brand: pyramid + apex spark + 3 crew dots at the base.
+     Ties visually to the building scene below. */
+  .brand-mark {
+    width: 44px; height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+  .brand-mark svg { width: 100%; height: 100%; display: block; }
+  .brand-mark .apex-spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: brandSparkPulse 3.2s ease-in-out infinite;
+  }
+  @keyframes brandSparkPulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.25); }
+  }
+  .brand-wordmark {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent, #f5a623);
+    margin-top: 2px;
+    text-align: center;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .brand-mark .apex-spark { animation: none; }
+  }
+  h1 {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 1px;
+  }
+  .meta {
+    margin-left: auto;
+    display: flex;
+    gap: 24px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .meta b { color: var(--line); }
+  .live-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    margin-right: 6px;
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .scene-wrap {
+    position: relative;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .queue-scene {
+    position: relative;
+  }
+  .queue-bg {
+    width: 100%;
+    height: 520px;
+    display: block;
+  }
+
+  .grid {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 520px;
+    max-width: 1400px;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  /* ── Zone headers — divide working/queued ("Currently building") from
+     done/failed/skipped ("Completed"). The headers float over the SVG
+     backdrop. Ask #4 of polish round 2.
+     Polish round 3: headers + divider are hidden via `.hidden` when their
+     respective zone has zero characters, and the dashed SVG border around
+     the finished zone is gone — the header labels alone communicate the
+     split so an empty zone doesn't leave a visibly empty boxed area. */
+  .zone-header {
+    position: absolute;
+    left: 28px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--line);
+    pointer-events: none;
+    opacity: 0.85;
+    transition: opacity 0.25s ease;
+  }
+  .zone-header.building  { top: 8px; }
+  .zone-header.hidden    { opacity: 0; visibility: hidden; }
+  .zone-header .count {
+    display: inline-block;
+    margin-inline-start: 6px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* Polish round 7 — Queue + Finished grids positioned ABSOLUTELY inside
+     the SVG overlay, occupying the same visual area as the old horizontal
+     rows. 5 cards per row; wraps into multiple rows if needed. Eliminates
+     overlap/clipping from the old single-row queue while keeping the grids
+     in the same scene location the user is used to. */
+  .queue-grid-header,
+  .finished-grid-header {
+    position: absolute;
+    left: 28px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .queue-grid-header  { top: 0;   right: 28px; left: auto; color: var(--line); }
+  /* Polish round 9: finished header flows in document order (no longer absolute
+     inside the SVG overlay). Pushes the footer down dynamically as completed
+     agents accumulate. */
+  .finished-grid-header {
+    position: static;
+    color: #8a7a4a;
+    max-width: 1400px;
+    margin: 24px auto 8px;
+    padding: 0 28px;
+  }
+  .queue-grid-header.hidden,
+  .finished-grid-header.hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .queue-grid-header .count,
+  .finished-grid-header .count {
+    display: inline-block;
+    margin-inline-start: 6px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .queue-grid,
+  .finished-grid {
+    position: absolute;
+    display: grid;
+    /* Fixed-width columns — cards sit at natural size, no 1fr stretching.
+       Compact gaps, just enough to keep name labels from overlapping. */
+    grid-template-columns: repeat(5, 118px);
+    gap: 8px 4px;
+    pointer-events: none;
+  }
+  .queue-grid     { top: 10px;  right: 28px; }
+  /* Polish round 9: finished grid flows naturally below the SVG scene; removed
+     absolute positioning so vertical height is content-driven. */
+  .finished-grid  {
+    position: static;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 28px 20px;
+  }
+  @media (max-width: 1100px) {
+    .queue-grid,
+    .finished-grid {
+      grid-template-columns: repeat(4, 118px);
+    }
+  }
+  .queue-grid.hidden,
+  .finished-grid.hidden {
+    display: none;
+  }
+  /* Cards inside grid zones flow statically inside their cell (no --qx/--qy). */
+  .queue-grid .card,
+  .finished-grid .card {
+    position: static;
+    left: auto;
+    top: auto;
+    justify-self: center;
+    transform: scale(var(--qscale, 1));
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    pointer-events: auto;
+    width: 110px;
+  }
+  /* Smaller character silhouettes inside grid zones so 12-char queues fit
+     into ~2 rows instead of 3, keeping clear of the finished zone. */
+  .queue-grid .card .stage,
+  .finished-grid .card .stage {
+    width: 64px;
+    height: 64px;
+  }
+  .queue-grid .card .char-label .name,
+  .finished-grid .card .char-label .name {
+    font-size: 8px;
+  }
+  .queue-grid .card .char-label .repo,
+  .finished-grid .card .char-label .repo {
+    font-size: 7px;
+  }
+
+  /* Polish round 3: hide SVG zone decorations (WORK ZONE label, queue
+     arrow, scaffolding frame, FINISHED CREW label, underground fill) when
+     the corresponding zone is empty. A fast fade keeps transitions
+     non-jarring. */
+  #work-zone-group,
+  #scaffolding-frame,
+  #build-elements-group,
+  #finished-zone-label,
+  #finished-frame {
+    transition: opacity 0.25s ease;
+  }
+  #work-zone-group.hidden,
+  #scaffolding-frame.hidden,
+  #build-elements-group.hidden,
+  #finished-zone-label.hidden,
+  #finished-frame.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Polish round 12b: birds glide across the sky at different altitudes
+     and speeds. Flight is on the wrapping .bird-fly group (translate);
+     wing-flap is on the inner .bird-body path (scaleY) so both transforms
+     compose without overwriting each other. Reduced-motion parks them. */
+  .bird-fly, .bird-body {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .bird-1 { animation: birdFly1 34s linear infinite; }
+  .bird-2 { animation: birdFly2 46s linear infinite; animation-delay: -12s; }
+  .bird-3 { animation: birdFly3 28s linear infinite; animation-delay: -22s; }
+  .bird-4 { animation: birdFly4 52s linear infinite; animation-delay: -8s; }
+  .bird-5 { animation: birdFly5 40s linear infinite; animation-delay: -30s; }
+  .bird-6 { animation: birdFly6 38s linear infinite; animation-delay: -18s; }
+  .bird-7 { animation: birdFly7 32s linear infinite; animation-delay: -5s; }
+  .bird-8 { animation: birdFly8 44s linear infinite; animation-delay: -35s; }
+  .bird-1 .bird-body { animation: birdFlap 0.45s ease-in-out infinite; }
+  .bird-2 .bird-body { animation: birdFlap 0.55s ease-in-out infinite; }
+  .bird-3 .bird-body { animation: birdFlap 0.38s ease-in-out infinite; }
+  .bird-4 .bird-body { animation: birdFlap 0.60s ease-in-out infinite; }
+  .bird-5 .bird-body { animation: birdFlap 0.42s ease-in-out infinite; }
+  .bird-6 .bird-body { animation: birdFlap 0.50s ease-in-out infinite; }
+  .bird-7 .bird-body { animation: birdFlap 0.36s ease-in-out infinite; }
+  .bird-8 .bird-body { animation: birdFlap 0.58s ease-in-out infinite; }
+  /* Left-to-right flights */
+  @keyframes birdFly1 {
+    0%   { transform: translate(-40px, 50px); }
+    50%  { transform: translate(700px, 35px); }
+    100% { transform: translate(1460px, 55px); }
+  }
+  @keyframes birdFly2 {
+    0%   { transform: translate(-50px, 90px); }
+    50%  { transform: translate(700px, 105px); }
+    100% { transform: translate(1470px, 85px); }
+  }
+  @keyframes birdFly3 {
+    0%   { transform: translate(-40px, 140px); }
+    50%  { transform: translate(700px, 125px); }
+    100% { transform: translate(1460px, 145px); }
+  }
+  @keyframes birdFly5 {
+    0%   { transform: translate(-60px, 70px); }
+    50%  { transform: translate(720px, 62px); }
+    100% { transform: translate(1470px, 80px); }
+  }
+  @keyframes birdFly7 {
+    0%   { transform: translate(-40px, 170px); }
+    50%  { transform: translate(720px, 158px); }
+    100% { transform: translate(1470px, 180px); }
+  }
+  /* Right-to-left flights (mirrored via scaleX(-1) on the body) */
+  @keyframes birdFly4 {
+    0%   { transform: translate(1470px, 25px)  scaleX(-1); }
+    50%  { transform: translate(700px, 38px)   scaleX(-1); }
+    100% { transform: translate(-60px, 22px)   scaleX(-1); }
+  }
+  @keyframes birdFly6 {
+    0%   { transform: translate(1470px, 115px) scaleX(-1); }
+    50%  { transform: translate(700px, 128px)  scaleX(-1); }
+    100% { transform: translate(-60px, 112px)  scaleX(-1); }
+  }
+  @keyframes birdFly8 {
+    0%   { transform: translate(1480px, 195px) scaleX(-1); }
+    50%  { transform: translate(700px, 188px)  scaleX(-1); }
+    100% { transform: translate(-60px, 200px)  scaleX(-1); }
+  }
+  @keyframes birdFlap {
+    0%, 100% { transform: scaleY(1); }
+    50%      { transform: scaleY(0.55); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bird-fly, .bird-body { animation: none; }
+    .bird-1 { transform: translate(200px, 50px);  opacity: 0.5; }
+    .bird-2 { transform: translate(900px, 90px);  opacity: 0.5; }
+    .bird-3 { transform: translate(500px, 140px); opacity: 0.5; }
+    .bird-4 { transform: translate(1100px, 25px) scaleX(-1); opacity: 0.5; }
+    .bird-5 { transform: translate(350px, 70px);  opacity: 0.5; }
+    .bird-6 { transform: translate(1250px, 115px) scaleX(-1); opacity: 0.5; }
+    .bird-7 { transform: translate(700px, 170px); opacity: 0.5; }
+    .bird-8 { transform: translate(100px, 195px) scaleX(-1); opacity: 0.5; }
+  }
+
+  /* Polish round 12: sun rays gently rotate to suggest sunshine. Slow
+     60s full rotation — ambient, not attention-grabbing. Respects
+     reduced-motion preference. */
+  #sun-rays {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sunSpin 60s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #sun-rays { animation: none; }
+  }
+  @keyframes sunSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* Crane trolley — animates horizontally along the boom when any agent is
+     working (class .active set by layout()). Parked at x=140 (original
+     static position) when idle so it doesn't jerk when (de)activating. */
+  .crane-trolley {
+    transform: translateX(140px);
+    transition: transform 0.6s ease-out;
+    transform-box: fill-box;
+  }
+  .crane.active .crane-trolley {
+    animation: craneTrolley 6s ease-in-out infinite;
+    transition: none;
+  }
+  /* Updated for round-13 boom extents (x=74 to x=200). */
+  @keyframes craneTrolley {
+    0%   { transform: translateX(90px); }
+    50%  { transform: translateX(190px); }
+    100% { transform: translateX(90px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .crane.active .crane-trolley { animation: none; transform: translateX(140px); }
+  }
+
+  .card {
+    position: absolute;
+    width: 110px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    left: var(--qx, -300px);
+    top:  var(--qy, 170px);
+    transition: left 0.9s cubic-bezier(0.4,0,0.2,1),
+                top  0.9s cubic-bezier(0.4,0,0.2,1),
+                transform 0.9s ease,
+                opacity 0.4s ease;
+    transform: scale(var(--qscale, 1));
+    transform-origin: top left;
+    pointer-events: auto;
+  }
+  /* .card.done / .card.failed / .card.skipped sizing — see polish-round-2 rules below. */
+
+  .stage {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .stage svg.char {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .char-body { transform-origin: center bottom; }
+
+  .char-label {
+    text-align: center;
+    padding: 2px 0 0;
+    border: none;
+  }
+  .char-label .name {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: var(--accent);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+  }
+  .char-label .repo {
+    display: block;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+  }
+  .char-label .metrics {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 8px;
+    color: var(--accent);
+    letter-spacing: 0.3px;
+    opacity: 0;
+    transition: opacity 0.4s;
+    font-weight: 600;
+  }
+  /* Ask #1 — done characters now surface tokens · duration prominently so the
+     user doesn't wonder what the finished agent cost them. */
+  .card.done .char-label .metrics { opacity: 1; }
+  .card.working .char-label .metrics { opacity: 0.6; }
+  .card.failed .char-label .metrics { opacity: 1; color: #fca5a5; }
+  .char-label .metrics .combined { color: inherit; }
+
+  /* Awaiting-input banner — shown when the orchestrator is paused for a user answer */
+  .awaiting-input {
+    display: none;
+    padding: 14px 28px;
+    background: linear-gradient(90deg, #3a2f00 0%, #524000 100%);
+    border-bottom: 3px solid #ffcc33;
+    color: #ffe066;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    position: relative;
+    box-shadow: 0 0 0 0 rgba(255, 204, 51, 0);
+    animation: awaiting-pulse-strong 1.4s ease-in-out infinite;
+  }
+  .awaiting-input.visible { display: block; }
+  .awaiting-input .pause-icon {
+    font-size: 16px;
+    margin-inline-end: 8px;
+    display: inline-block;
+  }
+  .awaiting-input .label {
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-inline-end: 12px;
+  }
+  .awaiting-input .phase-tag {
+    display: inline-block;
+    background: rgba(255, 204, 51, 0.2);
+    border: 1px solid rgba(255, 204, 51, 0.4);
+    color: #ffe066;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+    margin-inline-end: 12px;
+  }
+  .awaiting-input .question {
+    display: block;
+    margin-top: 6px;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .awaiting-input .since {
+    color: #ffb84d;
+    font-size: 11px;
+    opacity: 0.8;
+    margin-inline-start: 8px;
+  }
+  /* Stronger pulse — border thickens + glow breathes + slight scale.
+     Prefers-reduced-motion users get a static highlight (audio still plays). */
+  @keyframes awaiting-pulse-strong {
+    0%, 100% {
+      border-bottom-color: #ffcc33;
+      box-shadow: 0 0 0 0 rgba(255, 204, 51, 0.0);
+      filter: brightness(1);
+    }
+    50% {
+      border-bottom-color: #ffe066;
+      box-shadow: 0 0 24px 2px rgba(255, 204, 51, 0.45);
+      filter: brightness(1.15);
+    }
+  }
+
+  /* Claude-approval banner — distinct orange palette so users can tell at a
+     glance which system is waiting. Uses the same DOM structure as the yellow
+     gate banner; only colors + label differ. */
+  .claude-approval {
+    display: none;
+    padding: 14px 28px;
+    background: linear-gradient(90deg, #3a1a00 0%, #5c2400 100%);
+    border-bottom: 3px solid #ff7a1a;
+    color: #ffd0a0;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    position: relative;
+    box-shadow: 0 0 0 0 rgba(255, 122, 26, 0);
+    animation: claude-pulse-strong 1.4s ease-in-out infinite;
+  }
+  .claude-approval.visible { display: block; }
+  .claude-approval .pause-icon { font-size: 16px; margin-inline-end: 8px; }
+  .claude-approval .label {
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-inline-end: 12px;
+  }
+  .claude-approval .tool-tag {
+    display: inline-block;
+    background: rgba(255, 122, 26, 0.2);
+    border: 1px solid rgba(255, 122, 26, 0.4);
+    color: #ffd0a0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+    margin-inline-end: 12px;
+  }
+  .claude-approval .question {
+    display: block;
+    margin-top: 6px;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.4;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .claude-approval .since {
+    color: #ffb84d;
+    font-size: 11px;
+    opacity: 0.8;
+    margin-inline-start: 8px;
+  }
+  @keyframes claude-pulse-strong {
+    0%, 100% {
+      border-bottom-color: #ff7a1a;
+      box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.0);
+      filter: brightness(1);
+    }
+    50% {
+      border-bottom-color: #ffa64d;
+      box-shadow: 0 0 24px 2px rgba(255, 122, 26, 0.55);
+      filter: brightness(1.18);
+    }
+  }
+
+  /* Sound-enable pill — sits inside the banner when audio is blocked by the
+     browser autoplay policy. One click unlocks audio for the origin. */
+  .sound-enable {
+    display: inline-block;
+    margin-inline-start: 10px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid currentColor;
+    color: inherit;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .sound-enable:hover { background: rgba(0,0,0,0.6); }
+  .sound-enable.enabled { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .awaiting-input, .claude-approval {
+      animation: none;
+      box-shadow: 0 0 18px 1px currentColor;
+    }
+    .live-dot { animation: none; opacity: 1; }
+  }
+
+  /* Summary bar at the bottom of the header */
+  .token-summary {
+    display: flex;
+    gap: 20px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    padding: 8px 28px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .token-summary b { color: var(--line); }
+  .token-summary .bar {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    position: relative;
+    overflow: hidden;
+  }
+  .token-summary .bar-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--line);
+    border-radius: 3px;
+    transition: width 0.6s ease, background 0.3s ease;
+  }
+  /* Token-budget warning: when total agent+orchestrator tokens exceed 1M,
+     recolour the bar red and pulse the TOTAL label + a trailing "!" badge. */
+  .token-summary .bar-fill.warning {
+    background: #e56060;
+    animation: tokenBudgetPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes tokenBudgetPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
+  .token-summary .budget-warn {
+    display: none;
+    margin-left: 6px;
+    padding: 1px 5px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fff;
+    background: #e56060;
+    border-radius: 3px;
+    vertical-align: middle;
+  }
+  .token-summary .budget-warn.active { display: inline-block; }
+  @media (prefers-reduced-motion: reduce) {
+    .token-summary .bar-fill.warning { animation: none; }
+  }
+
+  /* strokes on characters */
+  svg.char .stroke-main { fill: none; stroke: var(--line); stroke-width: 1.5; }
+  svg.char .stroke-thin { fill: none; stroke: var(--line-d); stroke-width: 1; stroke-dasharray: 2 2; }
+
+  /* queued state: idle */
+  /* working state: stand still, hammer right arm */
+  .card.working svg.char .arm-l { animation: none; }
+  .card.working svg.char .arm-r {
+    animation: hammerArm 0.45s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: left top;
+  }
+  @keyframes hammerArm {
+    0%, 100% { transform: rotate(-70deg); }
+    50%      { transform: rotate(25deg); }
+  }
+  .card.working svg.char .stroke-main {
+    stroke: #ffb84d;
+  }
+  .card.done svg.char .stroke-main {
+    stroke: #4ade80;
+    filter: drop-shadow(0 0 4px #4ade80);
+  }
+  .card.failed svg.char .stroke-main {
+    stroke: #ef4444;
+    filter: drop-shadow(0 0 4px #ef4444);
+  }
+  .card.skipped svg.char .stroke-main {
+    stroke: #6b7280;
+  }
+
+  /* Drop-and-bob — ask #5. Running agents get a mechanical bobbing body so
+     users can tell at a glance who's actively building from 10 feet away.
+     ~1.2s loop: down 4px, pause, up 8px, pause. Applied to .char-body; the
+     body hammer-arm animation continues on the right arm unchanged. */
+  .card.working svg.char .char-body {
+    animation: dropAndBob 1.2s cubic-bezier(0.36, 0, 0.66, 1) infinite;
+    transform-box: fill-box;
+    transform-origin: center bottom;
+  }
+  @keyframes dropAndBob {
+    0%, 100% { transform: translateY(0); }
+    20%      { transform: translateY(4px); }
+    30%      { transform: translateY(4px); }
+    60%      { transform: translateY(-8px); }
+    70%      { transform: translateY(-8px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* Bob → opacity breathing. Arms + build-drop are also reduced. */
+    .card.working svg.char .char-body {
+      animation: workingBreathe 2.4s ease-in-out infinite;
+      transform: none !important;
+    }
+    .card.working svg.char .arm-r { animation: none; }
+    @keyframes workingBreathe {
+      0%, 100% { opacity: 0.75; }
+      50%      { opacity: 1; }
+    }
+  }
+
+  /* Finished/building zone card sizing — done characters keep their smaller
+     scale; failed stays full-size for visibility. */
+  .card.done    { --qscale: 0.6; }
+  .card.failed  { --qscale: 0.85; }
+  .card.skipped { opacity: 0.5; --qscale: 0.5; pointer-events: auto; }
+
+  /* Skipped chip — ask #4. */
+  .skipped-chip {
+    display: inline-block;
+    font-size: 7px;
+    letter-spacing: 1px;
+    padding: 1px 5px;
+    margin-top: 2px;
+    color: #9ca3af;
+    border: 1px solid #4b5563;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Phase chip — Polish round 8. Shown under the repo label when a
+     dispatch-log entry tells us which phase/round a character is in.
+     Colour theming by category so the user can scan the scene and tell
+     fix rounds (orange) from reviews (purple) from security (red).
+     Polish round 8 follow-up: wrapped in .phase-chip-list so a character
+     can carry a sequence (e.g. "impl → fix-r1"); active chip (the one in
+     progress) gets a subtle outline. */
+  .phase-chip-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: center;
+    margin-top: 2px;
+    max-width: 100%;
+  }
+  .phase-chip {
+    display: inline-block;
+    font-size: 7px;
+    letter-spacing: 0.8px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    /* Default = neutral (requirements, arch, spec, sync, plan, report). */
+    color: #9ca3af;
+    border: 1px solid #4b5563;
+    background: rgba(55, 65, 81, 0.25);
+    transition: outline 0.2s ease, box-shadow 0.2s ease;
+  }
+  .phase-chip.active {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
+    box-shadow: 0 0 4px rgba(254, 243, 199, 0.35);
+  }
+  .phase-chip.cat-impl {
+    color: #93c5fd;              /* light blue */
+    border-color: #2563eb;
+    background: rgba(37, 99, 235, 0.18);
+  }
+  .phase-chip.cat-fix {
+    color: #fdba74;              /* orange */
+    border-color: #ea580c;
+    background: rgba(234, 88, 12, 0.22);
+  }
+  .phase-chip.cat-review {
+    color: #d8b4fe;              /* purple */
+    border-color: #9333ea;
+    background: rgba(147, 51, 234, 0.20);
+  }
+  .phase-chip.cat-security {
+    color: #fca5a5;              /* red */
+    border-color: #dc2626;
+    background: rgba(220, 38, 38, 0.22);
+  }
+  .phase-chip.cat-assess {
+    color: #86efac;              /* green */
+    border-color: #16a34a;
+    background: rgba(22, 163, 74, 0.20);
+  }
+  .card.failed .char-label .name { color: #fca5a5; }
+  .card.skipped .char-label .name { color: #9ca3af; }
+
+  /* arm pivot defaults (when not working) */
+  svg.char .arm-l { transform-box: fill-box; transform-origin: right top; }
+  svg.char .arm-r { transform-box: fill-box; transform-origin: left top; }
+
+  /* Build element animation (progressive construction) */
+  .build-element {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    transition: opacity 0.4s ease;
+  }
+  .build-element.visible {
+    animation: buildDrop 0.6s ease-out forwards;
+  }
+  @keyframes buildDrop {
+    0%   { opacity: 0; transform: translateY(-25px); }
+    60%  { opacity: 1; transform: translateY(3px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Mute button — ask #2. Sits in the header meta row. In-memory state only,
+     auto-unmutes on new gate or when the current gate closes. */
+  .mute-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border: 1px solid var(--line-d);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.35);
+    color: var(--line);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    font-family: inherit;
+    padding: 0;
+    position: relative;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .mute-btn:hover { background: rgba(245, 166, 35, 0.15); }
+  .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
+  .mute-btn.muted::after {
+    content: '';
+    position: absolute;
+    left: 4px; right: 4px;
+    top: 50%;
+    height: 2px;
+    background: #ef4444;
+    transform: rotate(-20deg);
+    transform-origin: center;
+    pointer-events: none;
+  }
+
+  /* Hook-error indicator — ask #3. Subtle red dot near the orange banner,
+     tooltip surfaces the message. Positioned inline in the meta row for
+     visibility even when no banner is up. */
+  .hook-error {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid #7f1d1d;
+    background: rgba(127, 29, 29, 0.2);
+    border-radius: 4px;
+    color: #fca5a5;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    cursor: help;
+    font-family: inherit;
+  }
+  .hook-error.visible { display: inline-flex; }
+  .hook-error .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 4px #ef4444;
+  }
+
+  .footer {
+    max-width: 1400px;
+    margin: 40px auto 0;
+    padding: 10px 20px;
+    border-top: 1px solid var(--line-d);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1.2px;
+    display: flex;
+    justify-content: space-between;
+    text-transform: uppercase;
+  }
+
+  /* Workspace overview drawer (from /discover outputs) */
+  .project-btn {
+    background: transparent;
+    border: 1px solid var(--line-d, #7a5a20);
+    color: var(--accent, #f5a623);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 2px;
+    text-transform: uppercase;
+    margin-left: 8px;
+  }
+  .project-btn:hover { background: rgba(245, 166, 35, 0.12); }
+  .project-drawer[hidden] { display: none !important; }
+  .project-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(680px, 90vw);
+    background: var(--bg, #1a1410);
+    border-left: 2px solid var(--accent, #f5a623);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .project-drawer-inner { padding: 0; }
+  .project-drawer-header {
+    position: sticky;
+    top: 0;
+    background: var(--bg, #1a1410);
+    border-bottom: 1px solid var(--line-d, #7a5a20);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+  }
+  .project-drawer-header h2 {
+    font-size: 14px;
+    margin: 0;
+    color: var(--accent, #f5a623);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .project-drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--muted, #a88a50);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 8px;
+  }
+  .project-drawer-close:hover { color: var(--accent, #f5a623); }
+  .project-drawer-body {
+    padding: 18px 20px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text, #d9c3a0);
+  }
+  /* Tabs replace the old "stacked panels" layout. Tabs are only rendered for
+     sections that actually have content (e.g. no Learnings tab if /learn was
+     never run). The first tab with content is active by default. */
+  .drawer-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    border-bottom: 1px solid var(--line-d, #7a5a20);
+    margin: 0 0 14px 0;
+    padding: 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg, #1c1410);
+    z-index: 1;
+  }
+  .drawer-tab {
+    background: transparent;
+    color: var(--muted, #a88a50);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 7px 12px 6px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+  .drawer-tab:hover { color: var(--accent, #f5a623); }
+  .drawer-tab.active {
+    color: var(--accent, #f5a623);
+    border-bottom-color: var(--accent, #f5a623);
+  }
+  .drawer-tab-panel { display: none; }
+  .drawer-tab-panel.active { display: block; }
+  .drawer-tab-panel h3:first-child { margin-top: 0; }
+  .project-drawer-body h3 {
+    font-size: 11px;
+    color: var(--accent, #f5a623);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin: 16px 0 8px 0;
+    border-bottom: 1px dashed var(--line-d, #7a5a20);
+    padding-bottom: 4px;
+  }
+  .project-drawer-body h3:first-child { margin-top: 0; }
+  .deliver-run-block > summary .feature-name {
+    display: inline-block;
+    font-size: 14px;
+    color: var(--line, #f5a623);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    background: rgba(245, 166, 35, 0.12);
+    border: 1px solid rgba(245, 166, 35, 0.4);
+    border-radius: 3px;
+    padding: 2px 8px;
+    text-shadow: 0 0 6px rgba(245, 166, 35, 0.3);
+  }
+  .project-drawer-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .project-drawer-body th, .project-drawer-body td {
+    text-align: left;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(122, 90, 32, 0.3);
+  }
+  .project-drawer-body th {
+    color: var(--muted, #a88a50);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .project-drawer-body pre {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(122, 90, 32, 0.4);
+    padding: 10px;
+    font-size: 10px;
+    overflow-x: auto;
+    max-height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .audit-pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .audit-pill.critical { background: #5a1818; color: #ff9999; }
+  .audit-pill.high { background: #5a3818; color: #ffb366; }
+  .audit-pill.medium { background: #5a5218; color: #ffe066; }
+  .audit-pill.low { background: #2a3818; color: #a3d98a; }
+
+  /* Architecture diagram container (rendered with Mermaid.js) */
+  .arch-diagram {
+    background: #0f0b08;
+    border: 1px solid rgba(122, 90, 32, 0.4);
+    padding: 12px;
+    margin-top: 4px;
+    overflow-x: auto;
+    min-height: 180px;
+    max-height: 640px;
+    overflow-y: auto;
+  }
+  .arch-diagram svg { max-width: 100%; height: auto; }
+  .arch-diagram-source {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted, #a88a50);
+  }
+  .arch-diagram-source a { color: var(--accent, #f5a623); }
+
+  /* Rendered markdown (platform.md + design-systems) */
+  .md-rendered {
+    background: #0f0b08;
+    border: 1px solid rgba(122, 90, 32, 0.4);
+    padding: 14px 18px;
+    margin-top: 4px;
+    max-height: 520px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text, #d9c3a0);
+  }
+  .md-rendered h1, .md-rendered h2, .md-rendered h3, .md-rendered h4 {
+    color: var(--accent, #f5a623);
+    letter-spacing: 0.5px;
+    margin: 14px 0 6px 0;
+    border: none;
+    padding: 0;
+  }
+  .md-rendered h1 { font-size: 15px; text-transform: uppercase; }
+  .md-rendered h2 { font-size: 13px; text-transform: uppercase; border-bottom: 1px dashed rgba(122, 90, 32, 0.5); padding-bottom: 3px; }
+  .md-rendered h3 { font-size: 12px; color: #d9c3a0; font-weight: 700; }
+  .md-rendered h4 { font-size: 11px; color: #a88a50; }
+  .md-rendered h1:first-child, .md-rendered h2:first-child, .md-rendered h3:first-child { margin-top: 0; }
+  .md-rendered p { margin: 6px 0; }
+  .md-rendered ul, .md-rendered ol { margin: 6px 0; padding-left: 22px; }
+  .md-rendered li { margin: 2px 0; }
+  .md-rendered code {
+    background: rgba(245, 166, 35, 0.12);
+    color: #f5a623;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: 'Consolas', 'Monaco', monospace;
+  }
+  .md-rendered pre {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(122, 90, 32, 0.4);
+    padding: 8px 10px;
+    font-size: 11px;
+    overflow-x: auto;
+    margin: 8px 0;
+    max-height: none;
+  }
+  .md-rendered pre code {
+    background: transparent;
+    color: var(--text, #d9c3a0);
+    padding: 0;
+    font-size: 11px;
+  }
+  .md-rendered blockquote {
+    border-left: 3px solid var(--accent, #f5a623);
+    margin: 8px 0;
+    padding: 4px 12px;
+    color: var(--muted, #a88a50);
+    background: rgba(245, 166, 35, 0.04);
+  }
+  .md-rendered table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+    font-size: 11px;
+  }
+  .md-rendered th, .md-rendered td {
+    border: 1px solid rgba(122, 90, 32, 0.5);
+    padding: 5px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .md-rendered th {
+    background: rgba(245, 166, 35, 0.1);
+    color: var(--accent, #f5a623);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+  }
+  .md-rendered tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+  .md-rendered a { color: var(--accent, #f5a623); text-decoration: none; }
+  .md-rendered a:hover { text-decoration: underline; }
+  .md-rendered strong { color: #e9d3b0; font-weight: 700; }
+  .md-rendered em { font-style: italic; color: #c9b38a; }
+  .md-rendered hr { border: 0; border-top: 1px dashed rgba(122, 90, 32, 0.5); margin: 12px 0; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     V2 — STAGE-FLOW PIPELINE
+     The run is shown as 6 ordered chapters the real /deliver phases fall
+     into: Understand → Contract → Build → Verify → Ship → Learn. A rail
+     across the top lights up station-by-station; below it, a swimlane per
+     stage holds that stage's crew. The monument totem on the right gains a
+     tier each time a stage finishes.
+     ═══════════════════════════════════════════════════════════════════ */
+  :root {
+    --stage-dim:    #4b4633;
+    --stage-pend:   #8a7a4a;
+    --stage-active: #f5a623;
+    --stage-done:   #4ade80;
+  }
+  .pipeline-wrap {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 0 24px 28px;
+  }
+
+  /* ── slim sky band: keeps the construction charm (sun + birds) without the
+     full scene. The sun's halo shifts to the active stage colour. ── */
+  /* Pharaoh hero — the pyramid is the centrepiece of a desert-dusk band. */
+  .pharaoh-hero {
+    position: relative;
+    height: 200px;
+    margin: 8px 0 4px;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 50% 8%, rgba(255,210,130,0.18) 0%, rgba(255,210,130,0) 55%),
+      linear-gradient(180deg, #241a2e 0%, #4a2f15 48%, #6b4520 78%, #845426 100%);
+    border: 1px solid rgba(180,130,55,0.45);
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.45);
+  }
+  .pharaoh-hero .pharaoh-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage-headline {
+    position: absolute;
+    right: 20px; top: 18px;
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #d8c39a;
+    z-index: 2;
+  }
+  .stage-headline .now {
+    font-size: 9px; letter-spacing: 2px; color: #b59b6a;
+    display: block; margin-bottom: 3px;
+  }
+  .stage-headline #stage-headline-label {
+    font-size: 20px; font-weight: 700; letter-spacing: 2px;
+    color: #ffd98a; text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(245,166,35,0.5);
+  }
+  .stage-headline.complete #stage-headline-label { color: var(--stage-done); text-shadow: 0 0 12px rgba(74,222,128,0.5); }
+  .ship-stats {
+    margin-top: 8px;
+    display: flex; gap: 16px; justify-content: flex-end;
+    font-size: 10px; letter-spacing: 1px; color: #b59b6a;
+    text-transform: uppercase;
+  }
+  .ship-stats b { color: #ffd98a; font-weight: 700; font-size: 12px; letter-spacing: 0.5px; }
+  .stage-headline.complete .ship-stats b { color: var(--stage-done); }
+
+  /* ── the rail: 6 stations + connectors. ── */
+  .stage-rail {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    align-items: start;
+    margin: 18px 0 6px;
+    position: relative;
+  }
+  .stage-station {
+    position: relative;
+    text-align: center;
+    padding-top: 30px;
+  }
+  /* connector line behind the nodes — sits at node centre (y≈11 from top). */
+  .stage-station::before {
+    content: '';
+    position: absolute;
+    top: 11px; left: -50%; width: 100%; height: 3px;
+    background: var(--stage-dim);
+    z-index: 0;
+    transition: background 0.5s ease;
+  }
+  .stage-station:first-child::before { display: none; }
+  .stage-station.lit::before,
+  .stage-station.done::before { background: var(--stage-done); }
+  .stage-station.active::before {
+    background: linear-gradient(90deg, var(--stage-done) 0%, var(--stage-active) 100%);
+  }
+  /* travelling spark flowing INTO the active station */
+  .stage-station.active::after {
+    content: '';
+    position: absolute;
+    top: 8px; left: 0; width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--stage-active);
+    box-shadow: 0 0 10px 3px rgba(245,166,35,0.7);
+    z-index: 1;
+    animation: railSpark 1.6s linear infinite;
+  }
+  @keyframes railSpark {
+    0%   { left: -46%; opacity: 0; }
+    15%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { left: 46%; opacity: 0; }
+  }
+  .stage-node {
+    position: relative;
+    z-index: 2;
+    width: 24px; height: 24px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--stage-dim);
+    color: var(--stage-dim);
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s ease;
+  }
+  .stage-station.pending .stage-node { border-color: var(--stage-pend); color: var(--stage-pend); }
+  .stage-station.active  .stage-node {
+    border-color: var(--stage-active); color: var(--stage-active);
+    box-shadow: 0 0 0 4px rgba(245,166,35,0.18);
+    animation: nodePulse 1.6s ease-in-out infinite;
+  }
+  .stage-station.done .stage-node,
+  .stage-station.lit  .stage-node {
+    border-color: var(--stage-done); color: var(--bg); background: var(--stage-done);
+  }
+  @keyframes nodePulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(245,166,35,0.12); }
+    50%      { box-shadow: 0 0 0 7px rgba(245,166,35,0.28); }
+  }
+  .stage-node .check { display: none; }
+  .stage-station.done .stage-node .num,
+  .stage-station.lit  .stage-node .num { display: none; }
+  .stage-station.done .stage-node .check,
+  .stage-station.lit  .stage-node .check { display: inline; }
+  .stage-name {
+    margin-top: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--stage-pend);
+    transition: color 0.4s ease;
+  }
+  .stage-station.active .stage-name { color: var(--stage-active); }
+  .stage-station.done .stage-name,
+  .stage-station.lit  .stage-name  { color: var(--stage-done); }
+  .stage-blurb {
+    font-size: 7.5px; letter-spacing: 1px; color: var(--muted);
+    margin-top: 2px; min-height: 10px;
+  }
+  /* gate marker — a small ⏸ that drops under the station whose phase is blocked */
+  .stage-gate-flag {
+    display: none;
+    margin-top: 4px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    color: #ffe066;
+    animation: gateFlag 1.2s ease-in-out infinite;
+  }
+  .stage-station.gated .stage-gate-flag { display: block; }
+  @keyframes gateFlag { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* ── swimlanes: one column per stage, aligned under the rail stations. ── */
+  .swimlanes {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+    align-items: stretch;
+  }
+  .lane {
+    border: 1px solid rgba(122,90,32,0.22);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.18);
+    padding: 8px 4px 10px;
+    min-height: 150px;
+    display: flex; flex-direction: column;
+    transition: border-color 0.4s ease, background 0.4s ease;
+  }
+  .lane.active { border-color: rgba(245,166,35,0.55); background: rgba(245,166,35,0.05); }
+  .lane.done   { border-color: rgba(74,222,128,0.35); }
+  .lane-head {
+    text-align: center;
+    font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 6px; margin-bottom: 6px;
+    border-bottom: 1px dashed rgba(122,90,32,0.3);
+  }
+  .lane-head .lane-count { color: var(--line); font-weight: 700; }
+  .lane-head .lane-state { display: block; font-size: 7.5px; margin-top: 2px; letter-spacing: 1px; }
+  .lane.active .lane-head .lane-state { color: var(--stage-active); }
+  .lane.done   .lane-head .lane-state { color: var(--stage-done); }
+  .lane-cards {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    flex: 1;
+  }
+  .lane-empty {
+    color: var(--stage-dim); font-size: 9px; letter-spacing: 1px;
+    margin: auto 0; text-align: center; opacity: 0.7;
+  }
+  /* cards inside a lane flow statically (override the v1 absolute positioning) */
+  .lane-cards .card {
+    position: static; left: auto; top: auto;
+    width: 100%; max-width: 150px;
+    transform: scale(var(--qscale, 1));
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    pointer-events: auto;
+  }
+  .lane-cards .card .stage { width: 58px; height: 58px; }
+  .lane-cards .card.done { --qscale: 0.92; }
+  .lane-cards .card.working { --qscale: 1; }
+  .lane-cards .card .char-label .name { font-size: 8.5px; max-width: 140px; }
+  .lane-cards .card .char-label .repo { font-size: 7.5px; max-width: 140px; }
+  /* a working card gets a soft glowing platform so the eye lands on it */
+  .lane-cards .card.working {
+    background: radial-gradient(ellipse at 50% 80%, rgba(245,166,35,0.16), transparent 70%);
+    border-radius: 8px;
+  }
+
+  /* ── pyramid monument: 6 sandstone tiers, one per completed stage. ── */
+  .monument-totem .tier {
+    opacity: 0.1;
+    transition: opacity 0.7s ease, filter 0.7s ease;
+  }
+  .monument-totem .tier.built {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(245,190,110,0.55));
+  }
+  .monument-totem.complete .tier.built {
+    filter: drop-shadow(0 0 7px rgba(255,215,130,0.85));
+  }
+  .monument-caption {
+    position: absolute;
+    left: 20px; bottom: 14px;
+    font-size: 11px; letter-spacing: 1.5px; color: #c9ad78;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .monument-caption b { color: #ffd98a; font-size: 14px; }
+  .monument-caption.complete { color: var(--stage-done); }
+  .monument-caption.complete b { color: var(--stage-done); }
+  /* topping-out: the pyramidion + flag fade in and glow when the run completes */
+  .monument-totem .topper { opacity: 0; transition: opacity 0.6s ease; }
+  .monument-totem.complete .topper { opacity: 1; animation: capstoneGlow 2.4s ease-in-out infinite; }
+  @keyframes capstoneGlow {
+    0%, 100% { filter: drop-shadow(0 0 3px rgba(255,233,176,0.6)); }
+    50%      { filter: drop-shadow(0 0 9px rgba(255,233,176,1)); }
+  }
+
+  /* completion confetti — lightweight CSS sprinkle, only while .celebrate is set */
+  .confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; display: none; }
+  .confetti-layer.celebrate { display: block; }
+  .confetti-bit {
+    position: absolute; top: -12px; width: 8px; height: 12px; opacity: 0.9;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+    100% { transform: translateY(102vh) rotate(540deg);  opacity: 0.3; }
+  }
+
+  @media (max-width: 1080px) {
+    .stage-rail, .swimlanes { grid-template-columns: repeat(3, 1fr); }
+    .stage-station:nth-child(4)::before { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stage-station.active::after,
+    .stage-station.active .stage-node,
+    .stage-gate-flag,
+    .monument-totem.complete .topper { animation: none; }
+    .confetti-bit { animation-duration: 0.01s !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-mark" aria-label="PipeCrew">
+    <svg viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg">
+      <!-- stepped pyramid outline -->
+      <g fill="none" stroke="#f5a623" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M5 30 L20 7 L35 30 Z"/>
+        <line x1="11" y1="21" x2="29" y2="21"/>
+        <line x1="15" y1="14" x2="25" y2="14"/>
+      </g>
+      <!-- apex sun: tiny rays + body (pulsing) -->
+      <g class="apex-spark">
+        <g stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" fill="none">
+          <line x1="20" y1="2"  x2="20" y2="5"/>
+          <line x1="14.5" y1="4" x2="13"  y2="2.5"/>
+          <line x1="25.5" y1="4" x2="27"  y2="2.5"/>
+        </g>
+        <circle cx="20" cy="7" r="2.1" fill="#fbbf24" stroke="#f5a623" stroke-width="0.9"/>
+      </g>
+      <!-- base pipe + 3 crew dots -->
+      <line x1="5" y1="35" x2="35" y2="35" stroke="#5c4420" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
+      <g fill="#f5a623" stroke="#5c4420" stroke-width="0.8">
+        <circle cx="10" cy="35" r="2.2"/>
+        <circle cx="20" cy="35" r="2.6"/>
+        <circle cx="30" cy="35" r="2.2"/>
+      </g>
+    </svg>
+  </div>
+  <div>
+    <h1><span id="feature-name">Pipeline View</span></h1>
+    <div class="sub"><span class="brand-text" style="color: var(--accent, #f5a623); font-weight: 700; letter-spacing: 2.5px; margin-right: 6px;">PIPECREW</span>· <span id="run-id" style="font-family: monospace; font-size: 0.9em; opacity: 0.7;">—</span> · <span id="active-file">—</span></div>
+  </div>
+  <div class="meta">
+    <div><span class="live-dot"></span><span id="live-status">CONNECTING</span></div>
+    <div>WORKSPACE <b id="workspace-name">—</b></div>
+    <div>UPDATED <b id="updated-at">—</b></div>
+    <div class="hook-error" id="hook-error" role="status" aria-live="polite" tabindex="0">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="hook-error-label">hook error</span>
+    </div>
+    <button type="button" class="mute-btn" id="mute-btn"
+      aria-label="mute notifications"
+      title="Mute notification sounds (resets on next gate)">🔔</button>
+    <button type="button" class="project-btn" id="project-btn"
+      aria-label="Show project overview (from /discover)"
+      title="Workspace overview — repos, services, audit findings (from /discover)">📖 Project</button>
+  </div>
+</header>
+
+<!-- Workspace overview drawer — shows /discover outputs (static across /deliver runs) -->
+<div id="project-drawer" class="project-drawer" role="dialog" aria-modal="false" aria-labelledby="project-drawer-title" hidden>
+  <div class="project-drawer-inner">
+    <div class="project-drawer-header">
+      <h2 id="project-drawer-title">Workspace overview</h2>
+      <button type="button" class="project-drawer-close" id="project-drawer-close" aria-label="Close">✕</button>
+    </div>
+    <div class="project-drawer-body" id="project-drawer-body">
+      Loading…
+    </div>
+  </div>
+</div>
+
+<div id="awaiting-input" class="awaiting-input" role="alert" aria-live="polite">
+  <span class="pause-icon">⏸</span>
+  <span class="label">Waiting for your input</span>
+  <span class="phase-tag" id="ai-phase">—</span>
+  <span class="since" id="ai-since">—</span>
+  <button type="button" class="sound-enable" id="sound-enable-ai" title="Enable audible beep while waiting">🔔 Click to enable sound</button>
+  <span class="question" id="ai-question">—</span>
+</div>
+
+<div id="claude-approval" class="claude-approval" role="alert" aria-live="polite">
+  <span class="pause-icon">⏸</span>
+  <span class="label">Claude Code needs approval</span>
+  <span class="tool-tag" id="ca-tool">—</span>
+  <span class="since" id="ca-since">—</span>
+  <button type="button" class="sound-enable" id="sound-enable-ca" title="Enable audible beep while waiting">🔔 Click to enable sound</button>
+  <span class="question" id="ca-question">—</span>
+</div>
+
+<div class="token-summary">
+  <span>ORCHESTRATOR <b id="orch-tokens">0</b></span>
+  <span>AGENTS <b id="agent-tokens">0</b></span>
+  <span>TOTAL <b id="total-tokens">0</b>
+    <span class="bar"><span class="bar-fill" id="token-bar" style="width: 0%"></span></span>
+    <span class="budget-warn" id="token-budget-warn" title="Total tokens exceeded 1M — budget warning">OVER 1M</span>
+  </span>
+</div>
+
+<!-- ═══ V2 STAGE-FLOW PIPELINE ═══════════════════════════════════════════
+     Rail + swimlanes + monument are populated by initStages()/layout() from
+     the STAGES model. The v1 construction scene below is kept in the DOM but
+     hidden — `/` still serves the original UI for rollback. -->
+<div class="pipeline-wrap">
+  <!-- Pharaoh hero — the monument is the centrepiece: a desert-dusk scene with
+       a stepped Egyptian pyramid that gains a tier as each stage completes.
+       Keeps #monument-totem / .tier / #sun / #monument-caption so layout()'s
+       build-up + completion logic is unchanged. -->
+  <div class="pharaoh-hero">
+    <svg class="pharaoh-svg" viewBox="0 0 1400 200" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <radialGradient id="raGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"  stop-color="#ffd98a" stop-opacity="0.95"/>
+          <stop offset="55%" stop-color="#f5a623" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#f5a623" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <!-- drifting birds — all 8 flight paths (varied speed / altitude / direction) -->
+      <g id="sky-birds">
+        <g class="bird-fly bird-1"><path class="bird-body" d="M0 0 q 4 -5 8 0 t 8 0"   fill="none" stroke="#7a5a28" stroke-width="1.3" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-2"><path class="bird-body" d="M0 0 q 5 -6 10 0 t 10 0" fill="none" stroke="#6f5224" stroke-width="1.5" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-3"><path class="bird-body" d="M0 0 q 3 -4 7 0 t 7 0"   fill="none" stroke="#8a6a30" stroke-width="1.1" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-4"><path class="bird-body" d="M0 0 q 3 -4 6 0 t 6 0"   fill="none" stroke="#8a6a30" stroke-width="1.0" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-5"><path class="bird-body" d="M0 0 q 4 -5 9 0 t 9 0"   fill="none" stroke="#7a5a28" stroke-width="1.4" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-6"><path class="bird-body" d="M0 0 q 3 -4 7 0 t 7 0"   fill="none" stroke="#8a6a30" stroke-width="1.2" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-7"><path class="bird-body" d="M0 0 q 5 -6 10 0 t 10 0" fill="none" stroke="#6f5224" stroke-width="1.5" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-8"><path class="bird-body" d="M0 0 q 3 -4 6 0 t 6 0"   fill="none" stroke="#8a6a30" stroke-width="1.0" stroke-linecap="round"/></g>
+      </g>
+      <!-- sun-disc of Ra, set off to the left so it clears the pyramid -->
+      <g id="sun" transform="translate(255, 62)">
+        <circle r="78" fill="url(#raGlow)"/>
+        <circle r="34" fill="#f5a623" opacity="0.95"/>
+      </g>
+      <!-- desert dunes at the base -->
+      <path d="M0 172 Q 320 150 640 170 T 1400 166 L1400 200 L0 200 Z" fill="#5a3d16" opacity="0.85"/>
+      <path d="M0 184 Q 400 168 820 182 T 1400 180 L1400 200 L0 200 Z" fill="#3f2a0f" opacity="0.9"/>
+      <!-- the stepped pyramid — 6 tiers, bottom (tier-1) → apex (tier-6) -->
+      <g class="monument-totem" id="monument-totem" aria-label="build progress">
+        <path class="tier" data-tier="1" d="M560 172 L840 172 L820 150 L580 150 Z" fill="#caa14a"/>
+        <path class="tier" data-tier="2" d="M580 150 L820 150 L800 128 L600 128 Z" fill="#d3aa52"/>
+        <path class="tier" data-tier="3" d="M600 128 L800 128 L780 106 L620 106 Z" fill="#dcb35c"/>
+        <path class="tier" data-tier="4" d="M620 106 L780 106 L760 84 L640 84 Z"   fill="#e3bd6a"/>
+        <path class="tier" data-tier="5" d="M640 84  L760 84  L738 62 L662 62 Z"   fill="#ecc77a"/>
+        <path class="tier" data-tier="6" d="M662 62  L738 62  L700 40 Z"           fill="#f6d68f"/>
+        <!-- pyramidion capstone + topping-out flag (appears on completion) -->
+        <g class="topper">
+          <path d="M662 62 L738 62 L700 40 Z" fill="#ffe9b0" stroke="#fff3d0" stroke-width="1"/>
+          <line x1="700" y1="40" x2="700" y2="20" stroke="#4ade80" stroke-width="2"/>
+          <path d="M700 20 L724 25 L700 31 Z" fill="#4ade80"/>
+        </g>
+      </g>
+    </svg>
+    <div class="monument-caption" id="monument-caption"><b>0</b> / 6 stages complete</div>
+    <div class="stage-headline" id="stage-headline">
+      <span class="now">CURRENT STAGE</span>
+      <span id="stage-headline-label">—</span>
+      <div class="ship-stats" id="ship-stats">
+        <span><b id="ship-tokens">—</b> tokens</span>
+        <span><b id="ship-duration">—</b> total</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage-rail" id="stage-rail"></div>
+  <div class="swimlanes" id="swimlanes"></div>
+</div>
+<div class="confetti-layer" id="confetti-layer"></div>
+
+<div class="scene-wrap" style="display:none" aria-hidden="true">
+  <section class="queue-scene">
+    <svg class="queue-bg" viewBox="0 0 1400 520" preserveAspectRatio="xMidYMin meet">
+      <!-- ground — separates working/queue zone (above) from completed zone (below) -->
+      <line x1="0" y1="405" x2="1400" y2="405" stroke="#7a5a20" stroke-width="1"/>
+      <line x1="0" y1="409" x2="1400" y2="409" stroke="#7a5a20" stroke-width="0.6" stroke-dasharray="4 3"/>
+
+      <!-- Polish round 12b: flying birds in the sky. Three silhouettes at
+           different altitudes, speeds, and starting offsets glide across
+           the scene. Subtle wing flap via a quick scale-y animation. -->
+      <g id="sky-birds">
+        <g class="bird-fly bird-1"><path class="bird-body" d="M0 0 q 4 -5 8 0 t 8 0"  fill="none" stroke="#5c4420" stroke-width="1.3" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-2"><path class="bird-body" d="M0 0 q 5 -6 10 0 t 10 0" fill="none" stroke="#5c4420" stroke-width="1.6" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-3"><path class="bird-body" d="M0 0 q 3 -4 7 0 t 7 0"  fill="none" stroke="#6a4e20" stroke-width="1.1" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-4"><path class="bird-body" d="M0 0 q 3 -4 6 0 t 6 0"  fill="none" stroke="#6a4e20" stroke-width="1.0" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-5"><path class="bird-body" d="M0 0 q 4 -5 9 0 t 9 0"  fill="none" stroke="#5c4420" stroke-width="1.4" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-6"><path class="bird-body" d="M0 0 q 3 -4 7 0 t 7 0"  fill="none" stroke="#6a4e20" stroke-width="1.2" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-7"><path class="bird-body" d="M0 0 q 5 -6 10 0 t 10 0" fill="none" stroke="#5c4420" stroke-width="1.5" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-8"><path class="bird-body" d="M0 0 q 3 -4 6 0 t 6 0"  fill="none" stroke="#6a4e20" stroke-width="1.0" stroke-linecap="round"/></g>
+      </g>
+
+      <!-- Polish round 12: sun above the crane. Soft halo + body + 8
+           radiating rays. Rays gently pulse to hint at "shining" without
+           overwhelming the scene. Static position (x=105, y=60) sits just
+           above the crane's boom at its final translated top. -->
+      <g id="sun" transform="translate(105, 60)">
+        <circle r="36" fill="rgba(245,166,35,0.10)"/>
+        <circle r="26" fill="rgba(245,166,35,0.18)"/>
+        <g id="sun-rays" stroke="#f5a623" stroke-width="1.6" stroke-linecap="round">
+          <line x1="0"   y1="-24" x2="0"   y2="-32"/>
+          <line x1="0"   y1="24"  x2="0"   y2="32"/>
+          <line x1="-24" y1="0"   x2="-32" y2="0"/>
+          <line x1="24"  y1="0"   x2="32"  y2="0"/>
+          <line x1="-17" y1="-17" x2="-23" y2="-23"/>
+          <line x1="17"  y1="-17" x2="23"  y2="-23"/>
+          <line x1="-17" y1="17"  x2="-23" y2="23"/>
+          <line x1="17"  y1="17"  x2="23"  y2="23"/>
+        </g>
+        <circle r="16" fill="#fbbf24" stroke="#f5a623" stroke-width="1.4"/>
+      </g>
+      <!-- Live phase label beside the sun. Populated by updatePhaseLabel()
+           with the dedup'd phase chip(s) of every currently-working agent
+           (e.g. "IMPL", "REVIEW", "FIX-R1", or "IMPL · REVIEW" when phases
+           overlap). Hidden — empty textContent — when no agent is working. -->
+      <text id="sun-phase-label"
+            x="150" y="65"
+            fill="#f5a623"
+            font-family="'JetBrains Mono', monospace"
+            font-size="14"
+            font-weight="700"
+            letter-spacing="3"
+            dominant-baseline="middle"></text>
+
+      <!-- scaffolding framework (dashed). Polish round 3: hidden along with
+           #work-zone-group when the build zone is empty — the empty dashed
+           rectangle was the most obvious "broken placeholder" signal at the
+           top of the scene during approval gates. -->
+      <!-- Polish round 10: pyramid-shaped scaffolding outline. Dashed triangle
+           frames the stepped pyramid tiers; horizontal dashed tier guides hint
+           at the build progression. Same transform as before so it aligns
+           with the crane's landing zone. -->
+      <!-- Polish round 11: 3D pyramid outline. Front triangle + back-right
+           edge from apex down to back-right base corner give an isometric
+           depth cue; tier guides still trace the stepped build progression
+           on the front face. -->
+      <g id="scaffolding-frame" transform="translate(0, 120)" stroke="#7a5a20" stroke-width="1" stroke-dasharray="4 3" fill="none">
+        <path d="M80 280 L230 60 L380 280 Z"/>
+        <path d="M230 60 L410 260 L380 280"/>
+        <line x1="380" y1="280" x2="410" y2="260"/>
+        <line x1="110" y1="236" x2="350" y2="236"/>
+        <line x1="140" y1="192" x2="320" y2="192"/>
+        <line x1="170" y1="148" x2="290" y2="148"/>
+        <line x1="200" y1="104" x2="260" y2="104"/>
+      </g>
+
+      <!-- Polish round 13: proper hammerhead tower crane. Splayed base,
+           trussed mast with X-bracing, cab at top, counter-jib with
+           counterweight block, main boom with truss pattern, stabilizing
+           cables from a short pylon above the cab. Trolley + hoist +
+           payload animate along the boom while any agent is working. -->
+      <g class="crane" transform="translate(0, 120)" stroke="#f5a623" stroke-width="1.6" fill="none" stroke-linecap="round">
+        <!-- splayed base -->
+        <line x1="35" y1="280" x2="60" y2="240"/>
+        <line x1="85" y1="280" x2="60" y2="240"/>
+        <line x1="30" y1="280" x2="90" y2="280"/>
+        <!-- mast: twin rails -->
+        <line x1="50" y1="240" x2="50" y2="30"/>
+        <line x1="70" y1="240" x2="70" y2="30"/>
+        <!-- mast cross-bars + X braces every 30px -->
+        <g stroke-width="1.1">
+          <line x1="50" y1="210" x2="70" y2="210"/>
+          <line x1="50" y1="180" x2="70" y2="180"/>
+          <line x1="50" y1="150" x2="70" y2="150"/>
+          <line x1="50" y1="120" x2="70" y2="120"/>
+          <line x1="50" y1="90"  x2="70" y2="90"/>
+          <line x1="50" y1="60"  x2="70" y2="60"/>
+          <line x1="50" y1="240" x2="70" y2="210"/>
+          <line x1="70" y1="240" x2="50" y2="210"/>
+          <line x1="50" y1="210" x2="70" y2="180"/>
+          <line x1="70" y1="210" x2="50" y2="180"/>
+          <line x1="50" y1="180" x2="70" y2="150"/>
+          <line x1="70" y1="180" x2="50" y2="150"/>
+          <line x1="50" y1="150" x2="70" y2="120"/>
+          <line x1="70" y1="150" x2="50" y2="120"/>
+          <line x1="50" y1="120" x2="70" y2="90"/>
+          <line x1="70" y1="120" x2="50" y2="90"/>
+          <line x1="50" y1="90"  x2="70" y2="60"/>
+          <line x1="70" y1="90"  x2="50" y2="60"/>
+        </g>
+        <!-- operator cab -->
+        <rect x="46" y="12" width="28" height="18"/>
+        <!-- stabilizing pylon above cab -->
+        <line x1="60" y1="12" x2="60" y2="-18"/>
+        <!-- main jib (boom) going right — twin rails + truss diagonals -->
+        <line x1="74" y1="12" x2="200" y2="12"/>
+        <line x1="74" y1="24" x2="200" y2="24"/>
+        <line x1="200" y1="12" x2="200" y2="24"/>
+        <g stroke-width="1.0">
+          <line x1="86"  y1="12" x2="98"  y2="24"/>
+          <line x1="110" y1="12" x2="122" y2="24"/>
+          <line x1="134" y1="12" x2="146" y2="24"/>
+          <line x1="158" y1="12" x2="170" y2="24"/>
+          <line x1="182" y1="12" x2="194" y2="24"/>
+        </g>
+        <!-- counter-jib going left + counterweight block (filled) -->
+        <line x1="46" y1="12" x2="-8" y2="12"/>
+        <line x1="46" y1="24" x2="-8" y2="24"/>
+        <rect x="-20" y="16" width="16" height="20" fill="#f5a623" fill-opacity="0.35" stroke="#f5a623"/>
+        <!-- stabilizing cables from pylon tip to boom tip and counter-jib tip -->
+        <line x1="60" y1="-18" x2="200" y2="12"/>
+        <line x1="60" y1="-18" x2="-8" y2="12"/>
+        <!-- trolley + hoist + payload (move together horizontally along the boom) -->
+        <g class="crane-trolley">
+          <line x1="0" y1="24" x2="0" y2="72"/>
+          <rect x="-10" y="72" width="20" height="14"/>
+          <!-- hook hint above payload -->
+          <line x1="0" y1="66" x2="0" y2="72"/>
+        </g>
+      </g>
+
+      <!-- BUILD ELEMENTS — progressive reveal as crew works. Polish round 3
+           follow-up: wrapped in #build-elements-group so the 10 orange-fill
+           blocks collapse together with the scaffolding when the build zone
+           is empty. Previously, when all characters were `done` the blocks
+           were all marked `.visible` and left 10 stacked orange rectangles
+           looking like a leftover "box" in the top half. -->
+      <!-- Polish round 10 — pyramid tiers. 10 trapezoidal tiers stack from
+           wide at the bottom to narrow at the top, with a triangular apex
+           (build-10). Same progressive-reveal logic as before — each tier
+           activates in order as the building progresses. -->
+      <g id="build-elements-group" transform="translate(0, 120)" stroke="#f5a623" stroke-width="1.8" stroke-linejoin="round">
+        <!-- Polish round 11: right-side face of the pyramid — darker brown
+             fill to simulate shadow under isometric-ish lighting. Drawn first
+             so the stepped front tiers render in front of it. Not a
+             build-element (always visible when the group is). -->
+        <path d="M230 60 L380 280 L410 260 Z" fill="rgba(120,80,20,0.55)" stroke="#7a5a20" stroke-width="1"/>
+        <path id="build-1"  class="build-element" d="M80 280 L380 280 L365 258 L95 258 Z"   fill="rgba(245,166,35,0.18)"/>
+        <path id="build-2"  class="build-element" d="M95 258 L365 258 L350 236 L110 236 Z" fill="rgba(245,166,35,0.22)"/>
+        <path id="build-3"  class="build-element" d="M110 236 L350 236 L335 214 L125 214 Z" fill="rgba(245,166,35,0.26)"/>
+        <path id="build-4"  class="build-element" d="M125 214 L335 214 L320 192 L140 192 Z" fill="rgba(245,166,35,0.30)"/>
+        <path id="build-5"  class="build-element" d="M140 192 L320 192 L305 170 L155 170 Z" fill="rgba(245,166,35,0.34)"/>
+        <path id="build-6"  class="build-element" d="M155 170 L305 170 L290 148 L170 148 Z" fill="rgba(245,166,35,0.38)"/>
+        <path id="build-7"  class="build-element" d="M170 148 L290 148 L275 126 L185 126 Z" fill="rgba(245,166,35,0.42)"/>
+        <path id="build-8"  class="build-element" d="M185 126 L275 126 L260 104 L200 104 Z" fill="rgba(245,166,35,0.46)"/>
+        <path id="build-9"  class="build-element" d="M200 104 L260 104 L245 82 L215 82 Z"   fill="rgba(245,166,35,0.50)"/>
+        <path id="build-10" class="build-element" d="M215 82 L245 82 L230 60 Z"              fill="rgba(245,166,35,0.60)"/>
+      </g>
+
+      <!-- work zone markers (polish round 3: hidden via #work-zone-group when
+           no working/queued characters — an empty labeled zone is noisier
+           than no label at all). -->
+      <g id="work-zone-group" transform="translate(0, 135)">
+        <line x1="50" y1="276" x2="50" y2="290" stroke="#f5a623" stroke-width="1.5"/>
+        <line x1="370" y1="276" x2="370" y2="290" stroke="#f5a623" stroke-width="1.5"/>
+        <text x="225" y="285" fill="#f5a623" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" letter-spacing="2" text-anchor="middle">◆ WORK ZONE ◆</text>
+
+      </g>
+
+    </svg>
+  </section>
+  <div class="grid" id="grid">
+    <!-- Working zone header floats over the SVG scene. -->
+    <div class="zone-header building" id="zone-building">
+      Currently building <span class="count" id="building-count">0</span>
+    </div>
+
+    <!-- Polish round 7 — Queue grid positioned where the old horizontal
+         queue row used to sit (right of scaffolding, top band of scene),
+         but now wraps into multiple rows of 5 cards each. -->
+    <div class="queue-grid-header" id="queue-grid-header">
+      Queue <span class="count" id="queue-count">0</span>
+    </div>
+    <div class="queue-grid" id="queue-grid"></div>
+  </div>
+</div>
+
+<!-- Completed section — flows naturally below the SVG scene so the footer
+     dynamically pushes down as more agents finish (Polish round 9). -->
+<div class="finished-grid-header" id="finished-grid-header" style="display:none" aria-hidden="true">
+  Completed <span class="count" id="finished-count">0</span>
+</div>
+<div class="finished-grid" id="finished-grid" style="display:none" aria-hidden="true"></div>
+
+<div class="footer">
+  <span>PIPELINE VIEW · v2 (stage-flow)</span>
+  <span>SSE STREAM → http://127.0.0.1:5173/events</span>
+  <span>CTRL+C TO STOP SERVER</span>
+</div>
+
+<script>
+/*INITIAL_STATE*/
+
+// ══════════════════════════════════════════════════════════
+// CHARACTER BODIES — minimal wireframe style, same roster as
+// the prototype. Stroke color is taken from CSS var --line.
+// Each body uses arm-l/arm-r groups so the swing/hammer
+// animations can rotate from the shoulder.
+// ══════════════════════════════════════════════════════════
+function bodyPip() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- head -->
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <!-- beret -->
+    <path d="M62 54 Q64 40 80 38 Q96 40 98 54 L96 58 Q80 54 64 58 Z" class="stroke-main"/>
+    <circle cx="95" cy="42" r="2" class="stroke-main"/>
+    <!-- body -->
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <!-- arms -->
+    <g class="arm-l"><line x1="64" y1="86" x2="54" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="106" y2="108" class="stroke-main"/></g>
+    <!-- legs -->
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyArchie() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <path d="M62 54 L62 46 L98 46 L98 54 Z" class="stroke-main"/>
+    <rect x="66" y="60" width="8" height="7" class="stroke-main"/>
+    <rect x="86" y="60" width="8" height="7" class="stroke-main"/>
+    <line x1="74" y1="63.5" x2="86" y2="63.5" class="stroke-main"/>
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <line x1="64" y1="92" x2="96" y2="92" class="stroke-thin"/>
+    <line x1="80" y1="80" x2="80" y2="114" class="stroke-thin"/>
+    <g class="arm-l"><line x1="64" y1="86" x2="54" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="106" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+// Foreman — task-planner. Supervisor's cap (flat top + visor) distinguishes
+// from bruno's dome hard hat; left arm holds a clipboard with checklist lines
+// (the task list the planner produces); right arm raised, pointing — directing
+// labor on the construction site.
+function bodyForeman() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- supervisor's cap: flat crown + visor -->
+    <rect x="62" y="44" width="36" height="10" class="stroke-main"/>
+    <path d="M62 54 L102 54 L106 58 L58 58 Z" class="stroke-main"/>
+    <line x1="80" y1="44" x2="80" y2="54" class="stroke-thin"/>
+    <!-- head -->
+    <circle cx="80" cy="66" r="14" class="stroke-main"/>
+    <!-- torso -->
+    <rect x="64" y="82" width="32" height="34" class="stroke-main"/>
+    <!-- left arm holds a clipboard with checklist lines -->
+    <g class="arm-l">
+      <line x1="64" y1="88" x2="50" y2="98" class="stroke-main"/>
+      <rect x="36" y="96" width="20" height="26" class="stroke-main"/>
+      <rect x="42" y="92" width="8" height="6" class="stroke-thin"/>
+      <line x1="40" y1="104" x2="52" y2="104" class="stroke-thin"/>
+      <line x1="40" y1="110" x2="52" y2="110" class="stroke-thin"/>
+      <line x1="40" y1="116" x2="52" y2="116" class="stroke-thin"/>
+    </g>
+    <!-- right arm raised, pointing/directing -->
+    <g class="arm-r">
+      <line x1="96" y1="88" x2="112" y2="74" class="stroke-main"/>
+      <line x1="112" y1="74" x2="120" y2="68" class="stroke-thin"/>
+    </g>
+    <!-- legs -->
+    <line x1="72" y1="116" x2="70" y2="134" class="stroke-main"/>
+    <line x1="88" y1="116" x2="90" y2="134" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyYara() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <path d="M60 62 Q58 48 80 42 Q102 48 100 62 L102 88 L58 88 Z" class="stroke-thin"/>
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <line x1="64" y1="88" x2="96" y2="88" class="stroke-thin"/>
+    <line x1="64" y1="96" x2="96" y2="96" class="stroke-thin"/>
+    <line x1="64" y1="104" x2="96" y2="104" class="stroke-thin"/>
+    <g class="arm-l"><line x1="64" y1="86" x2="54" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="106" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyBruno() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- hard hat (dome + brim + crest line) — distinguishes Bruno as the
+         backend implementer at a glance -->
+    <path d="M56 50 Q56 36 80 34 Q104 36 104 50 L104 54 L56 54 Z" class="stroke-main"/>
+    <line x1="80" y1="34" x2="80" y2="50" class="stroke-main"/>
+    <line x1="50" y1="54" x2="110" y2="54" class="stroke-main"/>
+    <!-- head -->
+    <circle cx="80" cy="64" r="14" class="stroke-main"/>
+    <!-- chinstrap line -->
+    <path d="M68 70 Q80 78 92 70" class="stroke-thin"/>
+    <!-- torso (overall straps) -->
+    <rect x="60" y="82" width="40" height="34" class="stroke-main"/>
+    <line x1="70" y1="82" x2="70" y2="116" class="stroke-thin"/>
+    <line x1="90" y1="82" x2="90" y2="116" class="stroke-thin"/>
+    <g class="arm-l"><line x1="60" y1="88" x2="48" y2="110" class="stroke-main"/></g>
+    <!-- right arm holds a small hammer (line + head rect) -->
+    <g class="arm-r">
+      <line x1="100" y1="88" x2="112" y2="110" class="stroke-main"/>
+      <rect x="108" y="106" width="10" height="6" class="stroke-main"/>
+    </g>
+    <line x1="70" y1="116" x2="68" y2="134" class="stroke-main"/>
+    <line x1="90" y1="116" x2="92" y2="134" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyPixel() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <circle cx="66" cy="48" r="4" class="stroke-main"/>
+    <circle cx="76" cy="42" r="5" class="stroke-main"/>
+    <circle cx="88" cy="42" r="5" class="stroke-main"/>
+    <circle cx="96" cy="50" r="4" class="stroke-main"/>
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <circle cx="72" cy="90" r="1.5" fill="#f5a623"/>
+    <circle cx="88" cy="96" r="1.5" fill="#f5a623"/>
+    <circle cx="78" cy="104" r="1.5" fill="#f5a623"/>
+    <g class="arm-l"><line x1="64" y1="86" x2="54" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="106" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyTya() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- head -->
+    <circle cx="80" cy="60" r="16" class="stroke-main"/>
+    <!-- artist's hair tied back -->
+    <path d="M64 56 Q60 44 80 42 Q100 44 96 56" class="stroke-main"/>
+    <!-- torso (smock) -->
+    <path d="M64 78 L56 116 L104 116 L96 78 Z" class="stroke-main"/>
+    <!-- left arm holds a painter's palette (oval + thumb hole + 3 colour dots) -->
+    <g class="arm-l">
+      <line x1="64" y1="84" x2="50" y2="100" class="stroke-main"/>
+      <ellipse cx="40" cy="108" rx="14" ry="9" class="stroke-main"/>
+      <circle cx="44" cy="108" r="2.5" class="stroke-thin"/>
+      <circle cx="36" cy="104" r="1.8" fill="#f5a623"/>
+      <circle cx="42" cy="112" r="1.8" fill="#f5a623"/>
+      <circle cx="34" cy="111" r="1.8" fill="#f5a623"/>
+    </g>
+    <!-- right arm holds a brush (line + tip) -->
+    <g class="arm-r">
+      <line x1="96" y1="84" x2="112" y2="106" class="stroke-main"/>
+      <line x1="112" y1="106" x2="118" y2="114" class="stroke-main"/>
+    </g>
+    <line x1="72" y1="116" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="116" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyEcho() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <ellipse cx="80" cy="58" rx="20" ry="15" class="stroke-main"/>
+    <ellipse cx="80" cy="58" rx="14" ry="10" class="stroke-thin"/>
+    <circle cx="72" cy="56" r="3" class="stroke-main"/>
+    <circle cx="88" cy="56" r="3" class="stroke-main"/>
+    <ellipse cx="80" cy="95" rx="22" ry="16" class="stroke-main"/>
+    <ellipse cx="80" cy="95" rx="16" ry="11" class="stroke-thin"/>
+    <ellipse cx="80" cy="95" rx="10" ry="7" class="stroke-thin"/>
+    <g class="arm-l"><line x1="60" y1="90" x2="50" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="100" y1="90" x2="110" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="111" x2="70" y2="130" class="stroke-main"/>
+    <line x1="88" y1="111" x2="90" y2="130" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyStratos() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <ellipse cx="60" cy="32" rx="8" ry="3" class="stroke-thin"/>
+    <ellipse cx="100" cy="28" rx="10" ry="3" class="stroke-thin"/>
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <path d="M62 54 Q64 44 80 42 Q96 44 98 54" class="stroke-main"/>
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <path d="M74 90 L84 90 L78 100 L88 100 L72 112 L78 102 L70 102 Z" class="stroke-main"/>
+    <g class="arm-l"><line x1="64" y1="86" x2="54" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="106" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    <ellipse cx="80" cy="138" rx="28" ry="3" class="stroke-thin"/>
+    </g>
+  </svg>`;
+}
+function bodyCrit() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <path d="M62 52 L66 42 L70 50 L74 40 L80 50 L86 40 L90 50 L94 42 L98 52" class="stroke-main"/>
+    <line x1="68" y1="58" x2="74" y2="60" class="stroke-main"/>
+    <line x1="86" y1="60" x2="92" y2="58" class="stroke-main"/>
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <g class="arm-l"><line x1="64" y1="86" x2="52" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="108" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+function bodyJudge() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <ellipse cx="80" cy="50" rx="22" ry="12" class="stroke-main"/>
+    <ellipse cx="62" cy="60" rx="5" ry="8" class="stroke-main"/>
+    <ellipse cx="98" cy="60" rx="5" ry="8" class="stroke-main"/>
+    <path d="M64 80 L54 132 L106 132 L96 80 Z" class="stroke-main"/>
+    <line x1="80" y1="80" x2="80" y2="132" class="stroke-thin"/>
+    <path d="M72 82 L76 92 L84 92 L88 82" class="stroke-main"/>
+    <g class="arm-l"><line x1="64" y1="86" x2="58" y2="108" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="86" x2="108" y2="108" class="stroke-main"/></g>
+    </g>
+  </svg>`;
+}
+// Shield — security-consultant. A figure carrying a heater shield with a
+// keyhole/lock motif. Shield silhouette is the at-a-glance identifier.
+function bodyShield() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- head + visor stripe -->
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <line x1="64" y1="58" x2="96" y2="58" class="stroke-main"/>
+    <!-- torso -->
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <!-- left arm holds a heater shield -->
+    <g class="arm-l">
+      <line x1="64" y1="86" x2="44" y2="98" class="stroke-main"/>
+      <path d="M28 92 L52 92 L52 110 Q40 124 28 110 Z" class="stroke-main"/>
+      <!-- keyhole on the shield -->
+      <circle cx="40" cy="102" r="2.5" class="stroke-main"/>
+      <line x1="40" y1="104" x2="40" y2="112" class="stroke-main"/>
+    </g>
+    <g class="arm-r"><line x1="96" y1="86" x2="106" y2="108" class="stroke-main"/></g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+// Scribe — reporter. Figure with a notepad and quill, writing the summary.
+function bodyScribe() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- head + small reading glasses -->
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <circle cx="73" cy="62" r="3.5" class="stroke-thin"/>
+    <circle cx="87" cy="62" r="3.5" class="stroke-thin"/>
+    <line x1="76.5" y1="62" x2="83.5" y2="62" class="stroke-thin"/>
+    <!-- torso -->
+    <rect x="64" y="80" width="32" height="34" class="stroke-main"/>
+    <!-- left arm holds a notepad/clipboard -->
+    <g class="arm-l">
+      <line x1="64" y1="86" x2="50" y2="104" class="stroke-main"/>
+      <rect x="36" y="100" width="20" height="24" class="stroke-main"/>
+      <line x1="40" y1="106" x2="52" y2="106" class="stroke-thin"/>
+      <line x1="40" y1="112" x2="52" y2="112" class="stroke-thin"/>
+      <line x1="40" y1="118" x2="48" y2="118" class="stroke-thin"/>
+    </g>
+    <!-- right arm holds a quill (line + feathered tip) -->
+    <g class="arm-r">
+      <line x1="96" y1="86" x2="112" y2="100" class="stroke-main"/>
+      <path d="M112 100 L122 92 L118 104 Z" class="stroke-main"/>
+    </g>
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+// Sage — context-manager. Figure with an unrolled scroll, the keeper of
+// distilled run history.
+function bodySage() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- hooded head -->
+    <circle cx="80" cy="62" r="18" class="stroke-main"/>
+    <path d="M58 62 Q58 38 80 36 Q102 38 102 62" class="stroke-main"/>
+    <!-- torso (robe) -->
+    <path d="M64 82 L56 132 L104 132 L96 82 Z" class="stroke-main"/>
+    <line x1="80" y1="82" x2="80" y2="132" class="stroke-thin"/>
+    <!-- arms hold a horizontal unrolled scroll across the chest -->
+    <g class="arm-l">
+      <line x1="64" y1="88" x2="50" y2="98" class="stroke-main"/>
+    </g>
+    <g class="arm-r">
+      <line x1="96" y1="88" x2="110" y2="98" class="stroke-main"/>
+    </g>
+    <!-- scroll: two end-caps + parchment with text lines -->
+    <circle cx="46" cy="100" r="5" class="stroke-main"/>
+    <circle cx="114" cy="100" r="5" class="stroke-main"/>
+    <rect x="46" y="95" width="68" height="10" class="stroke-main" fill="rgba(245,166,35,0.08)"/>
+    <line x1="52" y1="98" x2="108" y2="98" class="stroke-thin"/>
+    <line x1="52" y1="102" x2="100" y2="102" class="stroke-thin"/>
+    </g>
+  </svg>`;
+}
+
+// Loop — the feedback-learner that closes the run (the Learn stage). A
+// recycle/loop motif above the head distinguishes it from the rest of the crew.
+function bodyLoop() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- feedback-loop arrows over the head -->
+    <path d="M64 32 A18 18 0 1 1 62 48" class="stroke-main" fill="none"/>
+    <path d="M62 48 L57 42 M62 48 L69 45" class="stroke-main" fill="none"/>
+    <!-- head -->
+    <circle cx="80" cy="64" r="17" class="stroke-main"/>
+    <!-- body -->
+    <rect x="64" y="81" width="32" height="33" class="stroke-main"/>
+    <!-- arms -->
+    <g class="arm-l"><line x1="64" y1="87" x2="53" y2="106" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="87" x2="107" y2="106" class="stroke-main"/></g>
+    <!-- legs -->
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+
+const BODIES = {
+  pip:     bodyPip,
+  archie:  bodyArchie,
+  foreman: bodyForeman,
+  yara:    bodyYara,
+  bruno:   bodyBruno,
+  pixel:   bodyPixel,
+  tya:    bodyTya,
+  shield:  bodyShield,
+  echo:    bodyEcho,
+  stratos: bodyStratos,
+  crit:    bodyCrit,
+  judge:   bodyJudge,
+  scribe:  bodyScribe,
+  sage:    bodySage,
+  loop:    bodyLoop,
+};
+
+// ══════════════════════════════════════════════════════════
+// RENDER + LAYOUT — fully dynamic character list
+// Characters are created/removed based on what the server sends.
+// IDs are unique per task (e.g. "bruno-1", "bruno-2", "crit-1").
+// ══════════════════════════════════════════════════════════
+let currentCharIds = new Set();
+
+// ══════════════════════════════════════════════════════════
+// V2 — STAGE MODEL. The 6 chapters the real /deliver phases
+// fall into. A character is assigned to a stage by its role
+// (stable) first, then by its active phase label as a fallback.
+// ══════════════════════════════════════════════════════════
+const STAGES = [
+  { id: 'understand', n: 1, label: 'Understand', blurb: 'WHAT · HOW',
+    roles: ['pip', 'archie'],          phases: ['requirements', 'arch'] },
+  { id: 'contract',   n: 2, label: 'Contract',   blurb: 'SCHEMAS · API · PLAN',
+    roles: ['yara', 'foreman'],        phases: ['spec', 'sync', 'plan'] },
+  { id: 'build',      n: 3, label: 'Build',      blurb: 'IMPLEMENT',
+    roles: ['tya', 'bruno', 'pixel', 'echo', 'stratos'], phases: ['impl'] },
+  { id: 'verify',     n: 4, label: 'Verify',     blurb: 'REVIEW · SEC · ASSESS',
+    roles: ['crit', 'shield', 'judge'], phases: ['review', 'security', 'assess'] },
+  { id: 'ship',       n: 5, label: 'Ship',       blurb: 'REPORT · PUBLISH',
+    roles: ['scribe', 'sage'],         phases: ['report', 'publish'] },
+  { id: 'learn',      n: 6, label: 'Learn',      blurb: 'FEEDBACK LOOP',
+    roles: ['loop'],                   phases: ['learn'] },
+];
+const STAGE_INDEX = {};
+const ROLE_STAGE = {};
+const PHASE_STAGE = {};
+STAGES.forEach((s, i) => {
+  STAGE_INDEX[s.id] = i;
+  s.roles.forEach(r => { ROLE_STAGE[r] = s.id; });
+  s.phases.forEach(p => { PHASE_STAGE[p] = s.id; });
+});
+
+// Map a raw phase number (when a char carries no chip sequence) to a label,
+// same convention the v1 sun-label used.
+function rawPhaseToLabel(phase) {
+  const p = String(phase || '').toLowerCase();
+  if (/^5[a-z]?$/.test(p)) return 'impl';
+  if (p === '5.5')  return 'review';
+  if (p === '5.75') return 'security';
+  if (p === '6')    return 'assess';
+  if (p === '1')    return 'requirements';
+  if (p === '2')    return 'arch';
+  if (p === '3' || p === '3a' || p === '3b') return 'spec';
+  if (p === '4')    return 'sync';
+  if (p === '4.5')  return 'plan';
+  if (p === '7')    return 'report';
+  if (p === '8')    return 'publish';
+  return null;
+}
+
+// Resolve which stage a character belongs to. The server now declares a
+// canonical `stage` (role-first, then phase) — trust it when present; the
+// role/phase heuristics below are only a fallback for older server payloads.
+const STAGE_IDS = new Set(['understand', 'contract', 'build', 'verify', 'ship', 'learn']);
+function stageForChar(c) {
+  if (c.stage && STAGE_IDS.has(c.stage)) return c.stage;
+  if (c.role && ROLE_STAGE[c.role]) return ROLE_STAGE[c.role];
+  // active chip first
+  if (Array.isArray(c.phases) && c.activePhaseIndex >= 0) {
+    const lbl = c.phases[c.activePhaseIndex];
+    if (PHASE_STAGE[lbl]) return PHASE_STAGE[lbl];
+    if (String(lbl).startsWith('fix-')) return 'verify';
+  }
+  // any known phase in the sequence, newest first
+  if (Array.isArray(c.phases)) {
+    for (let i = c.phases.length - 1; i >= 0; i--) {
+      const p = c.phases[i];
+      if (PHASE_STAGE[p]) return PHASE_STAGE[p];
+      if (String(p).startsWith('fix-')) return 'verify';
+    }
+  }
+  // raw phase number fallback
+  const lbl = rawPhaseToLabel(c.phase);
+  if (lbl && PHASE_STAGE[lbl]) return PHASE_STAGE[lbl];
+  return 'build'; // unknown crew default to the construction floor
+}
+
+// Build the rail stations + swimlanes once, from the model.
+function initStages() {
+  const rail = document.getElementById('stage-rail');
+  const lanes = document.getElementById('swimlanes');
+  if (!rail || !lanes || rail.childElementCount) return; // idempotent
+  for (const s of STAGES) {
+    const st = document.createElement('div');
+    st.className = 'stage-station';
+    st.id = 'station-' + s.id;
+    st.innerHTML =
+      `<div class="stage-node"><span class="num">${s.n}</span><span class="check">✓</span></div>` +
+      `<div class="stage-name">${s.label}</div>` +
+      `<div class="stage-blurb">${s.blurb}</div>` +
+      `<div class="stage-gate-flag">⏸ waiting</div>`;
+    rail.appendChild(st);
+
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    lane.id = 'lane-wrap-' + s.id;
+    lane.innerHTML =
+      `<div class="lane-head">${s.label} <span class="lane-count">0</span>` +
+      `<span class="lane-state"></span></div>` +
+      `<div class="lane-cards" id="lane-${s.id}"><div class="lane-empty">—</div></div>`;
+    lanes.appendChild(lane);
+  }
+}
+
+function formatTokens(n) {
+  if (!n || n === 0) return '';
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return Math.round(n / 1000) + 'K';
+  return String(n);
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[<>&"']/g, ch => (
+    { '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[ch]
+  ));
+}
+
+// Wall-clock run duration → compact "1h 23m" / "12m 30s" / "45s".
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return '—';
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+
+// Compose a compact "52k · 1:38" metrics string — ask #1. Ordering: tokens
+// first (more important), then duration. Either may be missing; we render
+// only what's there so a working (not-yet-finished) agent shows nothing.
+function formatMetrics(tokens, duration) {
+  const t = formatTokens(tokens);
+  const d = duration && duration !== '—' ? String(duration).trim() : '';
+  if (t && d) return `${t.toLowerCase()} · ${d}`;
+  return t ? t.toLowerCase() : d;
+}
+
+function ensureCard(c) {
+  let card = document.getElementById('card-' + c.id);
+  if (card) return card;
+
+  // Create new card for this character
+  const body = (BODIES[c.role] || bodyPip)();
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.id = 'card-' + c.id;
+  div.dataset.role = c.role;
+  div.innerHTML = `
+    <div class="stage">${body}</div>
+    <div class="char-label">
+      <span class="name" title="${escapeHtml(c.agent)}">${escapeHtml(c.agent)}</span>
+      <span class="repo">${escapeHtml(c.repo || 'cross-repo')}</span>
+      <span class="phase-chip-list" style="display:none"></span>
+      <div class="metrics">
+        <span class="combined">${escapeHtml(formatMetrics(c.tokens, c.duration))}</span>
+      </div>
+      <span class="skipped-chip" style="display:none">skipped</span>
+    </div>
+  `;
+  // V2: every card lives in its stage lane. layout() keeps lane membership +
+  // in-lane ordering current as status changes.
+  const lane = document.getElementById('lane-' + stageForChar(c)) || document.getElementById('lane-build');
+  if (lane) lane.appendChild(div);
+  return div;
+}
+
+function applyState(state) {
+  // update meta — include feature name + run id so parallel UIs for different runs are distinguishable
+  document.getElementById('workspace-name').textContent = state.workspace || '—';
+  document.getElementById('feature-name').textContent = state.featureName || 'Pipeline View';
+  document.getElementById('run-id').textContent = state.runId || '—';
+  document.getElementById('active-file').textContent = state.scratchpadPath || state.activeFile || '—';
+  document.getElementById('updated-at').textContent = state.updatedAt
+    ? new Date(state.updatedAt).toLocaleTimeString()
+    : '—';
+
+  // Also update the browser tab title so the user can distinguish parallel UIs in their tab list.
+  // When waiting (either our gate or Claude approval), the tab title flashing
+  // loop (see titleFlash below) alternates between a ⏸-prefixed and plain form.
+  const waiting = state.awaitingInput;
+  const claudeApproval = state.claudeApproval;
+  const isPaused = !!(waiting || claudeApproval);
+  // v2: remember which phase the gate is on so layout() can flag its station.
+  activeGatePhase = waiting ? (waiting.phase != null ? waiting.phase : null) : null;
+  const baseTitle =
+    state.workspace && state.featureName ? `${state.workspace} · ${state.featureName}` :
+    state.workspace                     ? `${state.workspace} · (waiting for run)` :
+                                          'Pipeline View';
+  setBaseTitle(baseTitle, isPaused);
+
+  // Awaiting-input banner
+  const banner = document.getElementById('awaiting-input');
+  if (waiting) {
+    banner.classList.add('visible');
+    document.getElementById('ai-phase').textContent =
+      waiting.phase ? `phase ${waiting.phase}${waiting.gate ? ' · ' + waiting.gate : ''}` : (waiting.gate || 'gate');
+    document.getElementById('ai-question').textContent =
+      waiting.question || waiting.context_summary || 'Orchestrator paused — switch to your terminal to respond.';
+    if (waiting.since) {
+      const secs = Math.max(0, Math.floor((Date.now() - new Date(waiting.since).getTime()) / 1000));
+      const mins = Math.floor(secs / 60);
+      document.getElementById('ai-since').textContent =
+        mins > 0 ? `waiting ${mins}m ${secs % 60}s` : `waiting ${secs}s`;
+    } else {
+      document.getElementById('ai-since').textContent = '';
+    }
+  } else {
+    banner.classList.remove('visible');
+  }
+
+  // Claude-approval banner (Claude Code's own permission prompt, surfaced via
+  // the notify-hook.js hook). Distinct orange colour, separate since/tool tags.
+  const caBanner = document.getElementById('claude-approval');
+  if (claudeApproval) {
+    caBanner.classList.add('visible');
+    document.getElementById('ca-tool').textContent = claudeApproval.tool || 'tool';
+    document.getElementById('ca-question').textContent =
+      claudeApproval.command_preview ||
+      claudeApproval.message ||
+      'Switch to your terminal — Claude Code is asking for permission.';
+    if (claudeApproval.since) {
+      const secs = Math.max(0, Math.floor((Date.now() - new Date(claudeApproval.since).getTime()) / 1000));
+      const mins = Math.floor(secs / 60);
+      document.getElementById('ca-since').textContent =
+        mins > 0 ? `waiting ${mins}m ${secs % 60}s` : `waiting ${secs}s`;
+    } else {
+      document.getElementById('ca-since').textContent = '';
+    }
+  } else {
+    caBanner.classList.remove('visible');
+  }
+
+  // Drive the audible/visible "keep peeping" cue based on combined state.
+  setPausedState(isPaused);
+
+  if (!state.characters) return;
+
+  const characters = state.characters;
+  const newIds = new Set(characters.map(c => c.id));
+
+  // Remove cards that are no longer in the character list
+  for (const oldId of currentCharIds) {
+    if (!newIds.has(oldId)) {
+      const card = document.getElementById('card-' + oldId);
+      if (card) card.remove();
+    }
+  }
+
+  // Create/update cards for each character
+  for (const c of characters) {
+    const card = ensureCard(c);
+
+    // Update labels (agent name or repo might change between updates)
+    const nameEl = card.querySelector('.char-label .name');
+    const repoEl = card.querySelector('.char-label .repo');
+    const comboEl = card.querySelector('.char-label .metrics .combined');
+    const chipEl = card.querySelector('.char-label .skipped-chip');
+    const phaseListEl = card.querySelector('.char-label .phase-chip-list');
+    if (nameEl) { nameEl.textContent = c.agent; nameEl.title = c.agent; }
+    if (repoEl) repoEl.textContent = c.repo || 'cross-repo';
+    if (comboEl) comboEl.textContent = formatMetrics(c.tokens, c.duration);
+    if (chipEl)  chipEl.style.display = (c.status === 'skipped') ? 'inline-block' : 'none';
+    // Polish round 8 follow-up — phase chip SEQUENCE. Each character carries
+    // an ordered list of phases it passed through (oldest → newest, left →
+    // right), so an impl-then-fix-r1 agent shows BOTH pills, not just the
+    // latest. The currently-active chip (character is working AND this is
+    // the last entry) gets a subtle outline via .active. Queued chars and
+    // chars with no phase history hide the list entirely.
+    if (phaseListEl) {
+      const phases = Array.isArray(c.phases) ? c.phases : [];
+      const cats   = Array.isArray(c.phaseCategories) ? c.phaseCategories : [];
+      const activeIdx = (typeof c.activePhaseIndex === 'number') ? c.activePhaseIndex : -1;
+      if (phases.length > 0 && c.status !== 'queued') {
+        // Only rebuild children when the sequence actually changed — avoids
+        // thrashing the DOM on every SSE tick when nothing moved.
+        const signature = phases.map((p, i) => `${p}/${cats[i] || 'neutral'}/${i === activeIdx && c.status === 'working' ? 'A' : ''}`).join('|');
+        if (phaseListEl.dataset.signature !== signature) {
+          phaseListEl.innerHTML = '';
+          phases.forEach((label, i) => {
+            const pill = document.createElement('span');
+            let cls = 'phase-chip cat-' + (cats[i] || 'neutral');
+            if (c.status === 'working' && i === activeIdx) cls += ' active';
+            pill.className = cls;
+            pill.textContent = label;
+            phaseListEl.appendChild(pill);
+          });
+          phaseListEl.dataset.signature = signature;
+        }
+        phaseListEl.style.display = 'inline-flex';
+      } else {
+        if (phaseListEl.dataset.signature !== '') {
+          phaseListEl.innerHTML = '';
+          phaseListEl.dataset.signature = '';
+        }
+        phaseListEl.style.display = 'none';
+      }
+    }
+
+    // Update state class
+    card.classList.remove('working', 'done', 'queued', 'skipped', 'failed');
+    card.classList.add(c.status);
+  }
+
+  currentCharIds = newIds;
+  layout(characters);
+  updateBuildingProgress(characters);
+
+  // Update summary bar
+  const orchTokens = state.orchestratorTokens || 0;
+  const agentTokens = state.totalAgentTokens || 0;
+  const totalTokens = orchTokens + agentTokens;
+  document.getElementById('orch-tokens').textContent = formatTokens(orchTokens);
+  document.getElementById('agent-tokens').textContent = formatTokens(agentTokens);
+  document.getElementById('total-tokens').textContent = formatTokens(totalTokens);
+  // Hero ship-stats — running totals under the stage headline.
+  const shipTok = document.getElementById('ship-tokens');
+  const shipDur = document.getElementById('ship-duration');
+  if (shipTok) shipTok.textContent = totalTokens > 0 ? formatTokens(totalTokens) : '—';
+  if (shipDur) shipDur.textContent = formatDuration(state.runDurationMs);
+  // Bar fill scaled to a 1M budget: 100% at 1M tokens. When total exceeds
+  // 1M, the bar sticks at 100% and gets a red pulse + "OVER 1M" warning chip.
+  const TOKEN_BUDGET = 1_000_000;
+  const pct = Math.min(100, Math.round((totalTokens / TOKEN_BUDGET) * 100));
+  const bar = document.getElementById('token-bar');
+  const warn = document.getElementById('token-budget-warn');
+  bar.style.width = pct + '%';
+  const overBudget = totalTokens > TOKEN_BUDGET;
+  bar.classList.toggle('warning', overBudget);
+  if (warn) warn.classList.toggle('active', overBudget);
+}
+
+// Ask #4 — two-zone layout. BUILDING zone (top): working + queued.
+// FINISHED zone (bottom): done, failed, skipped. Each card's absolute
+// position is recomputed per state update; the zones are visually fenced
+// by .zone-header + .zone-divider in the DOM.
+// Phase set to gate-stage that the orchestrator is currently blocked on — set
+// by applyState from awaitingInput, read by layout to flag the right station.
+let activeGatePhase = null;
+
+// In-lane status ordering: working on top, then queued, then finished.
+function statusRank(c) {
+  if (c.status === 'working') return 0;
+  if (c.status === 'queued' || !c.status) return 1;
+  return 2; // done / failed / skipped
+}
+
+function layout(characters) {
+  initStages();
+
+  // Bucket characters by stage, preserving status info.
+  const byStage = {};
+  for (const s of STAGES) byStage[s.id] = [];
+  for (const c of characters) {
+    const sid = stageForChar(c);
+    (byStage[sid] || byStage.build).push(c);
+  }
+
+  // Place each card into its stage lane, ordered working → queued → finished.
+  for (const s of STAGES) {
+    const laneCards = document.getElementById('lane-' + s.id);
+    if (!laneCards) continue;
+    const list = byStage[s.id].slice().sort((a, b) =>
+      statusRank(a) - statusRank(b) || String(a.id).localeCompare(String(b.id)));
+    for (const c of list) {
+      const el = document.getElementById('card-' + c.id);
+      if (!el) continue;
+      el.style.removeProperty('--qx');
+      el.style.removeProperty('--qy');
+      laneCards.appendChild(el); // appendChild re-orders if already present
+    }
+    // empty-lane placeholder
+    let empty = laneCards.querySelector('.lane-empty');
+    const hasCards = laneCards.querySelector('.card');
+    if (!hasCards && !empty) {
+      empty = document.createElement('div');
+      empty.className = 'lane-empty';
+      empty.textContent = '—';
+      laneCards.appendChild(empty);
+    } else if (empty) {
+      empty.style.display = hasCards ? 'none' : 'block';
+    }
+  }
+
+  // Per-stage state + rail/lane/monument/headline.
+  const gatedStage = (() => {
+    const lbl = rawPhaseToLabel(activeGatePhase);
+    return lbl ? PHASE_STAGE[lbl] : null;
+  })();
+  const loopDone = characters.some(c => c.role === 'loop' && c.status === 'done');
+
+  // Pass 1 — raw state + counts per stage (no DOM yet).
+  let activeStageId = null;        // rightmost stage with a working agent
+  let lastResolvedId = null;       // rightmost stage that's done
+  const stageState = {};
+  const stageCounts = {};
+  STAGES.forEach((s) => {
+    const cs = byStage[s.id];
+    const total = cs.length;
+    const working = cs.filter(c => c.status === 'working').length;
+    const queued  = cs.filter(c => c.status === 'queued' || !c.status).length;
+    let state;
+    if (working > 0) state = 'active';
+    else if (total > 0 && queued === 0) state = 'done';     // all terminal (done/skipped/failed)
+    else if (total > 0) state = 'pending';                  // some queued, not started/finished
+    else state = 'upcoming';                                // no crew yet
+    stageState[s.id] = state;
+    stageCounts[s.id] = { total, working, queued };
+    if (state === 'active') activeStageId = s.id;
+  });
+
+  // Run-complete override: once the run wraps (Loop done, or Understand..Ship
+  // all resolved), a stage left 'pending' only by a skipped/optional agent
+  // (e.g. security-consultant never triggered) is effectively finished — flip
+  // it to 'done' so the rail reads as a clean finish rather than stuck on a
+  // skipped step.
+  const loopDoneComplete = loopDone;
+  const shippedRaw = STAGES.slice(0, 5).every(s => stageState[s.id] === 'done' || stageState[s.id] === 'upcoming') &&
+                     stageState['ship'] === 'done';
+  const complete = loopDoneComplete || shippedRaw;
+  if (complete) {
+    STAGES.forEach((s) => { if (stageState[s.id] === 'pending') stageState[s.id] = 'done'; });
+  }
+  STAGES.forEach((s) => { if (stageState[s.id] === 'done') lastResolvedId = s.id; });
+
+  // Pass 2 — apply station + lane chrome from (possibly overridden) state.
+  STAGES.forEach((s) => {
+    const state = stageState[s.id];
+    const { total, working, queued } = stageCounts[s.id];
+    const st = document.getElementById('station-' + s.id);
+    if (st) {
+      st.classList.toggle('active',  state === 'active');
+      st.classList.toggle('done',    state === 'done');
+      st.classList.toggle('pending', state === 'pending');
+      st.classList.toggle('gated',   gatedStage === s.id);
+    }
+    const lane = document.getElementById('lane-wrap-' + s.id);
+    if (lane) {
+      lane.classList.toggle('active', state === 'active');
+      lane.classList.toggle('done',   state === 'done');
+      const cnt = lane.querySelector('.lane-count');
+      const stt = lane.querySelector('.lane-state');
+      if (cnt) cnt.textContent = total;
+      if (stt) {
+        stt.textContent =
+          state === 'active' ? `${working} working` :
+          state === 'done'   ? 'done' :
+          state === 'pending'? `${queued} queued` : '';
+      }
+    }
+  });
+
+  // Monument: one tier per resolved stage (count, so a stage finishing out of
+  // order can't over-fill the pyramid). loopDone tops it out.
+  let builtTiers = STAGES.filter(s => stageState[s.id] === 'done').length;
+  if (loopDone) builtTiers = 6;
+  const totem = document.getElementById('monument-totem');
+  if (totem) {
+    totem.querySelectorAll('.tier').forEach((t) => {
+      t.classList.toggle('built', Number(t.dataset.tier) <= builtTiers);
+    });
+  }
+  if (totem) totem.classList.toggle('complete', complete);
+  const cap = document.getElementById('monument-caption');
+  if (cap) {
+    cap.classList.toggle('complete', complete);
+    cap.innerHTML = complete
+      ? '✓ feature shipped'
+      : `<b>${builtTiers}</b> / 6 stages complete`;
+  }
+  maybeCelebrate(complete);
+
+  // Headline — the sun-disc of Ra stays golden; completion is signalled by the
+  // green checks / flag / headline, not by recolouring the sun.
+  const headline = document.getElementById('stage-headline');
+  const hlLabel = document.getElementById('stage-headline-label');
+  let label;
+  if (complete) label = 'SHIPPED ✓';
+  else if (activeStageId) label = STAGES[STAGE_INDEX[activeStageId]].label;
+  else if (gatedStage) label = STAGES[STAGE_INDEX[gatedStage]].label + ' · paused';
+  else if (lastResolvedId) label = STAGES[STAGE_INDEX[lastResolvedId]].label + ' done';
+  else label = 'starting…';
+  if (hlLabel) hlLabel.textContent = label.toUpperCase();
+  if (headline) headline.classList.toggle('complete', complete);
+}
+
+// updateBuildingProgress is folded into layout() in v2; kept as a no-op so the
+// existing applyState() call site stays valid.
+function updateBuildingProgress() {}
+
+// ── completion celebration — a short confetti sprinkle, fired once per
+// transition into the "complete" state. ──
+let celebrated = false;
+function maybeCelebrate(complete) {
+  if (!complete) { celebrated = false; return; }
+  if (celebrated) return;
+  celebrated = true;
+  const layer = document.getElementById('confetti-layer');
+  if (!layer) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#f5a623', '#4ade80', '#93c5fd', '#fdba74', '#d8b4fe'];
+  layer.innerHTML = '';
+  for (let i = 0; i < 80; i++) {
+    const bit = document.createElement('div');
+    bit.className = 'confetti-bit';
+    bit.style.left = (Math.floor((i / 80) * 100)) + '%';
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDuration = (2.4 + (i % 5) * 0.5) + 's';
+    bit.style.animationDelay = ((i % 10) * 0.12) + 's';
+    layer.appendChild(bit);
+  }
+  layer.classList.add('celebrate');
+  setTimeout(() => { layer.classList.remove('celebrate'); layer.innerHTML = ''; }, 6500);
+}
+
+// ══════════════════════════════════════════════════════════
+// AUDIO — persistent peep while any "waiting" banner is up.
+// Uses Web Audio to synthesize the beep (no external asset).
+// Browsers block AudioContext until user gesture; we gate
+// creation behind an explicit click + localStorage opt-in.
+// Ask #2 adds an in-memory mute toggle that auto-unmutes on
+// the next gate (different `since`) or when the gate clears.
+// ══════════════════════════════════════════════════════════
+const BEEP_INTERVAL_MS = 4000; // one peep every 4s
+const SOUND_STORAGE_KEY = 'pipelineview.sound-enabled';
+let audioCtx = null;
+let beepTimer = null;
+let soundEnabled = localStorage.getItem(SOUND_STORAGE_KEY) === '1';
+// Mute state (in-memory, per-session only — intentionally NOT localStorage'd,
+// we want a page reload to un-mute so stale silence doesn't persist).
+let muted = false;
+// Timestamp ("since") of the gate that was active when mute was last toggled.
+// A NEW gate (different since) auto-unmutes so the user doesn't miss the next
+// notification because they silenced an earlier one.
+let muteActiveSince = null;
+
+function playBeep() {
+  if (!audioCtx || audioCtx.state === 'closed') return;
+  try {
+    // Two-tone chirp — 880→660Hz over 180ms — audible on low speakers, short
+    // enough not to annoy, distinctive from system sounds.
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(660, now + 0.18);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  } catch (_) {}
+}
+
+function startBeeping() {
+  if (beepTimer) return;
+  if (!soundEnabled) return; // visual-only until user clicks the pill
+  if (muted) return;          // ask #2 — banner still pulses + title flashes, just no audio
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { return; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  playBeep();
+  beepTimer = setInterval(playBeep, BEEP_INTERVAL_MS);
+}
+
+function stopBeeping() {
+  if (beepTimer) { clearInterval(beepTimer); beepTimer = null; }
+}
+
+function enableSound() {
+  soundEnabled = true;
+  localStorage.setItem(SOUND_STORAGE_KEY, '1');
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+  catch (_) { return; }
+  // An initial zero-gain tick counts as a user-initiated sound for the
+  // autoplay gate and unlocks the context for subsequent playBeep() calls.
+  playBeep();
+  syncSoundPills();
+  // Kick off the peeping loop immediately if a gate is active right now. Check
+  // the live banner state (activeGateSince) in addition to currentPaused: the
+  // user often clicks "enable sound" in the window between a gate appearing and
+  // the next applyState() that flips currentPaused — which is why sound used to
+  // start only after a manual mute/unmute cycle. startBeeping() is idempotent.
+  if (currentPaused || activeGateSince()) startBeeping();
+}
+
+function syncSoundPills() {
+  for (const id of ['sound-enable-ai', 'sound-enable-ca']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (soundEnabled) el.classList.add('enabled');
+    else el.classList.remove('enabled');
+  }
+}
+
+document.getElementById('sound-enable-ai').addEventListener('click', enableSound);
+document.getElementById('sound-enable-ca').addEventListener('click', enableSound);
+syncSoundPills();
+
+// ══════════════════════════════════════════════════════════
+// PAUSED STATE — drives audio + tab-title flashing. Both
+// banners feed into this single flag so audio doesn't
+// double-peep when both happen to show at once.
+// ══════════════════════════════════════════════════════════
+let currentPaused = false;
+let titleBase = 'Pipeline View';
+let titleFlashTimer = null;
+let titleFlashOn = false;
+
+function setBaseTitle(base, paused) {
+  titleBase = base;
+  if (!paused) {
+    document.title = base;
+  }
+  // If paused, let the flash loop handle the actual document.title updates.
+}
+
+function startTitleFlash() {
+  if (titleFlashTimer) return;
+  titleFlashOn = true;
+  document.title = `⏸ ${titleBase}`;
+  titleFlashTimer = setInterval(() => {
+    titleFlashOn = !titleFlashOn;
+    document.title = titleFlashOn ? `⏸ ${titleBase}` : titleBase;
+  }, 2000);
+}
+
+function stopTitleFlash() {
+  if (titleFlashTimer) { clearInterval(titleFlashTimer); titleFlashTimer = null; }
+  document.title = titleBase;
+}
+
+function setPausedState(paused) {
+  if (paused === currentPaused) return;
+  currentPaused = paused;
+  if (paused) { startBeeping(); startTitleFlash(); }
+  else        { stopBeeping();  stopTitleFlash();  }
+}
+
+// ── Mute toggle (ask #2). Auto-unmute logic lives in applyState — we observe
+// the composite "since" of whatever banner is showing and unmute if it
+// changes (new gate) or disappears (gate closed).
+function setMuted(next) {
+  if (next === muted) return;
+  muted = next;
+  const btn = document.getElementById('mute-btn');
+  if (btn) {
+    btn.classList.toggle('muted', muted);
+    btn.textContent = muted ? '🔕' : '🔔';
+    btn.setAttribute('aria-label', muted ? 'unmute notifications' : 'mute notifications');
+    btn.title = muted
+      ? 'Notification sounds muted — auto-unmutes on the next gate'
+      : 'Mute notification sounds (resets on next gate)';
+  }
+  if (muted) {
+    stopBeeping();
+  } else if (currentPaused) {
+    startBeeping();
+  }
+}
+
+const muteBtnEl = document.getElementById('mute-btn');
+if (muteBtnEl) {
+  muteBtnEl.addEventListener('click', () => {
+    // Snapshot the currently active gate's since so a new gate unmutes us.
+    muteActiveSince = activeGateSince();
+    setMuted(!muted);
+  });
+}
+
+// Returns the "since" timestamp of whichever banner is currently active, or
+// null if none. Composite so muting during either a pipeline gate or Claude
+// approval handles both.
+function activeGateSince() {
+  return lastWaitingSince || lastClaudeApprovalSince || null;
+}
+
+// Auto-unmute handler — called every applyState after since-tracking updates.
+function reconcileMuteAgainst(latestSince) {
+  if (!muted) return;
+  // Gate closed entirely → unmute.
+  if (!latestSince) { setMuted(false); muteActiveSince = null; return; }
+  // A NEW gate appeared (different `since`) — unmute so we don't miss it.
+  if (muteActiveSince && latestSince !== muteActiveSince) {
+    setMuted(false);
+    muteActiveSince = null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// SSE — live updates from the server
+// ══════════════════════════════════════════════════════════
+function connect() {
+  const evt = new EventSource('/events');
+  const status = document.getElementById('live-status');
+  evt.onopen = () => { status.textContent = 'LIVE'; };
+  evt.onmessage = (m) => {
+    try {
+      const state = JSON.parse(m.data);
+      applyState(state);
+    } catch (e) {
+      console.error('Failed to parse SSE payload', e);
+    }
+  };
+  evt.onerror = () => {
+    status.textContent = 'RECONNECTING';
+    evt.close();
+    setTimeout(connect, 2000);
+  };
+}
+
+// ── Ticker: advance the "waiting Xs" counters every second even when no SSE update arrives
+let lastWaitingSince = null;
+let lastClaudeApprovalSince = null;
+function formatSince(since) {
+  const secs = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 1000));
+  const mins = Math.floor(secs / 60);
+  return mins > 0 ? `waiting ${mins}m ${secs % 60}s` : `waiting ${secs}s`;
+}
+setInterval(() => {
+  if (lastWaitingSince) {
+    const el = document.getElementById('ai-since');
+    if (el) el.textContent = formatSince(lastWaitingSince);
+  }
+  if (lastClaudeApprovalSince) {
+    const el = document.getElementById('ca-since');
+    if (el) el.textContent = formatSince(lastClaudeApprovalSince);
+  }
+}, 1000);
+
+// Wrap applyState to also drive the ticker's since-time, reconcile mute state
+// (ask #2), and surface hook errors (ask #3).
+const _originalApplyState = applyState;
+applyState = function(state) {
+  _originalApplyState(state);
+  lastWaitingSince = state && state.awaitingInput && state.awaitingInput.since ? state.awaitingInput.since : null;
+  lastClaudeApprovalSince = state && state.claudeApproval && state.claudeApproval.since ? state.claudeApproval.since : null;
+  reconcileMuteAgainst(activeGateSince());
+  renderHookErrors(state && state.hookErrors);
+};
+
+// Render hook-error indicator (ask #3). Shows the most recent entry in the
+// visible pill; full list surfaces via the title attribute on hover.
+function renderHookErrors(errors) {
+  const pill = document.getElementById('hook-error');
+  const label = document.getElementById('hook-error-label');
+  if (!pill || !label) return;
+  if (!errors || !errors.length) {
+    pill.classList.remove('visible');
+    pill.removeAttribute('title');
+    return;
+  }
+  pill.classList.add('visible');
+  const latest = errors[errors.length - 1];
+  const count = errors.length;
+  label.textContent = count > 1 ? `hook error ×${count}` : 'hook error';
+  // Multi-line title — browsers render \n in title tooltips on most platforms.
+  pill.title = errors.map(e => {
+    const when = e.ts ? new Date(e.ts).toLocaleTimeString() : '?';
+    const ctx = e.context ? ' [' + JSON.stringify(e.context) + ']' : '';
+    return `${when} (${e.source}) — ${e.error}${ctx}`;
+  }).join('\n');
+}
+
+// ── Workspace overview drawer (/discover outputs)
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// Lazy-load Mermaid.js on first drawer open. Returns a promise that resolves
+// to the mermaid global once the script is ready.
+let mermaidLoadPromise = null;
+function loadMermaid() {
+  if (window.mermaid) return Promise.resolve(window.mermaid);
+  if (mermaidLoadPromise) return mermaidLoadPromise;
+  mermaidLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/mermaid.min.js';
+    s.onload = () => {
+      try {
+        window.mermaid.initialize({
+          startOnLoad: false,
+          theme: 'dark',
+          themeVariables: {
+            background: '#1a1410',
+            primaryColor: '#3a2a1a',
+            primaryBorderColor: '#f5a623',
+            primaryTextColor: '#d9c3a0',
+            lineColor: '#a88a50',
+            secondaryColor: '#2a2a3a',
+            tertiaryColor: '#1a1410',
+          },
+          securityLevel: 'loose',
+          flowchart: { curve: 'basis', htmlLabels: true },
+        });
+        resolve(window.mermaid);
+      } catch (e) { reject(e); }
+    };
+    s.onerror = () => reject(new Error('Failed to load mermaid.min.js'));
+    document.head.appendChild(s);
+  });
+  return mermaidLoadPromise;
+}
+
+// Lazy-load marked.js on first drawer open.
+let markedLoadPromise = null;
+function loadMarked() {
+  if (window.marked) return Promise.resolve(window.marked);
+  if (markedLoadPromise) return markedLoadPromise;
+  markedLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/marked.min.js';
+    s.onload = () => {
+      try {
+        window.marked.setOptions({ gfm: true, breaks: false, headerIds: false, mangle: false });
+        resolve(window.marked);
+      } catch (e) { reject(e); }
+    };
+    s.onerror = () => reject(new Error('Failed to load marked.min.js'));
+    document.head.appendChild(s);
+  });
+  return markedLoadPromise;
+}
+
+// Render markdown source into an element (using marked.js). Safe-ish because
+// the input comes from the workspace's own platform.md / design-system.md,
+// not from user-supplied input.
+async function renderMarkdownInto(container, source) {
+  try {
+    const marked = await loadMarked();
+    container.innerHTML = marked.parse(source);
+  } catch (e) {
+    container.textContent = source;  // fallback: raw text, not HTML
+  }
+}
+
+// Render a single Mermaid source into an element. Handles Mermaid's async API.
+async function renderMermaidInto(container, source) {
+  try {
+    const mermaid = await loadMermaid();
+    const id = 'mermaid-svg-' + Date.now();
+    const { svg } = await mermaid.render(id, source);
+    container.innerHTML = svg;
+  } catch (e) {
+    container.innerHTML = `<p style="color:#ff9999;">Failed to render diagram: ${escapeHtml(e.message)}</p>`;
+  }
+}
+function renderWorkspaceOverview(data) {
+  const body = document.getElementById('project-drawer-body');
+  if (!body) return;
+  if (!data) { body.textContent = 'No data.'; return; }
+
+  // Per-tab content buckets. Each tab is rendered only if its `parts` array
+  // is non-empty — keeps the tab strip lean for sparse workspaces.
+  const tabs = {
+    overview:     { label: 'Overview',       parts: [] },
+    architecture: { label: 'Architecture',   parts: [] },
+    platform:     { label: 'Domain context', parts: [] },
+    audit:        { label: 'Audit',          parts: [] },
+    discover:     { label: 'Discover',       parts: [] },
+    features:     { label: 'Features',       parts: [] },
+    learnings:    { label: 'Learnings',      parts: [] },
+  };
+  const parts = tabs.overview.parts; // back-compat alias for the legacy flow
+
+  // ──────────────── Architecture tab ────────────────
+  if (data.architecture_overview_mermaid) {
+    tabs.architecture.parts.push('<h3>Architecture — high-level blocks</h3>');
+    tabs.architecture.parts.push('<div class="arch-diagram" id="arch-overview-container">Loading diagram…</div>');
+    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/diagrams/architecture-overview.mmd</code> — capability-shaped view (5-8 blocks, sync vs async only)</div>');
+  }
+  if (data.architecture_mermaid) {
+    tabs.architecture.parts.push('<h3>Architecture — detailed topology</h3>');
+    tabs.architecture.parts.push('<div class="arch-diagram" id="arch-diagram-container">Loading diagram…</div>');
+    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/diagrams/architecture.mmd</code> — every service, DB, queue, Lambda, with specific edge labels</div>');
+  }
+
+  // ──────────────── Overview tab — domain + repos + services ────────────────
+  parts.push('<h3>Domain</h3>');
+  if (data.domain) {
+    const d = data.domain;
+    parts.push('<table>');
+    if (d.name) parts.push(`<tr><th>Name</th><td>${escapeHtml(d.name)}</td></tr>`);
+    if (d.domain_notes) parts.push(`<tr><th>What it does</th><td>${escapeHtml(d.domain_notes)}</td></tr>`);
+    if (d.user_roles) parts.push(`<tr><th>User roles</th><td>${escapeHtml((d.user_roles || []).join(', '))}</td></tr>`);
+    if (d.i18n_languages) parts.push(`<tr><th>Languages</th><td>${escapeHtml((d.i18n_languages || []).join(', '))}${d.rtl_support ? ' (RTL)' : ''}</td></tr>`);
+    if (d.auth_type) parts.push(`<tr><th>Auth</th><td>${escapeHtml(d.auth_type)}</td></tr>`);
+    parts.push('</table>');
+  } else {
+    parts.push('<p style="color:var(--muted);">No domain block in config.json</p>');
+  }
+
+  parts.push(`<h3>Repos (${data.repos.length})</h3>`);
+  if (data.repos.length) {
+    parts.push('<table><tr><th>Key</th><th>Type</th><th>Role</th><th>Spec</th></tr>');
+    data.repos.forEach(r => {
+      parts.push(`<tr><td>${escapeHtml(r.key)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.role)}</td><td>${escapeHtml(r.spec_file || '—')}</td></tr>`);
+    });
+    parts.push('</table>');
+  }
+
+  if (data.services.length) {
+    parts.push(`<h3>Services (${data.services.length})</h3>`);
+    parts.push('<table><tr><th>Key</th><th>Repo</th><th>Policy</th><th>Spec</th></tr>');
+    data.services.forEach(s => {
+      parts.push(`<tr><td>${escapeHtml(s.key)}</td><td>${escapeHtml(s.repo)}</td><td>${escapeHtml(s.spec_policy)}</td><td>${escapeHtml(s.spec_file || '—')}</td></tr>`);
+    });
+    parts.push('</table>');
+  }
+
+  // ──────────────── Audit tab ────────────────
+  if (data.audit_summary) {
+    const a = data.audit_summary;
+    tabs.audit.parts.push('<h3>Audit findings</h3>');
+    tabs.audit.parts.push('<div>');
+    for (const sev of ['critical', 'high', 'medium', 'low']) {
+      tabs.audit.parts.push(`<span class="audit-pill ${sev}">${sev} ${a[sev] || 0}</span>`);
+    }
+    tabs.audit.parts.push('</div>');
+    tabs.audit.parts.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">See <code>context/audit-findings.md</code> for full list with file:line references.</p>');
+  }
+
+  // ──────────────── Discover tab — last discover run + design systems ────────────────
+  if (data.last_discover_run) {
+    const run = data.last_discover_run;
+    tabs.discover.parts.push('<h3>Last discover run</h3>');
+    tabs.discover.parts.push('<table>');
+    tabs.discover.parts.push(`<tr><th>Run ID</th><td>${escapeHtml(run.run_id)}</td></tr>`);
+    tabs.discover.parts.push(`<tr><th>Updated</th><td>${escapeHtml(run.updated_at)}</td></tr>`);
+    if (run.total_tokens) {
+      const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+      tabs.discover.parts.push(`<tr><th>Total</th><td>${fmt(run.total_tokens)} tokens across ${run.total_agents} agent dispatches</td></tr>`);
+    }
+    tabs.discover.parts.push('</table>');
+
+    if (run.phase_breakdown && run.phase_breakdown.length) {
+      tabs.discover.parts.push('<table style="margin-top:8px;">');
+      tabs.discover.parts.push('<tr><th>Phase</th><th>Stage</th><th>Agents</th><th>Duration</th><th>Tokens</th></tr>');
+      const fmtMs = ms => {
+        if (ms < 1000) return ms + 'ms';
+        const s = Math.round(ms / 1000);
+        if (s < 60) return s + 's';
+        const m = Math.floor(s / 60); const rs = s % 60;
+        return m + 'm' + (rs ? ' ' + rs + 's' : '');
+      };
+      const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+      run.phase_breakdown.forEach(p => {
+        tabs.discover.parts.push(`<tr><td><b>${escapeHtml(p.phase)}</b></td><td>${escapeHtml(p.stage || '—')}</td><td>${p.agent_count}</td><td>${fmtMs(p.duration_ms)}</td><td>${fmtTok(p.tokens)}</td></tr>`);
+      });
+      tabs.discover.parts.push('</table>');
+      tabs.discover.parts.push('<p style="color:var(--muted); font-size:10px; margin-top:4px;">Tokens aggregated from <code>checkpoints.jsonl</code> — sums <code>agent_end.total_tokens</code> per phase. Orchestrator overhead not included.</p>');
+    }
+  }
+
+  // ──────────────── Features tab — every /deliver run as collapsible row ────────────────
+  if (data.deliver_runs && data.deliver_runs.length) {
+    const fp = tabs.features.parts;
+    fp.push(`<h3>Delivered features (${data.deliver_runs.length})</h3>`);
+    fp.push('<p style="color:var(--muted); font-size:10px; margin:-4px 0 4px;">Click a feature to load its execution report, PRs, and phase breakdown. Sorted newest first.</p>');
+    fp.push('<div style="display:flex; gap:6px; margin:6px 0; align-items:center;">');
+    fp.push('<input type="text" id="deliver-runs-filter" placeholder="Filter by feature / run id…" style="flex:1; padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    fp.push('<select id="deliver-runs-status-filter" style="padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    fp.push('<option value="">All statuses</option>');
+    const allStatuses = Array.from(new Set(data.deliver_runs.map(r => r.status).filter(Boolean))).sort();
+    allStatuses.forEach(s => {
+      fp.push(`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
+    });
+    fp.push('</select>');
+    fp.push('</div>');
+    fp.push('<div id="deliver-runs-list">');
+    data.deliver_runs.forEach((run, idx) => {
+      const headingTitle = run.feature_name || run.run_id;
+      const isLatest = idx === 0;
+      const badge = isLatest
+        ? ' <span style="font-size:10px; padding:1px 6px; border-radius:3px; background:#2da44e; color:white; margin-left:6px;">LATEST</span>'
+        : '';
+      const statusBadge = run.status
+        ? ` <span style="font-size:10px; padding:1px 6px; border-radius:3px; background:rgba(127,127,127,0.2); color:var(--muted); margin-left:6px;">${escapeHtml(run.status)}</span>`
+        : '';
+      const dateStr = run.updated_at ? run.updated_at.slice(0, 10) : '';
+      const filterText = ((run.feature_name || '') + ' ' + run.run_id).toLowerCase();
+      fp.push(`<details class="deliver-run-block" data-run-id="${escapeHtml(run.run_id)}" data-filter-text="${escapeHtml(filterText)}" data-status="${escapeHtml(run.status || '')}" style="margin-top:8px; padding:6px 8px; border:1px solid var(--border, #333); border-radius:4px;">`);
+      fp.push(`<summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px;">`);
+      fp.push(`<span><span class="feature-name">${escapeHtml(headingTitle)}</span>${badge}${statusBadge}</span>`);
+      fp.push(`<span style="font-size:11px; color:var(--muted);">${escapeHtml(dateStr)}</span>`);
+      fp.push(`</summary>`);
+      fp.push(`<div class="deliver-run-detail" id="deliver-run-detail-${idx}" style="margin-top:8px;">`);
+      fp.push(`<p style="color:var(--muted); font-size:11px;">Loading detail…</p>`);
+      fp.push(`</div>`);
+      fp.push(`</details>`);
+    });
+    fp.push('</div>');
+    fp.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">Source: <code>runs/deliver/{run-id}/</code> — phase tokens from <code>checkpoints.jsonl</code>; PR URLs from <code>pr_urls.json</code> (falls back to <code>report.md</code> regex if absent).</p>');
+  }
+
+  // ──────────────── Learnings tab — every /learn run ────────────────
+  if (data.learn_runs && data.learn_runs.length) {
+    const lp = tabs.learnings.parts;
+    lp.push(`<h3>Learnings captured (${data.learn_runs.length})</h3>`);
+    lp.push('<p style="color:var(--muted); font-size:10px; margin:-4px 0 4px;">Each row is one <code>/learn</code> run. Click to load the learner output and finding counts. Sorted newest first.</p>');
+    lp.push('<div style="display:flex; gap:6px; margin:6px 0; align-items:center;">');
+    lp.push('<input type="text" id="learn-runs-filter" placeholder="Filter by source / run id…" style="flex:1; padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    lp.push('<select id="learn-runs-source-filter" style="padding:4px 6px; font-size:12px; border:1px solid var(--border, #333); background:var(--bg, transparent); color:inherit; border-radius:3px;">');
+    lp.push('<option value="">All sources</option>');
+    const allSources = Array.from(new Set(data.learn_runs.map(r => r.source_mode).filter(Boolean))).sort();
+    allSources.forEach(s => {
+      lp.push(`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
+    });
+    lp.push('</select>');
+    lp.push('</div>');
+    lp.push('<div id="learn-runs-list">');
+    data.learn_runs.forEach((run, idx) => {
+      const dateStr = run.updated_at ? run.updated_at.slice(0, 10) : '';
+      const filterText = ((run.source_label || '') + ' ' + run.run_id).toLowerCase();
+      const srcBadge = run.source_mode
+        ? ` <span style="font-size:10px; padding:1px 6px; border-radius:3px; background:rgba(100,150,200,0.2); color:var(--muted); margin-left:6px;">${escapeHtml(run.source_mode)}</span>`
+        : '';
+      lp.push(`<details class="learn-run-block" data-run-id="${escapeHtml(run.run_id)}" data-filter-text="${escapeHtml(filterText)}" data-source="${escapeHtml(run.source_mode || '')}" style="margin-top:8px; padding:6px 8px; border:1px solid var(--border, #333); border-radius:4px;">`);
+      lp.push(`<summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px;">`);
+      lp.push(`<span><b>${escapeHtml(run.source_label || run.run_id)}</b>${srcBadge}</span>`);
+      lp.push(`<span style="font-size:11px; color:var(--muted);">${escapeHtml(dateStr)}</span>`);
+      lp.push(`</summary>`);
+      lp.push(`<div class="learn-run-detail" id="learn-run-detail-${idx}" style="margin-top:8px;">`);
+      lp.push(`<p style="color:var(--muted); font-size:11px;">Loading detail…</p>`);
+      lp.push(`</div>`);
+      lp.push(`</details>`);
+    });
+    lp.push('</div>');
+    lp.push('<p style="color:var(--muted); font-size:10px; margin-top:6px;">Source: <code>runs/learn/{run-id}/learner-output.md</code> + <code>checkpoints.jsonl</code>.</p>');
+  }
+
+  // ──────────────── Discover tab — design systems also live here ────────────────
+  if (data.design_systems && data.design_systems.length) {
+    tabs.discover.parts.push(`<h3>Design systems (${data.design_systems.length})</h3>`);
+    data.design_systems.forEach((ds, i) => {
+      tabs.discover.parts.push(`<div style="margin-bottom:12px;"><b>${escapeHtml(ds.repo)}</b><div class="md-rendered" id="ds-md-${i}">Loading…</div></div>`);
+    });
+  }
+
+  // ──────────────── Platform tab ────────────────
+  if (data.platform_md_excerpt) {
+    tabs.platform.parts.push('<h3>Platform context</h3>');
+    tabs.platform.parts.push('<div class="md-rendered" id="platform-md-container">Loading…</div>');
+    tabs.platform.parts.push(`<p style="color:var(--muted); font-size:10px; margin-top:4px;">Source: <code>context/platform.md</code> (${data.platform_md_total_lines} lines) — rendered with GFM tables</p>`);
+  }
+
+  // ─── Assemble tab strip + panels ───
+  const tabOrder = ['overview', 'architecture', 'platform', 'discover', 'audit', 'features', 'learnings'];
+  const visible = tabOrder.filter(k => tabs[k].parts.length > 0);
+  let firstActive = true;
+  const out = [];
+  out.push('<div class="drawer-tabs" role="tablist">');
+  visible.forEach(k => {
+    const cls = firstActive ? 'drawer-tab active' : 'drawer-tab';
+    out.push(`<button type="button" class="${cls}" data-tab="${k}" role="tab">${escapeHtml(tabs[k].label)}</button>`);
+    firstActive = false;
+  });
+  out.push('</div>');
+  firstActive = true;
+  visible.forEach(k => {
+    const cls = firstActive ? 'drawer-tab-panel active' : 'drawer-tab-panel';
+    out.push(`<section class="${cls}" data-tab-panel="${k}" role="tabpanel">`);
+    out.push(tabs[k].parts.join('\n'));
+    out.push('</section>');
+    firstActive = false;
+  });
+  body.innerHTML = out.join('\n');
+
+  // Tab click handler — toggle active class on buttons + panels.
+  body.querySelectorAll('.drawer-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-tab');
+      body.querySelectorAll('.drawer-tab').forEach(b => b.classList.toggle('active', b === btn));
+      body.querySelectorAll('.drawer-tab-panel').forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-tab-panel') === target);
+      });
+    });
+  });
+
+  // After the HTML is in the DOM, render each Mermaid diagram + markdown block.
+  if (data.architecture_overview_mermaid) {
+    const c = document.getElementById('arch-overview-container');
+    if (c) renderMermaidInto(c, data.architecture_overview_mermaid);
+  }
+  if (data.architecture_mermaid) {
+    const c = document.getElementById('arch-diagram-container');
+    if (c) renderMermaidInto(c, data.architecture_mermaid);
+  }
+  if (data.platform_md_excerpt) {
+    const c = document.getElementById('platform-md-container');
+    if (c) renderMarkdownInto(c, data.platform_md_excerpt);
+  }
+  // Filter wiring for deliver_runs list.
+  const wireListFilter = (textInputId, dropdownId, listSelector, dropdownAttr) => {
+    const input = document.getElementById(textInputId);
+    const sel = document.getElementById(dropdownId);
+    if (!input && !sel) return;
+    const apply = () => {
+      const q = (input?.value || '').toLowerCase().trim();
+      const sval = sel?.value || '';
+      document.querySelectorAll(listSelector).forEach(row => {
+        const ftext = row.getAttribute('data-filter-text') || '';
+        const sattr = row.getAttribute(dropdownAttr) || '';
+        const matchText = !q || ftext.includes(q);
+        const matchSel = !sval || sattr === sval;
+        row.style.display = (matchText && matchSel) ? '' : 'none';
+      });
+    };
+    input?.addEventListener('input', apply);
+    sel?.addEventListener('change', apply);
+  };
+  wireListFilter('deliver-runs-filter', 'deliver-runs-status-filter', 'details.deliver-run-block', 'data-status');
+  wireListFilter('learn-runs-filter', 'learn-runs-source-filter', 'details.learn-run-block', 'data-source');
+
+  if (data.deliver_runs && data.deliver_runs.length) {
+    // Lazy-fetch each run's detail (report.md, PRs, phase breakdown) only when
+    // its <details> block is expanded. The server sends only metadata up front;
+    // detail comes from /deliver-run-detail?run_id=… and is cached per-run so
+    // re-collapsing/re-expanding doesn't re-fetch.
+    const detailCache = new Map();  // run_id → rendered HTML string
+    const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    const fmtMs = ms => {
+      if (ms < 1000) return ms + 'ms';
+      const s = Math.round(ms / 1000);
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60); const rs = s % 60;
+      return m + 'm' + (rs ? ' ' + rs + 's' : '');
+    };
+    const renderRunDetail = (detail) => {
+      const out = [];
+      out.push('<table>');
+      out.push(`<tr><th>Run ID</th><td>${escapeHtml(detail.run_id)}</td></tr>`);
+      if (detail.status) out.push(`<tr><th>Status</th><td>${escapeHtml(detail.status)}</td></tr>`);
+      if (detail.updated_at) out.push(`<tr><th>Updated</th><td>${escapeHtml(detail.updated_at)}</td></tr>`);
+      if (detail.total_tokens) {
+        out.push(`<tr><th>Total</th><td>${fmtTok(detail.total_tokens)} tokens across ${detail.total_agents} agent dispatches</td></tr>`);
+      }
+      out.push('</table>');
+      if (detail.pr_urls && detail.pr_urls.length) {
+        out.push('<table style="margin-top:6px;"><tr><th>Repo</th><th>PR</th></tr>');
+        detail.pr_urls.forEach(p => {
+          out.push(`<tr><td>${escapeHtml(p.repo || '—')}</td><td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">#${escapeHtml(p.pr_number)}</a></td></tr>`);
+        });
+        out.push('</table>');
+      }
+      if (detail.phase_breakdown && detail.phase_breakdown.length) {
+        out.push('<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:11px; color:var(--muted);">Phase breakdown</summary><table>');
+        out.push('<tr><th>Phase</th><th>Stage</th><th>Agents</th><th>Duration</th><th>Tokens</th></tr>');
+        detail.phase_breakdown.forEach(p => {
+          out.push(`<tr><td><b>${escapeHtml(p.phase)}</b></td><td>${escapeHtml(p.stage || '—')}</td><td>${p.agent_count}</td><td>${fmtMs(p.duration_ms)}</td><td>${fmtTok(p.tokens)}</td></tr>`);
+        });
+        out.push('</table></details>');
+      }
+      if (detail.report_md) {
+        out.push(`<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:11px; color:var(--muted);">Full execution report</summary><div class="md-rendered" data-md-source="report">Loading…</div></details>`);
+      }
+      return out.join('\n');
+    };
+    data.deliver_runs.forEach((run, idx) => {
+      const detailsEl = document.querySelector(`details.deliver-run-block[data-run-id="${run.run_id}"]`);
+      const targetEl = document.getElementById('deliver-run-detail-' + idx);
+      if (!detailsEl || !targetEl) return;
+      detailsEl.addEventListener('toggle', () => {
+        if (!detailsEl.open) return;
+        if (detailCache.has(run.run_id)) return;  // already loaded
+        fetch('/deliver-run-detail?run_id=' + encodeURIComponent(run.run_id))
+          .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+          .then(detail => {
+            detailCache.set(run.run_id, true);
+            targetEl.innerHTML = renderRunDetail(detail);
+            // Lazy-render the report.md inner block only when its inner
+            // <details> is opened (markdown parse cost stays per-click).
+            const reportEl = targetEl.querySelector('[data-md-source="report"]');
+            if (reportEl && detail.report_md) {
+              const reportDetails = reportEl.closest('details');
+              const renderReport = () => renderMarkdownInto(reportEl, detail.report_md);
+              if (reportDetails) {
+                reportDetails.addEventListener('toggle', () => { if (reportDetails.open) renderReport(); }, { once: true });
+              } else {
+                renderReport();
+              }
+            }
+          })
+          .catch(err => {
+            targetEl.innerHTML = `<p style="color:var(--err, #c33); font-size:11px;">Failed to load: ${escapeHtml(String(err))}</p>`;
+          });
+      });
+    });
+  }
+
+  // /learn run lazy-fetch — same pattern as deliver_runs.
+  if (data.learn_runs && data.learn_runs.length) {
+    const learnCache = new Map();
+    const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    const renderLearnDetail = (detail) => {
+      const out = [];
+      out.push('<table>');
+      out.push(`<tr><th>Run ID</th><td>${escapeHtml(detail.run_id)}</td></tr>`);
+      if (detail.source_label) out.push(`<tr><th>Source</th><td>${escapeHtml(detail.source_label)} (${escapeHtml(detail.source_mode)})</td></tr>`);
+      if (detail.updated_at) out.push(`<tr><th>Updated</th><td>${escapeHtml(detail.updated_at)}</td></tr>`);
+      if (detail.total_tokens) {
+        out.push(`<tr><th>Tokens</th><td>${fmtTok(detail.total_tokens)} across ${detail.total_agents} agent dispatches</td></tr>`);
+      }
+      if (detail.counts) {
+        const c = detail.counts;
+        out.push(`<tr><th>Findings</th><td>${c.applied} actionable · ${c.flagged} plugin-flagged · ${c.run_local} run-local</td></tr>`);
+      }
+      out.push('</table>');
+      if (detail.learner_output_md) {
+        out.push(`<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:11px; color:var(--muted);">Full learner output</summary><div class="md-rendered" data-md-source="learner">Loading…</div></details>`);
+      }
+      return out.join('\n');
+    };
+    data.learn_runs.forEach((run, idx) => {
+      const detailsEl = document.querySelector(`details.learn-run-block[data-run-id="${run.run_id}"]`);
+      const targetEl = document.getElementById('learn-run-detail-' + idx);
+      if (!detailsEl || !targetEl) return;
+      detailsEl.addEventListener('toggle', () => {
+        if (!detailsEl.open) return;
+        if (learnCache.has(run.run_id)) return;
+        fetch('/learn-run-detail?run_id=' + encodeURIComponent(run.run_id))
+          .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+          .then(detail => {
+            learnCache.set(run.run_id, true);
+            targetEl.innerHTML = renderLearnDetail(detail);
+            const reportEl = targetEl.querySelector('[data-md-source="learner"]');
+            if (reportEl && detail.learner_output_md) {
+              const reportDetails = reportEl.closest('details');
+              const renderReport = () => renderMarkdownInto(reportEl, detail.learner_output_md);
+              if (reportDetails) {
+                reportDetails.addEventListener('toggle', () => { if (reportDetails.open) renderReport(); }, { once: true });
+              } else {
+                renderReport();
+              }
+            }
+          })
+          .catch(err => {
+            targetEl.innerHTML = `<p style="color:var(--err, #c33); font-size:11px;">Failed to load: ${escapeHtml(String(err))}</p>`;
+          });
+      });
+    });
+  }
+
+  if (data.design_systems && data.design_systems.length) {
+    data.design_systems.forEach((ds, i) => {
+      const c = document.getElementById('ds-md-' + i);
+      if (c) renderMarkdownInto(c, ds.excerpt);
+    });
+  }
+}
+function openProjectDrawer() {
+  const drawer = document.getElementById('project-drawer');
+  if (!drawer) return;
+  drawer.hidden = false;
+  fetch('/workspace-overview')
+    .then(r => r.json())
+    .then(renderWorkspaceOverview)
+    .catch(e => {
+      const body = document.getElementById('project-drawer-body');
+      if (body) body.textContent = 'Failed to load: ' + e.message;
+    });
+}
+function closeProjectDrawer() {
+  const drawer = document.getElementById('project-drawer');
+  if (drawer) drawer.hidden = true;
+}
+document.getElementById('project-btn')?.addEventListener('click', openProjectDrawer);
+document.getElementById('project-drawer-close')?.addEventListener('click', closeProjectDrawer);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProjectDrawer();
+});
+
+// ── Boot
+initStages(); // build the rail + lanes up front so the scene renders pre-run
+if (window.INITIAL_STATE) applyState(window.INITIAL_STATE);
+connect();
+</script>
+</body>
+</html>

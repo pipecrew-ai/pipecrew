@@ -811,6 +811,8 @@ function readCheckpoints() {
     retryingAgents: new Set(),
     agentMetrics: {},
     instances: [],
+    firstTs: null,   // earliest checkpoint ts (run start)
+    lastTs: null,    // latest checkpoint ts (run end / last activity)
   };
   if (!file || !fs.existsSync(file)) return result;
   try {
@@ -828,6 +830,11 @@ function readCheckpoints() {
     for (const line of lines) {
       let evt;
       try { evt = JSON.parse(line); } catch (_) { continue; }
+      // Track run wall-clock span across every timestamped event.
+      if (evt.ts) {
+        if (!result.firstTs || evt.ts < result.firstTs) result.firstTs = evt.ts;
+        if (!result.lastTs || evt.ts > result.lastTs) result.lastTs = evt.ts;
+      }
       if (evt.event === 'orch_checkpoint' && evt.orch_since_last) {
         const o = evt.orch_since_last;
         result.orchestratorTokens +=
@@ -965,6 +972,13 @@ function mapPhaseToLabel(phase) {
   // Unknown — pass through trimmed value for visibility.
   return { label: p, category: 'neutral' };
 }
+
+// Canonical pipeline-stage grouping lives in the shared scripts/stages.js so
+// the UI, reporter, and checkpoint validator all agree. See its header for the
+// "phase is the source of truth" rationale. We declare each character's stage
+// server-side (below, in getState) so the UI consumes an authoritative value
+// rather than re-deriving it from heuristics.
+const { resolveStage } = require('../../scripts/stages.js');
 
 // ─── Dispatch-log Agent column → repo token (Polish round 8 follow-up) ──
 // The Agent column carries a parenthesised qualifier that is usually the
@@ -1517,7 +1531,7 @@ function parseScratchpad(content) {
   }
 
   // Checkpoints enrichment — orchestrator tokens + retry flags + agent metrics + lifecycle instances
-  const { orchestratorTokens, retryingAgents, agentMetrics: cpMetrics, instances } = readCheckpoints();
+  const { orchestratorTokens, retryingAgents, agentMetrics: cpMetrics, instances, firstTs, lastTs } = readCheckpoints();
 
   // ─── Checkpoints reconciliation (lifecycle is checkpoint-authoritative) ──
   // checkpoints.jsonl is emitted programmatically at every dispatch boundary,
@@ -1661,6 +1675,11 @@ function parseScratchpad(content) {
     }
   }
 
+  // Declare each character's canonical pipeline stage server-side so the UI
+  // consumes an authoritative value (role-first, then phase) rather than
+  // re-deriving it from heuristics. Source of truth: scripts/stages.js.
+  for (const c of characters) c.stage = resolveStage(c.role, c.phase);
+
   const currentRunId = resolveRunId();
   return {
     workspace,
@@ -1671,6 +1690,7 @@ function parseScratchpad(content) {
     characters,
     orchestratorTokens,
     totalAgentTokens: characters.reduce((s, c) => s + (c.tokens || 0), 0),
+    runDurationMs: (firstTs && lastTs) ? Math.max(0, new Date(lastTs).getTime() - new Date(firstTs).getTime()) : 0,
     awaitingInput: readAwaitingInput(),
     claudeApproval: readClaudeApproval(),
     hookErrors: readHookErrors(),
@@ -1739,15 +1759,23 @@ function broadcast() {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/' || req.url === '/index.html') {
+  if (req.url === '/' || req.url === '/index.html'
+      || req.url === '/v2' || req.url === '/v2.html' || req.url === '/index-v2.html'
+      || req.url === '/v1' || req.url === '/v1.html' || req.url === '/index-v1.html') {
+    // v2 = the stage-flow redesign (Understand → Contract → Build → Verify →
+    // Ship → Learn) and is now the DEFAULT at `/`. The original UI stays
+    // reachable at `/v1` for rollback. Both consume the same /state + /events
+    // backend, so only the page differs.
+    const isV1 = req.url === '/v1' || req.url === '/v1.html' || req.url === '/index-v1.html';
+    const file = isV1 ? 'index.html' : 'index-v2.html';
     try {
-      let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+      let html = fs.readFileSync(path.join(PUBLIC_DIR, file), 'utf8');
       html = html.replace('/*INITIAL_STATE*/', 'window.INITIAL_STATE = ' + JSON.stringify(getState()) + ';');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
     } catch (e) {
       res.writeHead(500);
-      res.end('Failed to read index.html: ' + e.message);
+      res.end('Failed to read ' + file + ': ' + e.message);
     }
   } else if (req.url === '/state' || req.url === '/state.json') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

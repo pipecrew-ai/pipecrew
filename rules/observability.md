@@ -66,8 +66,17 @@ Every line in `checkpoints.jsonl` is one JSON event on its own line. Append-only
 | `run_id` | string | always | Matches the directory name |
 | `phase` | string | phase-scoped events | Skill-specific phase identifier (e.g., `"B2"`, `"5a"`) |
 | `stage` | string | phase-scoped events | Human-readable phase name (e.g., `"Architect Discovery"`) |
+| `stage_group` | enum | optional | Canonical `/deliver` chapter — see below |
 
 Fields that have no source data → **omit the key entirely**. Do not fabricate zero values. The validator rejects fabricated `0` for fields the caller couldn't have measured.
+
+#### Canonical stage grouping (`stage_group`)
+
+A `/deliver` run's phases group into six ordered chapters: **understand → contract → build → verify → ship → learn**. This grouping powers the site-view rail and cross-run trending.
+
+`phase` is the **source of truth** — the chapter is *derived* from it (see `scripts/stages.js`, which all consumers — the site-view server, the reporter, this validator — share). `stage` stays a free-text human label for reports; do **not** repurpose it.
+
+`stage_group` is an **optional, self-describing** echo of the derived chapter. Emit it only as hardening; when absent, consumers derive the chapter from `phase` (with role fallbacks, e.g. the feedback-learner runs in phase `8`/publish but belongs to `learn`). When present it MUST be one of the six enum values — the validator enforces membership. Because it is derived, never let an emitted `stage_group` be the authority over `phase`.
 
 ### Event types — the 11 canonical events
 

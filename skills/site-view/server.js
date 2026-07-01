@@ -1854,6 +1854,20 @@ const server = http.createServer((req, res) => {
       res.writeHead(404);
       res.end(fname + ' not found — re-run the plugin install to vendor it.');
     }
+  } else if (req.url === '/icon-tip-hat-3d.svg') {
+    // Brand logo (matches the website). Served from public/ so the v2 header
+    // can <img> it with its internal styles isolated.
+    try {
+      const svg = fs.readFileSync(path.join(PUBLIC_DIR, 'icon-tip-hat-3d.svg'));
+      res.writeHead(200, {
+        'Content-Type': 'image/svg+xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400',
+      });
+      res.end(svg);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('icon-tip-hat-3d.svg not found');
+    }
   } else if (req.url === '/hook-errors') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ errors: readHookErrors() || [] }, null, 2));

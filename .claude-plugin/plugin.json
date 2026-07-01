@@ -1,6 +1,6 @@
 {
   "name": "pipecrew",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "PipeCrew — a multi-repo agent crew that ships features end-to-end. Discover a project (/discover), deliver a feature (/deliver), review code (/review), assess cross-repo integration (/assess), learn from runs and PRs (/learn), manage agent context (/context-refresh), and manage shared workspace memory (/memory-sync). Supports Spring Boot, React, Next.js, NestJS, FastAPI, Flask, Django, Python workers, AWS CDK, Terraform, and Node mock stacks.",
   "author": {
     "name": "Ramy Hassan"

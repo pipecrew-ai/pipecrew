@@ -40,8 +40,14 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+    /* light disc so the logo's dark outlines read on the dark header */
+    background: #f3efe7;
+    border-radius: 50%;
+    padding: 4px;
+    box-shadow: 0 0 0 1px rgba(245,166,35,0.5), 0 2px 8px rgba(0,0,0,0.4);
   }
-  .brand-mark svg { width: 100%; height: 100%; display: block; }
+  .brand-mark svg,
+  .brand-mark img { width: 100%; height: 100%; display: block; }
   .brand-mark .apex-spark {
     transform-box: fill-box;
     transform-origin: center;
@@ -1459,30 +1465,8 @@
 
 <header>
   <div class="brand-mark" aria-label="PipeCrew">
-    <svg viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg">
-      <!-- stepped pyramid outline -->
-      <g fill="none" stroke="#f5a623" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M5 30 L20 7 L35 30 Z"/>
-        <line x1="11" y1="21" x2="29" y2="21"/>
-        <line x1="15" y1="14" x2="25" y2="14"/>
-      </g>
-      <!-- apex sun: tiny rays + body (pulsing) -->
-      <g class="apex-spark">
-        <g stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" fill="none">
-          <line x1="20" y1="2"  x2="20" y2="5"/>
-          <line x1="14.5" y1="4" x2="13"  y2="2.5"/>
-          <line x1="25.5" y1="4" x2="27"  y2="2.5"/>
-        </g>
-        <circle cx="20" cy="7" r="2.1" fill="#fbbf24" stroke="#f5a623" stroke-width="0.9"/>
-      </g>
-      <!-- base pipe + 3 crew dots -->
-      <line x1="5" y1="35" x2="35" y2="35" stroke="#5c4420" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
-      <g fill="#f5a623" stroke="#5c4420" stroke-width="0.8">
-        <circle cx="10" cy="35" r="2.2"/>
-        <circle cx="20" cy="35" r="2.6"/>
-        <circle cx="30" cy="35" r="2.2"/>
-      </g>
-    </svg>
+    <!-- Brand logo — same asset as the website (public/icon-tip-hat-3d.svg). -->
+    <img src="/icon-tip-hat-3d.svg" alt="PipeCrew" />
   </div>
   <div>
     <h1><span id="feature-name">Pipeline View</span></h1>

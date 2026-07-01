@@ -1378,6 +1378,13 @@
   .lane-head .lane-state { display: block; font-size: 7.5px; margin-top: 2px; letter-spacing: 1px; }
   .lane.active .lane-head .lane-state { color: var(--stage-active); }
   .lane.done   .lane-head .lane-state { color: var(--stage-done); }
+  /* per-stage token total — sum across the stage's crew */
+  .lane-head .lane-tokens {
+    display: block; margin-top: 3px;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--line);
+  }
+  .lane-head .lane-tokens:not(:empty)::after { content: ' tok'; font-weight: 400; color: var(--muted); }
   .lane-cards {
     display: flex; flex-direction: column;
     align-items: center; gap: 6px;
@@ -2264,7 +2271,7 @@ function initStages() {
     lane.id = 'lane-wrap-' + s.id;
     lane.innerHTML =
       `<div class="lane-head">${s.label} <span class="lane-count">0</span>` +
-      `<span class="lane-state"></span></div>` +
+      `<span class="lane-state"></span><span class="lane-tokens"></span></div>` +
       `<div class="lane-cards" id="lane-${s.id}"><div class="lane-empty">—</div></div>`;
     lanes.appendChild(lane);
   }
@@ -2569,13 +2576,14 @@ function layout(characters) {
     const total = cs.length;
     const working = cs.filter(c => c.status === 'working').length;
     const queued  = cs.filter(c => c.status === 'queued' || !c.status).length;
+    const tokens  = cs.reduce((sum, c) => sum + (c.tokens || 0), 0);
     let state;
     if (working > 0) state = 'active';
     else if (total > 0 && queued === 0) state = 'done';     // all terminal (done/skipped/failed)
     else if (total > 0) state = 'pending';                  // some queued, not started/finished
     else state = 'upcoming';                                // no crew yet
     stageState[s.id] = state;
-    stageCounts[s.id] = { total, working, queued };
+    stageCounts[s.id] = { total, working, queued, tokens };
     if (state === 'active') activeStageId = s.id;
   });
 
@@ -2610,6 +2618,7 @@ function layout(characters) {
       lane.classList.toggle('done',   state === 'done');
       const cnt = lane.querySelector('.lane-count');
       const stt = lane.querySelector('.lane-state');
+      const tok = lane.querySelector('.lane-tokens');
       if (cnt) cnt.textContent = total;
       if (stt) {
         stt.textContent =
@@ -2617,6 +2626,7 @@ function layout(characters) {
           state === 'done'   ? 'done' :
           state === 'pending'? `${queued} queued` : '';
       }
+      if (tok) tok.textContent = stageCounts[s.id].tokens > 0 ? formatTokens(stageCounts[s.id].tokens) : '';
     }
   });
 

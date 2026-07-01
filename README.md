@@ -92,6 +92,18 @@ Run #2 beats run #1.
 claude plugin install https://github.com/pipecrew-ai/pipecrew
 ```
 
+## Updating
+
+PipeCrew ships new versions as [GitHub Releases](https://github.com/pipecrew-ai/pipecrew/releases). To pull the latest:
+
+```
+/plugin marketplace update pipecrew     # refresh the catalog from GitHub
+/plugin install pipecrew@pipecrew        # re-fetch the plugin at the new version
+/reload-plugins                          # activate it in the running session
+```
+
+Prefer hands-off updates? Enable auto-update once — `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update** — and Claude Code will check at startup and prompt you to `/reload-plugins` when a new version lands. PipeCrew also nudges you in-session (at most once a day) when a newer release is available. See the [CHANGELOG](CHANGELOG.md) for what's new, and **Watch → Custom → Releases** on the repo to get notified.
+
 ## Quick start
 
 ### 1. Onboard your project — `/discover`

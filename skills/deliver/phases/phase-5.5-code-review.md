@@ -322,6 +322,13 @@ Per common-rules R6 (scope discipline): touch ONLY the lines the fix list cites.
    - `COMPLETED` if all fix-list items reported done
    - `COMPLETED ⚠` if any items were skipped/failed (note the count)
 
+   **Commit the fix round** (only if it changed files): the fix modifies files already captured by the Phase-5 task commit(s), so give it its own follow-up commit rather than leaving the worktree dirty for Phase 8. This keeps the review-fix visible as a distinct, honest step in the PR:
+   ```bash
+   git -C {worktree_path} add -A
+   git -C {worktree_path} commit -q -m "fix({repo-short}): address review [round-{N}]"
+   ```
+   If the fix round made no file changes (all items skipped/failed), skip the commit. Record the SHA in the scratchpad's Phase 5.5 row.
+
 6. **One fix round per run.** Re-review does not auto-run. If issues remain after the fix round, record them in the scratchpad and report them at Phase 7 — do not auto-re-dispatch. If the user wants a second round, they re-run `/deliver --resume` after inspecting.
 
 **Phase exit:** Phase 5.5 is done when every reviewer has completed, every gate-lane repo has been answered, and every dispatched (auto- or gate-lane) fix round has returned. Because fix rounds are background dispatches, wait for the outstanding ones to finish before advancing. Then continue to Phase 5.75 (security review, if triggered) or Phase 6 (assessment).

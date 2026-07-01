@@ -33,8 +33,8 @@ Workspace:     {slug}
 Phase 6:       {PASSED | NOT_RUN | BLOCKERS_OVERRIDDEN}
 
 Repos to publish ({N}):
-  - {repo1}/branch-{feature-slug}: {N} files changed, +{N} / -{N}
-  - {repo2}/branch-{feature-slug}: {N} files changed, +{N} / -{N}
+  - {repo1}/branch-{feature-slug}: {N} files changed, +{N} / -{N} ({M} commits)
+  - {repo2}/branch-{feature-slug}: {N} files changed, +{N} / -{N} ({M} commits)
   - ...
 
 Will:
@@ -54,8 +54,15 @@ Proceed? (yes / no / yes-with-feedback)
 
 Capture the user's choice. If `no`, jump to Step 8.6.
 
+**Commit structure:** each repo's branch already carries **one commit per Phase-5 task** (committed at task completion — see phase-5-build.md "COMMIT PER TASK") plus a `fix(...)` commit per Phase-5.5 fix round. So the PR reads commit-by-commit and a large single-repo change stays reviewable without splitting the feature into multiple PRs. Phase 8 does **not** re-commit or squash — it publishes the history as built. `{M}` in the summary above is that per-repo commit count (`git -C {worktree} rev-list --count {base}..HEAD`).
+
 **Hard guardrails before any push**:
-- For each repo, run `git status --short` — if there are uncommitted changes in the worktree, refuse to publish that repo and surface the path. The user must commit or stash first.
+- For each repo, run `git status --short`. The worktree should be clean (Phases 5 + 5.5 commit as they go). If a stray uncommitted change remains — e.g. from an inline role that edited files, or a task that reported COMPLETED without committing — do **not** refuse the publish and do **not** silently drop it: commit the remainder as a final catch-all so nothing is lost, then continue.
+  ```bash
+  git -C {worktree_path} add -A
+  git -C {worktree_path} commit -q -m "chore({repo-short}): finalize {feature-slug}"
+  ```
+  Note in the scratchpad: `Phase 8: committed N residual file(s) for {repo} before publish`.
 - Verify no branch is `main` / `master` / `dev` (whatever the workspace's protected branches are per `config.json`). If a feature branch happens to be named one of those, refuse and abort.
 
 ---

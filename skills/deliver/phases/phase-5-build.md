@@ -18,6 +18,19 @@ All implementer work is dispatched **via the `Agent` tool in the current session
 
 **ON COMPLETION**: As each agent returns, immediately update the scratchpad — set task status to COMPLETED (or FAILED), record the worktree path, and list the files that changed.
 
+**COMMIT PER TASK** (do this at the same moment, only for a COMPLETED task): commit that task's work as **one logical commit** in its working dir, so each repo's branch reads as one commit per Phase-5 task and its PR is reviewable commit-by-commit. This is also the *only* clean boundary at which a task's changes are isolated: once the next task runs in the same worktree (monorepo) or a 5.5 fix round edits the files, the boundary is gone. Reconstructing per-task commits later in Phase 8 is not reliable — commit here.
+
+```bash
+# working dir = the task's worktree (or the repo's current branch under --no-worktrees)
+git -C {working_dir} add -A
+git -C {working_dir} commit -q -m "feat({repo-short}): {task-title} [{task-id}]"
+```
+
+- **One commit per task.** A repo with a single task → one commit; a monorepo with N sequential tasks → N commits on that repo's branch, in task order.
+- **Nothing to commit** (agent made no file changes, or FAILED) → skip the commit; note it in the scratchpad. Never commit an empty or partial/failed task.
+- **`{repo-short}`** is the repo's short tag from `config.json` (same token Phase 8 uses in PR titles); **`{task-id}`** is the task file id so the commit traces back to the plan.
+- Record the commit SHA in the scratchpad's Implementation Tasks row alongside files-changed.
+
 #### Step 0: Create worktrees
 
 Skip this step entirely if `--no-worktrees` was passed.

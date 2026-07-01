@@ -33,6 +33,17 @@ node {plugin_dir}/scripts/write-review-diff.js --worktree={worktree_path} --out=
 
 Pass the resulting path (`{run_dir}/review/{repo}.diff`) into the reviewer prompt as its `DIFF FILE`. The reviewer `Read`s that file instead of running git. Omit `--base` to let the helper auto-resolve (origin/main → main → dev → master); pass it when the repo's base branch is non-standard.
 
+**Empty-diff guard — do NOT dispatch a reviewer against nothing.** The reviewer diffs *committed* history (`merge-base..HEAD`), so if the helper prints `EMPTY DIFF` (0 bytes) this repo has **no committed changes to review**. Do **not** dispatch its reviewer. Instead, mark the repo's Phase 5.5 row `SKIPPED ⚠` with reason `"empty review diff — no committed changes for {repo}"`, and surface it loudly in the phase summary:
+
+```
+⚠ {repo}: empty review diff — nothing committed to review. Skipped code review.
+  Most likely a Phase-5 task completed but was not committed (see phase-5-build.md
+  "COMMIT PER TASK"). Verify: git -C {worktree_path} status --short  (uncommitted work
+  here means the reviewer — and the eventual PR diff — would miss it).
+```
+
+This converts the old silent failure (reviewer runs against an empty diff and "finds nothing") into a loud, actionable skip. It is distinct from the `--no-review` skip: this one flags a likely uncommitted-work bug, not an intentional opt-out.
+
 **Backend / Worker reviewer — one per affected service (spec_policy-aware)**
 
 Pull the structured services list from the architect's output (do NOT LLM-parse the prose Notes):

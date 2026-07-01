@@ -19,7 +19,9 @@
  * The diff is `git diff <merge-base(base,HEAD)> HEAD` — two-dot from the
  * merge-base, i.e. exactly the changes the branch introduced.
  *
- * Exit 0 on success (including an empty diff — writes an empty file).
+ * Exit 0 on success. An EMPTY diff still exits 0 (writes an empty file) but
+ * prints a distinct `EMPTY DIFF — …` line instead of the byte-count line, so
+ * the caller can detect "nothing committed to review" and skip the reviewer.
  * Exit 1 on usage error or git failure.
  *
  * Zero dependencies — pure Node stdlib. execFileSync (no shell) so a worktree
@@ -78,6 +80,17 @@ catch (e) { console.error(`git diff failed: ${e.message}`); process.exit(1); }
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, diff);
 
+const bytes = Buffer.byteLength(diff);
 const lines = diff.length ? diff.split('\n').length : 0;
-console.log(`wrote ${lines} lines (${Buffer.byteLength(diff)} bytes) to ${out} [base=${base} merge-base=${mergeBase.slice(0, 8)}]`);
+if (bytes === 0) {
+  // Empty diff = merge-base(base,HEAD) === HEAD, i.e. the branch introduced no
+  // COMMITTED changes for this repo. Since reviewers diff committed history,
+  // there is literally nothing for them to review. Emit a loud, greppable
+  // signal so Phase 5.5 skips the dispatch instead of running a reviewer
+  // against nothing (the usual cause: a Phase-5 task edited files but was never
+  // committed — see phase-5-build.md "COMMIT PER TASK").
+  console.log(`EMPTY DIFF — no committed changes in ${worktree} against ${base} (merge-base ${mergeBase.slice(0, 8)}). Nothing to review; skip this repo's reviewer. Likely cause: Phase 5 did not commit this repo's task(s).`);
+} else {
+  console.log(`wrote ${lines} lines (${bytes} bytes) to ${out} [base=${base} merge-base=${mergeBase.slice(0, 8)}]`);
+}
 process.exit(0);

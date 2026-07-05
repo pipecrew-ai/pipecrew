@@ -182,6 +182,29 @@ The full pipeline is one command — but **every capability is also a standalone
 | `/scaffold` | Greenfield project scaffolding from a brainstorm — repos, config, context |
 | `/troubleshoot` | Read-only cross-repo incident triage → root cause at `file:line` |
 | `/site-view` | Live browser dashboard of the crew — queued, building, done, in real time |
+| `/siteview-fleet` | Machine-wide fleet dashboard of **every** Claude Code session at once (via the standalone `pipecrew-siteview`) |
+
+### Fleet view — every session at once
+
+`/site-view` shows one `/deliver` run in depth. When you're juggling several runs
+(or want to watch a plain Claude Code session that has no PipeCrew run at all),
+`/siteview-fleet` opens a **machine-wide** dashboard: one card per live session
+with its token usage, sub-agents, and a **"needs approval"** badge — click any
+card for its agent-dispatch tree and activity timeline. PipeCrew `/deliver`
+sessions render with the same pharaoh crew icons you see in `/site-view`.
+
+It's powered by **[`pipecrew-siteview`](https://github.com/pipecrew-ai/pipecrew-siteview)**,
+a standalone zero-dependency tool that also works outside PipeCrew. Install once:
+
+```
+npm install -g pipecrew-siteview     # then /siteview-fleet, or run: pipecrew-siteview
+pipecrew-siteview --install-hooks     # optional: "needs approval" desktop notifications
+```
+
+`/siteview-fleet` finds your install automatically (`$PIPECREW_SITEVIEW_DIR` → a
+`~/pipecrew-siteview` clone → a global install). If it isn't installed, the skill
+**asks first** and, on your OK, runs `npm install -g pipecrew-siteview` for you —
+it never installs silently.
 
 ## Supported tech stacks
 

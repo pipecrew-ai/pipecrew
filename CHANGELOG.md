@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.3.0] - 2026-07-05
+
+### Added
+- **`/siteview-fleet` — a machine-wide fleet dashboard.** Where `/site-view`
+  shows one `/deliver` run in depth, `/siteview-fleet` opens a live view of
+  **every** Claude Code session on the machine at once — one card per session
+  with its token usage, sub-agents, and a "needs approval" badge; click any card
+  for its agent-dispatch tree and activity timeline. PipeCrew `/deliver` sessions
+  render with the same pharaoh crew icons as `/site-view`. It's backed by the
+  standalone, zero-dependency [`pipecrew-siteview`](https://github.com/pipecrew-ai/pipecrew-siteview)
+  tool; the skill locates an existing install
+  (`$PIPECREW_SITEVIEW_DIR` → `~/pipecrew-siteview` clone → global bin) and hands
+  off. It never installs silently — if the tool is missing, the skill asks first
+  and, on your opt-in, runs `npm install -g pipecrew-siteview` (`launch.js
+  --install`).
+
 ## [1.2.1] - 2026-07-04
 
 ### Fixed
@@ -103,6 +119,7 @@ Initial release — multi-repo agent crew for Claude Code: `/discover`, `/delive
 site-view and support for Spring Boot, React, Next.js, NestJS, FastAPI, Flask,
 Django, Python workers, AWS CDK, Terraform, and Node mock stacks.
 
+[1.3.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.3.0
 [1.2.1]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.2.1
 [1.2.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.1.0

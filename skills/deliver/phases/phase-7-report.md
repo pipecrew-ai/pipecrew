@@ -71,6 +71,14 @@ Now: refresh agent-context for `{repo_worktree_path}` per refresh mode.
 
 If a repo has no agent-context directory, skip it silently (this repo was onboarded in `claude-only` mode; there is nothing to refresh).
 
+**Advance the context-refresh baseline** for each repo whose docs were just refreshed (the feature docs are now current as of the feature HEAD). Run in the worktree so the baseline commits with the feature and merges to `main` alongside the doc edits:
+
+```bash
+node {plugin_dir}/scripts/refresh-state.js advance --repo={repo_worktree_path} --mode=full --by=deliver
+```
+
+This keeps `agent-context/.refresh-state.json` in step, so the next `/context-refresh` diffs from the delivered commit instead of re-scanning. Skip for claude-only repos (the script no-ops without `agent-context/`). See `docs/design/refresh-state.md`.
+
 ---
 
 #### Step 7.3: Execution report template (FALLBACK ONLY — reporter failed)

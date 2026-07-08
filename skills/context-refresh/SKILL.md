@@ -72,33 +72,25 @@ description: "Audit or refresh PipeCrew context docs at three scopes: a single r
 
 This skill defaults to a **git-diff fast path** for single-repo and `--all` scopes: only the docs that touch files changed since the last refresh get re-verified. The full claim-verification audit (slow but complete) becomes the safety net.
 
-**State file location**: `{workspace_root}/{slug}/runs/context-refresh/state.json`. Schema:
+**The baseline is a shared, committed file** — `{repo_path}/agent-context/.refresh-state.json`, versioned **in the code repo itself** so "docs verified through SHA X" travels with the docs across clones, branches, and merges. It is seeded by `/discover` (so the first refresh on a fresh workspace is already incremental) and advanced after each refresh. See `docs/design/refresh-state.md`. This replaces the old machine-local `runs/context-refresh/state.json`, which was never shared.
 
-```json
-{
-  "abvi-publisher-service": {
-    "head_sha": "4a9e8f2c…",
-    "branch": "main",
-    "ran_at": "2026-04-25T14:30:00Z",
-    "mode": "fast",
-    "fast_runs_since_full": 3
-  }
-}
+**Do not hand-roll the decision** — run the engine per repo:
+
+```bash
+node {plugin_dir}/scripts/refresh-state.js decide --repo={repo_path} [--full]
 ```
 
-**Decision tree per repo**:
+It reads the committed baseline and inspects git (`HEAD`, branch, dirty count), then prints `{ "path": "full"|"fast"|"skip", "comparisonSha": "…", "reason": "…" }`. Follow `path`:
 
-| Condition | Path | Why |
+| `path` | Meaning | What the skill does |
 |---|---|---|
-| `--full` flag passed | full audit | explicit override |
-| State file missing OR no entry for this repo | full audit, save state | first run on this repo |
-| `git rev-parse --abbrev-ref HEAD` differs from `state.branch` | full audit, update state | branch switch makes prior sha meaningless |
-| `git status --porcelain` shows >100 modified files | full audit | working tree too divergent for confident diff |
-| `state.fast_runs_since_full >= 5` | full audit, reset counter | periodic safety net catches drift fast-path missed |
-| `state.head_sha == HEAD` AND working tree clean | **skip — no changes** | nothing to refresh |
-| Otherwise | fast path (Step 1.6) | the common case |
+| `full` | no baseline / branch changed / uncommitted-only changes / unreadable-or-conflicted file / `--full` | full claim-verification audit (Step 2/3) |
+| `fast` | HEAD moved since the baseline | Step 1.6 delta from `comparisonSha` |
+| `skip` | HEAD unchanged + clean tree | nothing to refresh — report and move on |
 
-**`--since=<ref>`** overrides `state.head_sha` for the comparison point — used as-is, no state read.
+The engine never auto-resolves merge conflicts on the baseline file: an unresolved conflict is unparseable, so `decide` safely reports `full` with a reason telling the operator to resolve it in git. See `docs/design/refresh-state.md`.
+
+Pass `--full` for the explicit override. `--since=<ref>` still overrides the comparison point for ad-hoc "audit since a tag" runs (used as-is, bypassing the baseline).
 
 ---
 
@@ -261,7 +253,7 @@ Doc-impact hints (advisory):
 
 Constrain your scan to these files and the docs they could plausibly affect.
 You may follow imports/refs out from these files when needed, but do NOT
-re-verify the entire codebase — that's the periodic full audit's job.
+re-verify the entire codebase — that's a full audit's job (run with --full).
 {else:}
 Scope: full (no prior state OR --full was passed OR branch changed)
 
@@ -317,30 +309,21 @@ Workflow:
 
 ---
 
-### Step 4.5: Update state file (after `--mode=refresh` succeeds)
+### Step 4.5: Advance the committed baseline (after `--mode=refresh` succeeds)
 
-After every successful refresh on a per-repo basis, write back to `{workspace_root}/{slug}/runs/context-refresh/state.json`:
+After every successful refresh on a per-repo basis, advance that repo's committed baseline to its current HEAD via the engine:
 
-```json
-{
-  "<repo-key>": {
-    "head_sha": "<git rev-parse HEAD output>",
-    "branch": "<git rev-parse --abbrev-ref HEAD output>",
-    "ran_at": "<ISO 8601 UTC>",
-    "mode": "fast" | "full",
-    "fast_runs_since_full": <number — 0 after a full run; +1 after each fast run>
-  }
-}
+```bash
+node {plugin_dir}/scripts/refresh-state.js advance --repo={repo_path} \
+  --mode={fast|full}   # the path Step 1.5 chose for this repo
 ```
 
-Rules:
-- Update only the entry for the repo(s) that were just refreshed. Other entries stay untouched.
-- If `mode` was full → reset `fast_runs_since_full` to 0.
-- If `mode` was fast → increment `fast_runs_since_full`.
-- If a refresh failed for a repo → do NOT update its entry (preserves the old comparison point so the next run retries the same delta).
-- For `--mode=audit`, do NOT write state. Audits are read-only operations.
+This rewrites `{repo_path}/agent-context/.refresh-state.json` (`head_sha` = current HEAD; `mode` and `by: context-refresh` are informational). Rules:
 
-This file is part of the workspace's run history. It's created on first refresh and grows as new repos are touched. It's small (one entry per repo, ~150 bytes each) and human-editable — if a user wants to force a full audit on next run, they delete the relevant entry.
+- Advance only the repo(s) that were just refreshed.
+- If a refresh **failed** for a repo → do NOT advance it (preserves the old comparison point so the next run retries the same delta).
+- For `--mode=audit`, do NOT advance. Audits are read-only.
+- The baseline file lives **inside `agent-context/`** — commit it together with the doc edits (same commit), so the advanced baseline ships to the team. It is tiny and human-editable: delete it to force a full audit on the next run.
 
 ---
 
@@ -354,7 +337,7 @@ Emit the standard one-line phase-done status per scope. Include fast/full path c
 
 # Refresh mode (mostly fast path)
 [context-refresh ✔] workspace: 3 files updated, repos: 5 files updated across 4 repos
-  Path: 3 fast, 1 full (publisher-service — periodic safety net; reset counter)
+  Path: 3 fast, 1 full (publisher-service — no baseline, first refresh)
   Tokens: 24k, duration 3:42
 
 # Refresh mode (no changes since last refresh)
@@ -400,7 +383,7 @@ These files are owned by other skills and have their own refresh/update paths:
 | `{workspace_root}/{slug}/agents/*.md` | `/discover` Phase C | `/discover --resume` + manual edit |
 | `{workspace_root}/{slug}/history/learn-log.md` | `/pipecrew:learn` | Append-only; no refresh |
 | `{workspace_root}/{slug}/context/audit-findings.md` | `/discover` Phase C | `/discover --resume` |
-| `{workspace_root}/{slug}/runs/context-refresh/state.json` | this skill (Step 4.5) | Auto-managed; delete an entry to force full audit on next run for that repo |
+| `{repo_path}/agent-context/.refresh-state.json` (committed baseline) | this skill (Step 4.5) + seeded by `/discover` + advanced by `/deliver` | Auto-managed via `scripts/refresh-state.js`; delete the file to force a full audit on next run. Commit it with the doc edits. |
 | Repo `package.json` / `pom.xml` / `pyproject.toml` | Repo owner | Manual |
 
 If the audit reveals that any of these are stale, surface it as a finding with a pointer to the correct refresh path — but do not auto-update.

@@ -169,6 +169,14 @@ Parallel dispatch: send ALL Agent tool calls in a single orchestrator message (o
 
 **Update scratchpad**: after each repo finishes, set its CLAUDE.md row in `## Generation Status` to COMPLETED (and its agent-context row if mode was (a)).
 
+**Seed the context-refresh baseline** (mode (a) Full repos only — those that got an `agent-context/`). The docs were just generated *from* the current code, so they are correct as of the repo's current `HEAD`. Stamp that so the FIRST `/context-refresh` on this workspace is incremental instead of a full re-read (and so the baseline ships to the whole team when the docs are committed):
+
+```bash
+node {plugin_dir}/scripts/refresh-state.js seed --repo={repo_path} --repo-key={repo-key}
+```
+
+This writes a committed `agent-context/.refresh-state.json` (baseline `{head_sha, branch, mode:full, by:discover}`). Skip for claude-only repos — the script no-ops when there's no `agent-context/`. The file commits alongside the generated docs (it's inside `agent-context/`), so do NOT add it to `.gitignore`. See `docs/design/refresh-state.md`.
+
 ---
 
 ### Step 3: Generate domain-specific agents

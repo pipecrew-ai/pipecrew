@@ -36,6 +36,47 @@ The mechanical rule for what goes where:
 - **Catalogs / inventories / facts about what exists in the world** → `agent-updatable`
 - **Conventions / opinions / invariants / "do/don't" rules** → `human-owned`
 
+### Human-owned preservation across regenerations (HARD RULE, every writing mode)
+
+Human-owned sections encode negative rules (what was deliberately rejected) and
+historical intent. **This content cannot be re-derived from code** — code shows
+what exists, not what was rejected. Treating existing docs as disposable during a
+regeneration destroys it permanently.
+
+Therefore, in `full`, `init`, and `refresh` modes — INCLUDING when the user asks to
+"recreate from scratch" — before writing over ANY existing file:
+
+1. **Extract** every `<!-- human-owned -->` ... `<!-- /human-owned -->` block from the
+   existing file (or, if the directory was already deleted, from git HEAD via
+   `git show HEAD:{path}` — check before concluding there is nothing to preserve).
+   Key each block by its nearest preceding heading.
+2. **Graft verbatim** — after generating the new draft, splice each saved block back
+   into the matching section (by heading, or the closest topical home in the new
+   structure). Migrating a block into a renamed/merged file is fine; **rewriting,
+   summarizing, or "improving" its content is not**.
+3. **No home → halt, don't drop.** If a saved block has no plausible home in the new
+   structure, STOP writing that file and surface the block to the orchestrator/user
+   with a proposed placement. Silently discarding a human-owned block is the single
+   worst failure mode of this agent.
+
+"From scratch" applies to the *structure* (file layout, agent-updatable catalogs,
+templates) — never to human-owned *content*.
+
+### Factual grounding (HARD RULE, every writing mode)
+
+Never infer enumerative or shape claims from naming patterns — verify against the
+code, then write:
+
+- **Inventories** (hooks, components, services, endpoints, API methods): Glob/list
+  the actual directory and enumerate only what exists. Never write a confident
+  negative ("no feature hooks") without an empty glob result confirming it.
+- **Request/response shapes**: Read the actual service/client source and extract the
+  argument structure. Endpoint names and spec parameter names are not evidence of
+  the call-site shape (e.g., a bulk endpoint may take `taskIds: [{bookId}]`, not
+  `bookIds: string[]`).
+- If you cannot verify a claim during this run, write an inline
+  `<!-- verify: {claim} unconfirmed -->` note instead of a confident assertion.
+
 ---
 
 ## Role-Based Template Dispatch (used in `full` mode)
@@ -72,6 +113,13 @@ The `agent-context-infra/` bundle is **top-level files only** — it has no `dom
 
 2. **Read** the existing `{repo_path}/CLAUDE.md` if present (may contain hand-curated guidelines); read any existing `{repo_path}/agent-context/` — if non-empty, switch to refresh semantics for that directory (see Mode: refresh). Never destroy-and-rewrite existing agent-context content.
 
+   If the orchestrator/user explicitly requested a from-scratch recreate over a
+   non-empty directory, do NOT skip this step — run the "Human-owned preservation
+   across regenerations" procedure (extract → regenerate structure → graft
+   verbatim → halt on homeless blocks). Also check git history: if `agent-context/`
+   is empty on disk but exists at git HEAD, extract human-owned blocks from
+   `git show HEAD:{path}` before generating.
+
 3. **Deep-read the codebase** — 8-10 representative source files across the codebase (not top-level only — descend into service/controller/component dirs). Identify module boundaries, layering, naming, error handling, tests, API conventions (if backend), routing/state/UI patterns (if frontend), and the bounded contexts / external integrations / feature modules that warrant their own file under `domains/` / `integrations/` / `features/` / `api-clients/`.
 
 4. **Write `agent-context/`** by reading every file in `{plugin_dir}/{template_bundle}/` and filling it for this repo:
@@ -101,6 +149,7 @@ The `agent-context-infra/` bundle is **top-level files only** — it has no `dom
 
 **Rules that apply to BOTH agent-context and CLAUDE.md**:
 - Write factual observations, not aspirational guidelines. "The codebase uses constructor injection", not "You should use constructor injection".
+- Ground every inventory and shape claim per the "Factual grounding" HARD RULE above — glob/read first, write second.
 - Reference actual file paths as examples: "See `src/services/BookService.java:42` for the pattern."
 - If a pattern has exceptions, note them.
 - Strip all `<!-- AGENT INSTRUCTIONS ... -->` HTML comments from the templates before writing the final file.

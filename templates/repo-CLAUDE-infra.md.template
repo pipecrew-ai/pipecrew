@@ -4,12 +4,26 @@
 
 {{REPO_PURPOSE_PARAGRAPH}}
 
-## Before You Plan a Change
+## HARD RULE - Before You Plan a Change
 
 1. Read `agent-context/AGENT_INDEX.md` — it maps tasks to docs.
 2. For common changes, the required reading is:
 
 {{DECISION_TABLE}}
+
+   How much to read is a mechanical test, not a judgment call. The task is a
+   **"new thing"** if it involves ANY of: a new file, a new stack or construct,
+   a new resource (bucket / queue / table / function), a new IAM role or
+   policy, a new cross-stack export, a new per-env tunable, or a new
+   dependency. New thing → read `AGENT_INDEX.md` plus every matching row above.
+   None of the above → small edit: the matching rows above are enough; the
+   index walk is optional. If any single item trips the list, the whole task
+   is a "new thing" — do not split a task to dodge it.
+
+   **Declare your reading.** The first line of any plan or implementation you
+   propose must be `Context read: {files}` naming the agent-context docs you
+   actually read (or `Context read: none — small edit, code only` with the
+   justification). A plan without this line is incomplete.
 
 3. **Follow the conventions you find. Do not invent or "improve" them.**
    If a convention is unclear, seems to conflict with existing code, or appears
@@ -22,6 +36,9 @@
    Edits go in sections marked `<!-- agent-updatable -->`. Do NOT modify
    sections marked `<!-- human-owned -->`. The git log is the changelog,
    not these docs.
+   In your final summary, name the agent-context section you updated — or state
+   `Context updates: none needed` and why. Omitting this line means the task is
+   not done.
 
 5. Produce a plan/diff for review — never apply to a live environment. Run the
    synth/plan/diff commands; an apply/deploy/destroy is a human action.
@@ -66,6 +83,6 @@ AGENT INSTRUCTIONS (strip these comments before writing the final file):
   rename a cross-stack export without a migration". Style rules belong in
   conventions.md, not here.
 
-Total file: aim for ≤60 lines after stripping these comments. Hard ceiling
+Total file: aim for ≤80 lines after stripping these comments. Hard ceiling
 (validator-enforced): 200 lines.
 -->

@@ -9,7 +9,7 @@ The troubleshooter agent operates strictly **read-only**. Three layers, all on b
 
 1. **Agent system prompt** — `templates/agents/troubleshooter.md.template` opens with a HARD RULES block (R1: Bash allowlist, R2: blocklist, R3: pre-flight self-check, R4: escape valve for would-be mutations, R5: bash-guard awareness, R6: `report.md` is the only permitted write). The agent reads these on every invocation. Always on.
 2. **Bash guard script** — `scripts/troubleshooter-bash-guard.js` is a deny-by-pattern classifier (111 unit tests). Catches AWS / kubectl / docker / git / filesystem / package-manager / HTTP / DB mutations, shell-access escapes (`kubectl exec`, `aws ssm start-session`), evasion (`$(...)`, backticks, standalone `eval`/`exec`, `nohup`, base64-pipe-bash, output redirects, backgrounding), and long-running flags (`-f`, `--watch`). Unknown commands are denied conservatively — the allowlist is what the troubleshooter actually needs, nothing more.
-3. **Plugin-shipped `PreToolUse` hook** — `.claude-plugin/hooks/hooks.json` installs the guard as a Bash `PreToolUse` intercept the moment the plugin is installed. The agent literally cannot execute a mutation: Claude Code blocks the Bash call before it runs.
+3. **Plugin-shipped `PreToolUse` hook** — `.claude-plugin/hooks/hooks.json` installs a single `PreToolUse` dispatcher (`scripts/pretooluse-dispatch.js`) that routes Bash calls to the guard's logic the moment the plugin is installed. The agent literally cannot execute a mutation: Claude Code blocks the Bash call before it runs.
 
 ### How the hook stays scoped to /troubleshoot only
 

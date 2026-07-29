@@ -102,9 +102,9 @@ throwaway sandbox, never against real repos.
 
 If you don't want to touch `settings.json` at all, run the pipeline with
 `--auto-approve`. At pre-flight it writes an opt-in marker
-(`scripts/autoapprove-marker.js on`) that the plugin's
-`scripts/deliver-autoapprove-hook.js` (a `PreToolUse` hook) reads to suppress
-prompts — but **only for clearly-safe calls**:
+(`scripts/autoapprove-marker.js on`) that the plugin's `PreToolUse` dispatcher
+(`scripts/pretooluse-dispatch.js`, routing to `scripts/deliver-autoapprove-hook.js`)
+reads to suppress prompts — but **only for clearly-safe calls**:
 
 - **Auto-approved:** `Edit` / `Write` / `MultiEdit`, and `Bash` whose every
   `&&`/`|`/`;`-separated segment leads with a known build/test/local-git/read

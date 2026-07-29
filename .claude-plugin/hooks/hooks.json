@@ -1,5 +1,5 @@
 {
-  "_comment": "PipeCrew plugin hooks. Auto-loaded by Claude Code when the plugin is installed. (1) PreToolUse/Bash installs the troubleshooter bash guard; it self-gates on ~/.claude/.pipecrew-troubleshooter-active and exits 0 immediately when no /troubleshoot run is active, so it has zero effect otherwise (see scripts/troubleshooter-bash-guard.js + skills/troubleshoot/SKILL.md). (2) PreToolUse/(Bash|Edit|Write|MultiEdit|NotebookEdit) installs the OPT-IN /deliver auto-approve hook; it self-gates on ~/.claude/.pipecrew-deliver-autoapprove (written only when /deliver is run with --auto-approve) and otherwise emits nothing, leaving normal permission prompts intact. It only ever AUTO-APPROVES clearly-safe calls (file edits + known build/test/local-git/read Bash); dangerous or unclassifiable commands still prompt (see scripts/deliver-autoapprove-hook.js + scripts/autoapprove-marker.js). The two PreToolUse hooks are gated on mutually-exclusive markers (troubleshoot vs deliver-autoapprove) so they never both act on the same call. (3) Notification/UserPromptSubmit/PostToolUse drive scripts/notify-hook.js, which writes/clears awaiting_claude_approval.json in every ACTIVE /deliver run dir so the site-view UI shows a banner when Claude Code itself (not a pipeline gate) is paused asking the user to approve a tool call. notify-hook self-gates on active run dirs (scratchpad mtime within a short window) — when no /deliver run is live it is a fast no-op, so registering it globally is safe (same pattern as the bash guard). (4) SessionStart drives scripts/update-check-hook.js, which at most once/day compares the installed plugin version to the latest GitHub Release and, when behind, injects a SessionStart additionalContext note on how to update. It is throttled (marker in ~/.claude/.pipecrew-update-check), fail-silent (any offline/rate-limit/parse error emits nothing and exits 0), and its network request has a short internal timeout — so it never disrupts or slows a session.",
+  "_comment": "PipeCrew plugin hooks. Auto-loaded by Claude Code when the plugin is installed. (1) A SINGLE PreToolUse hook on (Bash|Edit|Write|MultiEdit|NotebookEdit) runs scripts/pretooluse-dispatch.js, which reads the payload once and routes to two mutually-exclusive concerns so a dispatch spawns ONE node process, not two: (1a) the /troubleshoot read-only guard (DENY) — Bash only, gated on ~/.claude/.pipecrew-troubleshooter-active, denies mutating/evasive commands during an active /troubleshoot run and is a no-op otherwise (logic in scripts/troubleshooter-bash-guard.js); (1b) the OPT-IN /deliver auto-approve helper (ALLOW), gated on ~/.claude/.pipecrew-deliver-autoapprove (written only when /deliver is run with --auto-approve), which auto-approves ONLY clearly-safe calls (file edits + known build/test/local-git/read Bash) and emits nothing for dangerous/unclassifiable commands so they still prompt (logic in scripts/deliver-autoapprove-hook.js + scripts/autoapprove-marker.js). Both markers being mutually exclusive, at most one branch acts; when neither is active the dispatcher is a fast no-op that leaves normal permission prompts intact. (2) Notification/UserPromptSubmit/PostToolUse drive scripts/notify-hook.js, which writes/clears awaiting_claude_approval.json in every ACTIVE /deliver run dir so the site-view UI shows a banner when Claude Code itself (not a pipeline gate) is paused asking the user to approve a tool call. notify-hook self-gates on active run dirs (scratchpad mtime within a short window) — when no /deliver run is live it is a fast no-op, so registering it globally is safe (same pattern as the dispatcher). (3) SessionStart drives scripts/update-check-hook.js, which at most once/day compares the installed plugin version to the latest GitHub Release and, when behind, injects a SessionStart additionalContext note on how to update. It is throttled (marker in ~/.claude/.pipecrew-update-check), fail-silent (any offline/rate-limit/parse error emits nothing and exits 0), and its network request has a short internal timeout — so it never disrupts or slows a session.",
   "hooks": {
     "SessionStart": [
       {
@@ -14,21 +14,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/troubleshooter-bash-guard.js\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
         "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/deliver-autoapprove-hook.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/pretooluse-dispatch.js\"",
             "timeout": 10
           }
         ]

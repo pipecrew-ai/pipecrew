@@ -16,6 +16,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.4.0] - 2026-07-09
+
+### Added
+- **Shared, committed refresh baseline for `/context-refresh`.** The fast-path
+  baseline — *"these docs were verified as of commit X"* — used to live in a
+  machine-local file, so it was never shared (every teammate re-audited
+  independently) and a fresh `/discover` left none (the first refresh re-read the
+  whole codebase). It now lives in a committed **`agent-context/.refresh-state.json`**
+  "bookmark" inside each repo, so it travels with the docs across clones,
+  branches, and merges. `/discover` seeds it, `/context-refresh` reads it to pick
+  **skip / fast / full** and advances it after a refresh, and `/deliver` advances
+  it alongside the feature. Merge conflicts on the file are left to engineers to
+  resolve in git (it's a regenerable bookmark); an unresolved conflict safely
+  degrades to one full re-scan. New engine `scripts/refresh-state.js`. See
+  `docs/design/refresh-state.md`.
+
+### Changed
+- **One `PreToolUse` hook instead of two.** The `/troubleshoot` read-only guard
+  and the `/deliver --auto-approve` helper were separate `PreToolUse` hooks that
+  both fired on every Bash dispatch. They're now a single
+  `scripts/pretooluse-dispatch.js` that reads the payload once and routes by
+  marker, so a Bash call spawns one Node process instead of two. Behavior is
+  unchanged — both scripts keep their standalone CLIs and full test suites.
+- **`context-manager` preserves human-owned context.** Regenerations (including
+  "recreate from scratch") now extract and graft `<!-- human-owned -->` blocks
+  verbatim (recovering from git HEAD if the directory was deleted) rather than
+  overwriting them, and ground inventory/shape claims in the code instead of
+  inferring from naming. The repo `CLAUDE.md` templates gain a mechanical
+  "new thing" test for how much context to read plus a required `Context read:`
+  declaration line.
+
 ## [1.3.0] - 2026-07-05
 
 ### Added

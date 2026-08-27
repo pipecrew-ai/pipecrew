@@ -1,0 +1,42 @@
+{
+  "_comment": "Canonical example for the FEATURE_BRIEF block emitted by the product-brainstormer agent in `feature` mode (an already-onboarded workspace). It is the feature-mode counterpart of the greenfield PROJECT_BRIEF: instead of describing a whole new project, it DIVERGES into a ranked set of distinct feature OPTIONS grounded in the workspace's platform.md, and recommends 1-2 for the product-owner to turn into FR/EC. The brainstormer never writes FR/EC, API design, or UX — that is the product-owner's job; this block is the hand-off. Consumed by the product-owner (reads `recommended` + the chosen option's fields as the seed for requirements). Schema reference and consumer list live in block-schemas.md. Strip the _comment field from real output.",
+  "workspace_slug": "digital-arabic-library",
+  "theme": "Improve the publisher self-service book pipeline",
+  "options": [
+    {
+      "id": "OPT-1",
+      "title": "Bulk book upload",
+      "value_prop": "Publishers upload a whole catalog in one action instead of one PDF at a time",
+      "affected_roles": ["publisher"],
+      "scope": "New bulk-upload endpoint + batch UI on the existing upload page; reuses the current single-file storage + status pipeline",
+      "depends_on": ["publisher-service.Book", "upload storage bucket", "book.uploaded event"],
+      "unknowns_risks": ["Per-file partial-failure semantics", "S3 client saturation on large batches"],
+      "complexity": "medium",
+      "recommended": true
+    },
+    {
+      "id": "OPT-2",
+      "title": "Upload status dashboard",
+      "value_prop": "Publishers see live processing status of every submitted book in one place",
+      "affected_roles": ["publisher"],
+      "scope": "Read-only dashboard bound to existing book status lifecycle; no new write paths",
+      "depends_on": ["publisher-service.Book status lifecycle", "search-svc indexing events"],
+      "unknowns_risks": ["Whether status transitions are already event-sourced or must be polled"],
+      "complexity": "low",
+      "recommended": true
+    },
+    {
+      "id": "OPT-3",
+      "title": "Reviewer bulk approval queue",
+      "value_prop": "Reviewers approve or reject batches of pending books from a single queue view",
+      "affected_roles": ["reviewer", "admin"],
+      "scope": "New reviewer-facing queue + batch approve/reject actions on existing approval endpoints",
+      "depends_on": ["publisher-service approval endpoints", "reviewer role enforcement"],
+      "unknowns_risks": ["Approval audit-trail requirements", "Concurrent-reviewer conflict handling"],
+      "complexity": "high",
+      "recommended": false
+    }
+  ],
+  "recommended": ["OPT-1", "OPT-2"],
+  "handoff": "product-owner"
+}

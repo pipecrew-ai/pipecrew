@@ -397,6 +397,36 @@ Role-non-applicable fields keep their key with a `null` (object fields) or `[]` 
 
 ---
 
+### `FEATURE_BRIEF`
+
+**Producer**: `product-brainstormer` agent, **`feature` mode only** (an already-onboarded workspace). The greenfield mode of the same agent emits the un-delimited `PROJECT_BRIEF` instead — see that agent's Output Format.
+**Consumers**: the workspace product-owner (reads `recommended` + the chosen option's fields as the seed for Phase 1 requirements — the brainstormer never writes FR/EC), the human at the `/brainstorm` presentation gate (picks which option to pursue).
+**File**: emitted inside the brainstormer's final response between `<!-- BEGIN FEATURE_BRIEF -->` … `<!-- END FEATURE_BRIEF -->`; the `/brainstorm` skill presents it and hands the chosen option to the product-owner.
+**Canonical example**: [`templates/blocks/feature-brief.example.json`](./feature-brief.example.json) — single source of truth for the structure. Update that file when the schema changes; this doc only carries the field reference table below.
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `workspace_slug` | string | The onboarded workspace this brief is for. Matches `{workspace_root}/{slug}/`. |
+| `theme` | string | One-line description of the feature area the user wants to ideate in. |
+| `options[]` | array | One entry per distinct feature option the brainstormer diverged into. Ranked best-first. Never empty in `feature` mode. |
+| `options[].id` | string | Stable id `OPT-1`, `OPT-2`, … The `/brainstorm` gate and the product-owner reference options by id. |
+| `options[].title` | string | Short name for the option. |
+| `options[].value_prop` | string | One-line value proposition — the user-facing benefit. |
+| `options[].affected_roles` | array of strings | Roles from `platform.md § User Roles & Permissions` this option touches. Every value MUST be a real role from that section (EC-4 anti-bleed). |
+| `options[].scope` | string | Rough scope — one or two sentences. NOT FR/EC, NOT an API/UX design (that is the product-owner's job). |
+| `options[].depends_on` | array of strings | Existing entities / services / events (from `platform.md`) this option builds on. Grounds the option in the current platform (EC-4 anti-bleed — no greenfield rewrites). |
+| `options[].unknowns_risks` | array of strings | Key open questions or risks. May draw from `platform.md § Open Questions` and `context/audit-findings.md` when present. |
+| `options[].complexity` | enum | `low` / `medium` / `high` — a rough signal, not an estimate. |
+| `options[].recommended` | boolean | `true` for the 1–2 options the brainstormer recommends. |
+| `recommended` | array of strings | The 1–2 recommended `options[].id` values, best-first. Length 1 or 2. Every id must appear in `options[]` with `recommended: true`. |
+| `handoff` | string | Always `"product-owner"` — names the downstream agent. The brainstormer stops at options; the product-owner turns the chosen one into FR/EC. |
+
+The JSON is the addressable hand-off index. The brainstormer's prose above/below it (comparison narrative, why the recommended options win) is for the human at the `/brainstorm` gate — the product-owner reads the JSON to seed requirements.
+
+---
+
 ## Adding a new structured block
 
 1. Define the schema here under "Defined block schemas".

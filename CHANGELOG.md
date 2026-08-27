@@ -16,6 +16,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.5.0] - 2026-08-27
+
+### Added
+- **`/brainstorm` — one ideation skill, two modes.** PipeCrew now has a single
+  brainstorming entry point that handles BOTH a brand-new (greenfield) project
+  AND ideating features for an already-onboarded workspace. The base
+  `product-brainstormer` agent gained a `MODE:` line: `greenfield` (existing
+  behavior — no repos yet, produces a `PROJECT_BRIEF`) and a new `feature` mode
+  that reads the workspace's `context/platform.md` (+ `audit-findings.md` and
+  platform.md § Open Questions when present) and **diverges** into a ranked set
+  of distinct feature options — value prop, affected roles, rough scope,
+  unknowns, dependencies, and a complexity signal per option — recommends 1–2,
+  and hands off to the product-owner (it never writes FR/EC, API, or UX). The
+  new standalone `/brainstorm` skill resolves the workspace root + slug (via the
+  shared `scripts/workspace-root.js`), auto-detects the mode (no onboarded
+  workspace or `--greenfield` → greenfield; an onboarded workspace → feature),
+  asks a single confirm question only when it's genuinely ambiguous, then
+  dispatches the brainstormer and presents the brief. `/discover --greenfield`
+  is unchanged — it now passes `MODE: greenfield` explicitly, and the agent
+  defaults to greenfield when no MODE is given, so back-compat is exact. Feature
+  mode emits a new downstream-consumable `FEATURE_BRIEF` block
+  (`templates/blocks/feature-brief.example.json`, registered in
+  `block-schemas.md`) so the product-owner can seed requirements cleanly.
+
 ## [1.4.0] - 2026-07-09
 
 ### Added

@@ -31,9 +31,11 @@ Ask the user for their one-liner:
 What do you want to build? Give me a rough idea — I'll ask follow-ups.
 ```
 
-Dispatch `product-brainstormer` via the Agent tool:
+Dispatch `product-brainstormer` via the Agent tool. Pass `MODE: greenfield` as the first line so the agent runs its greenfield path (it defaults to `greenfield` if the line is omitted, but pass it explicitly now that the agent is dual-mode):
 
 ```
+MODE: greenfield
+
 Use the product-brainstormer agent to turn this idea into a PROJECT_BRIEF.
 
 Idea: {user's one-liner}

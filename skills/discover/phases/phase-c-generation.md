@@ -264,45 +264,152 @@ Every file must report `0`. If any file reports ≥1, halt, run `grep -nE '\{\{|
 
 ---
 
-### Step 3.25: Auto-generate per-workspace stack implementers (hybrid fallback)
+### Step 3.25: Custom-agent gate for unsupported stacks (hybrid fallback)
 
-For every repo in the workspace config whose `type` does NOT have a plugin-shipped implementer (see the `TYPE_TO_AGENT` table in `{plugin_dir}/skills/deliver/phases/dispatch-rules.md`), generate a workspace-local implementer by filling the generic-implementer template with the repo's actual conventions. This makes `/deliver` work even for stacks the plugin doesn't ship a dedicated agent for (Rails, Phoenix, Laravel, Go/Gin, .NET, Kotlin/Ktor, etc.).
+For every repo in the workspace config whose `type` has no plugin-shipped implementer (see the `TYPE_TO_AGENT` table in `{plugin_dir}/skills/deliver/phases/dispatch-rules.md`), this step either generates a workspace-local implementer or records the user's chosen resolution, so `/deliver` can work even for stacks the plugin does not ship a dedicated agent for (Rails, Phoenix, Laravel, Go/Gin, .NET, Kotlin/Ktor, Claude Code plugins, schema repos, etc.).
 
-**Selection rule** — iterate `config.repos` and build the generation list:
+> **`--auto-agents` flag**: if this flag was passed at invocation, skip the interactive gate entirely and auto-generate implementers for every unsupported type (same as choosing **Generate** for all). No prompts are shown. Reviewer generation is never auto-triggered — it requires an explicit `--auto-reviewers` flag (or a separate per-type opt-in prompt at the end of the auto pass). Jump directly to the **Dispatch** block below.
+
+**Selection rule** — iterate `config.repos` and build the unsupported-types map (deduplicated by distinct `type`):
 
 ```
-for each repo where config.repos[{repo}].role in ("api-service", "worker", "frontend", "mock-server", "infrastructure"):
+for each repo in config.repos (all roles — including "other" and "contract"):
   type = config.repos[{repo}].type
-  if TYPE_TO_AGENT[type].implementer is present:
-    skip  # plugin ships an agent for this type
+  if TYPE_TO_AGENT[type].implementer is present (plugin ships an agent):
+    skip  # plugin already covers this type; no gate needed
   else:
-    add {type} to the generation list (deduplicate — one agent per distinct type, not per repo)
+    add {type} → {example_repo_name, example_repo_path} to unsupported_types map
+    (keep only the first repo seen for each type as the example; dedup)
 ```
 
-Skip the whole step if the generation list is empty — every type in the workspace already has a plugin agent.
+**Incremental mode** (`discover_mode == incremental`): restrict the loop to `new_repos` only — do not re-process types already covered by the existing workspace `agents/`. If a new repo introduces a type that already has a `~/.claude/agents/{slug}-{type}-implementer.md` from a prior run, treat it as already-generated (idempotency rule below applies).
 
-**For each type in the generation list**, dispatch an onboarding agent to fill the template:
+**EC-1**: If `unsupported_types` is empty → every type in the workspace already has a plugin agent. Skip this step entirely — no gate shown.
+
+---
+
+#### Interactive gate (default — no `--auto-agents`)
+
+Present one consolidated gate block listing all unsupported types, then collect a per-type decision:
+
+```
+Custom-agent gate — {N} unsupported type(s) found:
+
+The following repo types have no plugin-shipped implementer.
+For each type, choose an action:
+
+  Type: {type-1}
+  Example repo: {example_repo_name_1} ({example_repo_path_1})
+  Role: {role_1}
+
+  Type: {type-2}
+  Example repo: {example_repo_name_2} ({example_repo_path_2})
+  Role: {role_2}
+
+  ... (one block per type)
+
+For EACH type, reply with one of:
+  (a) Generate  — auto-derive conventions from the repo's CLAUDE.md + build config
+                  and generate a workspace-local implementer [recommended / default]
+  (b) Hand-write — skip generation; note it in the Phase D report so /deliver's
+                   fallback chain knows the agent must be authored later
+  (c) Map        — use an existing agent: provide the subagent_type name to map to
+                   (e.g., "pipecrew:spring-boot-implementer" or a custom agent you
+                   already have). The mapping is recorded so /deliver can resolve it.
+  (d) Skip       — no action; /deliver will use the generic fallback for this type
+
+Reply format (one line per type):
+  {type-1}: a
+  {type-2}: c dal-rails-implementer
+  {type-3}: b
+  {type-4}: d
+```
+
+Wait for the user's reply. Parse each line as `{type}: {choice} [{extra}]`.
+
+**EC-2 — Map-to-existing validation**: for any type where the user chose (c), resolve the named `subagent_type`:
+- Check whether `~/.claude/agents/{named-agent}.md` exists, OR the name is a known `pipecrew:{agent}` canonical name, OR `.claude/agents/{named-agent}.md` exists in any repo in the config.
+- If it resolves → record the mapping (see below). Continue.
+- If it does NOT resolve → warn the user:
+  ```
+  Warning: '{named-agent}' does not resolve to a known agent file.
+  Choose: re-enter a valid name | fall back to (a) Generate | skip (d)
+  ```
+  Re-prompt for that type only. Never record an unresolvable mapping.
+
+**Recording decisions in the scratchpad** (for `/deliver`'s resolution chain):
+
+After collecting all decisions, record them in the scratchpad under a new `## Custom-Agent Decisions` block:
+
+```markdown
+## Custom-Agent Decisions (Phase C Step 3.25)
+| Type | Decision | Detail |
+|------|----------|--------|
+| {type} | generate | generated: {workspace_slug}-{type}-implementer |
+| {type} | hand-write | agent not generated; /deliver will need a hand-authored agent |
+| {type} | map | mapped to: {named-subagent_type} |
+| {type} | skip | /deliver will use generic fallback |
+```
+
+For (c) **map** decisions, also write a `{workspace_root}/{slug}/agents/type-map.json` sidecar (create or merge):
+
+```json
+{
+  "{type}": "{named-subagent_type}",
+  ...
+}
+```
+
+`/deliver`'s resolution chain reads this file at fallback-chain step 1 when `~/.claude/agents/{slug}-{type}-implementer.md` is absent — it picks up the mapped agent name before falling through to the generic fallback. (See `{plugin_dir}/skills/deliver/phases/dispatch-rules.md` § "Implementer resolution".)
+
+Only proceed to **Dispatch** for types where the decision was (a) Generate. Types with (b)/(c)/(d) are fully resolved — no dispatch needed for them.
+
+---
+
+#### Dispatch — generate implementer(s)
+
+For each type decided as (a) Generate:
 
 **Tool**: `Agent`
-**subagent_type**: `general-purpose` (this is context-reading + template-filling, not deep architectural reasoning)
+**subagent_type**: `general-purpose` (context-reading + template-filling, not deep architectural reasoning)
 **description**: `"Generate workspace-local implementer for {type} (reading {example_repo_name})"`
 **prompt**:
 
 ```
 MODE: generate workspace-local implementer agent
 
-You are generating a NEW implementer-agent file for the {type} stack, specific to the {workspace_name} workspace. A workspace repo using this stack exists at:
+You are generating a NEW implementer-agent file for the {type} stack, specific to
+the {workspace_name} workspace. A workspace repo using this stack exists at:
 
   {example_repo_path}
 
 (Pick any repo of this type if multiple exist — their conventions should match.)
 
-Read these files to understand the house style:
-1. {example_repo_path}/CLAUDE.md (and any files it points to)
-2. Build config — pyproject.toml / Gemfile / Cargo.toml / go.mod / pom.xml / build.sbt / composer.json / package.json / etc. (whichever exists)
-3. 2-3 existing features end-to-end (controllers/handlers + services + tests) so you can name the actual testing framework, migration tool, ORM, DI pattern, routing pattern used here.
-4. {workspace_root}/{slug}/context/platform.md — workspace context (architecture, integration patterns)
-5. {workspace_root}/{slug}/context/audit-findings.md (if it exists) — real bugs spotted during onboarding, filtered to this repo
+Read these files to understand the house style — treat them as authoritative:
+1. {example_repo_path}/CLAUDE.md (if it exists) — this is the PRIMARY source for
+   ORIENT / IMPLEMENT / TEST guidance and anti-patterns. If CLAUDE.md exists, derive
+   the placeholders from it first; supplement with observations from the code only
+   where CLAUDE.md is silent. If CLAUDE.md does NOT exist, note this and rely solely
+   on code observations (warn that quality may be lower; recommend the user run
+   /context-refresh after hand-writing a CLAUDE.md).
+2. Files CLAUDE.md points to (e.g., agent-context/*.md, docs/conventions.md, CONTRIBUTING.md)
+3. Build config — pyproject.toml / Gemfile / Cargo.toml / go.mod / pom.xml / build.sbt
+   / composer.json / package.json / etc. (whichever exists) — to confirm real build
+   commands
+4. 2-3 existing features end-to-end (controllers/handlers + services + tests) so you
+   can name the actual testing framework, migration tool, ORM, DI pattern, routing
+   pattern used here
+5. {workspace_root}/{slug}/context/platform.md — workspace context (architecture,
+   integration patterns)
+6. {workspace_root}/{slug}/context/audit-findings.md (if it exists) — real bugs
+   spotted during onboarding, filtered to this repo
+
+IMPORTANT for non-code repos (role: other, role: contract, markdown-based plugins,
+schema repos, Claude Code plugin repos): do NOT assume a buildable stack. There may
+be no migrations, no ORM, no controllers. Adapt the guidance to what this repo
+actually is — e.g., for a markdown plugin repo: orient = read CLAUDE.md + skills/ +
+eval/; implement = edit markdown + scripts; test = node eval/run.js. Never invent
+a language or framework that isn't present.
 
 Then read the template at:
 
@@ -312,21 +419,44 @@ Fill every placeholder in the template:
 
 - `{{WORKSPACE_SLUG}}` = {workspace_slug}
 - `{{WORKSPACE_NAME}}` = {workspace_name}
-- `{{STACK_KEY}}` = {type} (the config.repos[*].type value — becomes part of the agent filename)
-- `{{STACK_NAME}}` = human-friendly name (e.g., "Ruby on Rails", "Phoenix/Elixir", "Laravel/PHP", "Go/Gin") — pick based on what you saw in the repo
-- `{{ORIENT_GUIDANCE}}` = a 3-5 bullet list describing what files the implementer should read to orient itself in this specific stack (e.g., for Rails: "the controller + its service + its model + its RSpec file for a similar feature; config/routes.rb; the migration under db/migrate/ for a similar entity"). Reference REAL file paths observed in this repo.
-- `{{IMPLEMENT_GUIDANCE}}` = numbered sub-steps describing the implementation order specific to this stack. Name the REAL commands and file locations (e.g., "a. Generate the migration: `bundle exec rails generate migration ...`  b. Define the model in `app/models/`  c. Add the controller action in `app/controllers/`  d. Register the route in `config/routes.rb`").
-- `{{TEST_GUIDANCE}}` = the actual test framework + runner this repo uses. Name the real commands (`bundle exec rspec spec/`, `bundle exec rails test`, `go test ./...`, `./mvnw test`, `npm test`, etc.). Describe what coverage to add (unit + integration/e2e).
-- `{{KNOWN_ANTI_PATTERNS}}` = 4-8 bullets of real anti-patterns you observed. Draw from: (a) gotchas visible in CLAUDE.md or the repo's conventions docs, (b) patterns you saw implemented one way consistently (imply the wrong way is an error), (c) audit-findings.md entries for this repo, (d) common stack-specific traps you know from training (Rails strong params, Phoenix Ecto changesets, Laravel Eloquent N+1, Go context cancellation, etc. — but only for stacks where you have high confidence). Each bullet MUST be concrete and actionable.
-- `{{COMPLETION_CHECKS}}` = 2-4 additional "you are not done until" lines specific to this stack (e.g., for Rails: "- `bundle exec rubocop` passes  - Migration runs cleanly on a fresh DB"). These supplement the default completion checks already in the template.
+- `{{STACK_KEY}}` = {type} (the config.repos[*].type value — becomes part of the
+  agent filename)
+- `{{STACK_NAME}}` = human-friendly name (e.g., "Ruby on Rails", "Phoenix/Elixir",
+  "Laravel/PHP", "Go/Gin", "Claude Code Plugin", "JSON Schema repo") — pick based
+  on what you saw in the repo
+- `{{ORIENT_GUIDANCE}}` = a 3-5 bullet list describing what files the implementer
+  should read to orient itself in this specific stack. If CLAUDE.md exists, derive
+  these from its ORIENT/context section. Reference REAL file paths observed in this
+  repo — not generic placeholders.
+- `{{IMPLEMENT_GUIDANCE}}` = numbered sub-steps describing the implementation order
+  specific to this stack. Name REAL commands and file locations. If CLAUDE.md has
+  an implementation guide, adapt it. For non-buildable repos (plugin, schema),
+  describe the edit-validate-test loop specific to this repo.
+- `{{TEST_GUIDANCE}}` = the actual test framework + runner this repo uses. Name the
+  real commands. For repos with no test runner, describe the manual validation steps
+  (e.g., "run node eval/run.js and confirm exit 0").
+- `{{KNOWN_ANTI_PATTERNS}}` = 4-8 bullets of real anti-patterns. Draw from:
+  (a) anti-patterns listed in CLAUDE.md or repo conventions docs (highest priority),
+  (b) patterns you saw consistently in the code (implying the wrong way is an error),
+  (c) audit-findings.md entries for this repo,
+  (d) common stack-specific traps from training — only for stacks where you have high
+  confidence. Each bullet MUST be concrete and actionable.
+- `{{COMPLETION_CHECKS}}` = 2-4 additional "you are not done until" lines specific
+  to this stack (e.g., for Rails: "- `bundle exec rubocop` passes  - Migration runs
+  cleanly on a fresh DB"). These supplement the default completion checks in the
+  template. For repos with no compile step, include the eval/lint check instead.
 
-Return the COMPLETE filled agent file content — nothing else, no preamble, no commentary. The orchestrator will write your output verbatim to `{workspace_root}/{slug}/agents/{type}-implementer.md`.
+Return the COMPLETE filled agent file content — nothing else, no preamble, no
+commentary. The orchestrator will write your output verbatim to
+`{workspace_root}/{slug}/agents/{type}-implementer.md`.
 
 Self-check before returning:
 - Zero `{{` remaining anywhere in the file (grep your own output)
 - The `name:` frontmatter value matches `{workspace_slug}-{type}-implementer` exactly
 - Every file path referenced is a real path in {example_repo_path} (not a placeholder)
 - Every command referenced is runnable (syntax verified from the build config you read)
+- For a CLAUDE.md-based repo: ORIENT/IMPLEMENT/TEST/anti-patterns all trace back to
+  what CLAUDE.md says, not to generic assumptions
 ```
 
 **On agent return**:
@@ -335,11 +465,101 @@ Self-check before returning:
 3. Publish to `~/.claude/agents/{workspace_slug}-{type}-implementer.md` (same conflict-check pattern as the workspace product-owner/assessor/troubleshooter publish in Step 3 above — if a file with that name already exists under a different `name:` frontmatter value, stop and ask the user before overwriting).
 4. Log one line: `Generated workspace implementer: {workspace_slug}-{type}-implementer (for {repo_list})`.
 
+**EC-4 — no CLAUDE.md warning**: if the example repo has no `CLAUDE.md`, include a warning in the log and in the Phase D summary:
+```
+Warning: {type} repo ({example_repo_name}) has no CLAUDE.md — generated agent quality
+may be lower. Recommend running /context-refresh after hand-writing a CLAUDE.md for
+that repo, then re-generating: /discover --resume --workspace={slug} (choose
+"overwrite" at the idempotency gate).
+```
+
 **Idempotency**: if `{workspace_root}/{slug}/agents/{type}-implementer.md` already exists (re-run or hand-edited), show a diff after regeneration and ask the user to keep/overwrite/merge. Default to KEEP — a hand-edited agent is load-bearing and must not be silently clobbered.
 
-**Parallel dispatch**: if the generation list has 2+ distinct types, dispatch all agents in ONE orchestrator message so they run concurrently. Apply the same transient-failure rules as Step 2.
+**Parallel dispatch**: if 2+ types are being generated, dispatch all agents in ONE orchestrator message so they run concurrently. Apply the same transient-failure rules as Step 2.
 
-**Update scratchpad**: add a `Per-workspace stack implementers` row to `## Generation Status` listing each generated agent (or `none needed` if every type had a plugin agent). Set Phase C status unchanged — this step is additive.
+---
+
+#### FR-4: Optional paired reviewer
+
+After ALL implementers have been generated (skip this offer in `--auto-agents` mode — reviewers require explicit opt-in via `--auto-reviewers`), offer to generate a paired workspace-local reviewer for each type that was just generated:
+
+```
+Paired reviewer offer — {N} implementer(s) just generated.
+
+Generating a paired reviewer for each type lets /deliver's Phase 5.5 dispatch
+a workspace-local reviewer instead of falling back to the generic one.
+
+Generate paired reviewers?
+  (a) Yes — generate for all types just generated
+  (b) Select — I'll choose per type
+  (c) No — skip reviewer generation
+```
+
+For choice (a): generate reviewers for every newly-generated implementer type.
+For choice (b): present a per-type prompt and collect yes/no for each.
+For choice (c): skip entirely.
+
+For each type confirmed for reviewer generation:
+
+**Tool**: `Agent`
+**subagent_type**: `general-purpose`
+**description**: `"Generate workspace-local reviewer for {type} (reading {example_repo_name})"`
+**prompt**:
+
+```
+MODE: generate workspace-local reviewer agent
+
+You are generating a NEW reviewer-agent file for the {type} stack, specific to the
+{workspace_name} workspace. A workspace repo using this stack exists at:
+
+  {example_repo_path}
+
+Apply the same ORIENT step as for the implementer (read CLAUDE.md, files it points
+to, build config, 2-3 existing features) to understand what "correct" looks like in
+this repo.
+
+Then read the template at:
+
+  {plugin_dir}/templates/agents/generic-reviewer.md.template
+
+Fill every placeholder in the template (same ORIENT_GUIDANCE, KNOWN_ANTI_PATTERNS,
+COMPLETION_CHECKS logic as for the implementer; adapt for review context):
+
+- `{{WORKSPACE_SLUG}}` = {workspace_slug}
+- `{{WORKSPACE_NAME}}` = {workspace_name}
+- `{{STACK_KEY}}` = {type}
+- `{{STACK_NAME}}` = same human-friendly name as the paired implementer
+- `{{ORIENT_GUIDANCE}}` = same orient steps as the implementer (reading the same
+  real file paths); reviewer needs to understand the codebase to judge correctness
+- `{{REVIEW_GUIDANCE}}` = numbered checklist of what to look for when reviewing
+  a diff for this stack. Cover: (a) does every FR/EC have an enforcement point?
+  (b) stack-specific correctness checks (e.g., for Rails: are strong params used?
+  are all DB queries scoped? are specs in the right directory?); (c) test coverage
+  adequacy; (d) house-style adherence as visible from CLAUDE.md conventions
+- `{{KNOWN_ANTI_PATTERNS}}` = same as implementer — reviewers need to know what
+  mistakes to flag
+- `{{COMPLETION_CHECKS}}` = stack-specific "not done until" lines for a reviewer
+  (e.g., "every finding has a file:line reference", "verdict is stated clearly")
+
+Return the COMPLETE filled agent file content — nothing else, no preamble.
+Self-check: zero `{{` remaining; `name:` matches `{workspace_slug}-{type}-reviewer`.
+```
+
+**On agent return**:
+1. Write to `{workspace_root}/{slug}/agents/{type}-reviewer.md`
+2. Verify zero `{{` remain.
+3. Publish to `~/.claude/agents/{workspace_slug}-{type}-reviewer.md` (same conflict-check).
+4. Log: `Generated workspace reviewer: {workspace_slug}-{type}-reviewer`.
+
+---
+
+**Update scratchpad**: add a `Per-workspace stack agents` row to `## Generation Status` listing each generated implementer and reviewer, each mapped type, and each hand-write / skip decision. Example:
+
+```
+| Per-workspace stack agents | COMPLETED | rails: generated implementer + reviewer; phoenix: mapped → pipecrew:nestjs-implementer; laravel: hand-write (noted in report); other-type: skipped |
+```
+
+Set Phase C status unchanged — this step is additive.
 
 ---
 

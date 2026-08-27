@@ -16,6 +16,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.6.0] - 2026-08-27
+
+### Added
+- **Interactive custom-agent gate in `/discover` Phase C Step 3.25.** The step that
+  generates workspace-local implementers for unsupported stacks is now an explicit
+  per-type gate instead of a silent auto-generator. For each repo type with no
+  plugin-shipped implementer, the user chooses: (a) **Generate** — auto-derive
+  conventions from the repo's `CLAUDE.md` + build config and fill the
+  `generic-implementer.md.template`; (b) **Hand-write** — skip generation and note
+  it in the Phase D report + scratchpad so `/deliver`'s fallback chain warns
+  appropriately; (c) **Map to an existing agent** — record the `subagent_type` in a
+  new `agents/type-map.json` sidecar that `/deliver`'s resolution chain reads; (d)
+  **Skip** — `/deliver` falls through to the generic fallback. EC-2: an
+  unresolvable mapping re-prompts rather than being silently recorded.
+- **Broader coverage: `role: other` and `role: contract` repos now included.** The
+  selection rule for Step 3.25 previously filtered to five roles; it now covers all
+  roles, so Claude Code plugin repos, schema repos, and other non-standard repos
+  receive the same gate and generation offer.
+- **CLAUDE.md-derived generation.** The generation dispatch prompt now instructs the
+  generating agent to treat the repo's `CLAUDE.md` as the authoritative source for
+  ORIENT / IMPLEMENT / TEST / anti-pattern placeholders, and to adapt for non-code
+  repos (markdown plugins, schema repos) by not assuming a buildable stack. EC-4:
+  repos with no `CLAUDE.md` receive a warning that quality may be lower and a
+  recommendation to hand-write CLAUDE.md then re-generate.
+- **Optional paired reviewer generation (FR-4).** After implementers are generated,
+  the gate offers to also generate a paired workspace-local reviewer per type using
+  the new `templates/agents/generic-reviewer.md.template`. Reviewers are published
+  as `{slug}-{type}-reviewer`. Fully optional — declining skips the step.
+- **`--auto-agents` flag for non-interactive / CI use.** Skips the gate and
+  auto-generates implementers for every unsupported type (back-compat with prior
+  silent behavior). Reviewer generation always requires explicit opt-in
+  (`--auto-reviewers`). Documented in the flags table in `skills/discover/SKILL.md`.
+- **Incremental-mode scoping (FR-7).** In incremental runs, Step 3.25 processes only
+  new repos' unsupported types, and skips types already covered by an existing
+  workspace-local agent from a prior run.
+- **`type-map.json` sidecar + `/deliver` fallback chain step.** A new step 2 in the
+  `/deliver` implementer-resolution chain reads `agents/type-map.json` (written by
+  the "Map" gate option) to dispatch mapped agents before the generic fallback.
+
 ## [1.5.0] - 2026-08-27
 
 ### Added
@@ -174,6 +213,9 @@ Initial release — multi-repo agent crew for Claude Code: `/discover`, `/delive
 site-view and support for Spring Boot, React, Next.js, NestJS, FastAPI, Flask,
 Django, Python workers, AWS CDK, Terraform, and Node mock stacks.
 
+[1.6.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.6.0
+[1.5.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.5.0
+[1.4.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.4.0
 [1.3.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.3.0
 [1.2.1]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.2.1
 [1.2.0]: https://github.com/pipecrew-ai/pipecrew/releases/tag/v1.2.0

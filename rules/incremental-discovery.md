@@ -193,10 +193,18 @@ apply the existing diff/keep gate. If there is no new frontend, skip B3 entirely
   Existing repos' docs are never touched.
 - **Domain agents** (product-owner / assessor / troubleshooter) already exist —
   do NOT regenerate them. Leave the workspace `agents/` and the published
-  `~/.claude/agents/{slug}-*` copies as-is. (Adding a repo doesn't change the
-  domain agents; if a new repo introduces a stack whose implementer/reviewer
-  agent is missing, that's a plugin-level agent, not a generated one — note it
-  for the user, don't generate it.)
+  `~/.claude/agents/{slug}-*` copies as-is.
+- **Step 3.25 — custom-agent gate (incremental scope)**: run the gate only for
+  **new repos' unsupported types**. Specifically: build the unsupported-types map
+  from `new_repos` only (not from all repos in config). If a new repo introduces
+  a `type` that already has a `~/.claude/agents/{slug}-{type}-implementer.md`
+  from a prior run, treat it as already-generated and skip it (idempotency).
+  Types from existing repos are not re-processed — their agents (if any) were
+  handled in the original full run. If a new repo's type has no plugin agent AND
+  no workspace-local agent, present the interactive gate (or auto-generate if
+  `--auto-agents` was passed) exactly as in full mode. Record decisions in the
+  scratchpad `## Custom-Agent Decisions` block (append, do not overwrite the block
+  from the prior full run).
 - **Audit findings**: append the new repos' findings to the existing
   `context/audit-findings.md` (new H2 section per new repo). Don't rewrite prior
   sections.

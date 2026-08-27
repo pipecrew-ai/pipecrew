@@ -38,6 +38,7 @@ const KNOWN_UNMAPPED = new Set([
 // not the template filename — too generic for static resolution.
 const SKIP_TEMPLATES = new Set([
   'generic-implementer',  // produces e.g. {slug}-{stack}-implementer at /discover time
+  'generic-reviewer',     // produces e.g. {slug}-{stack}-reviewer at /discover time (FR-4)
 ]);
 
 let passed = 0, failed = 0, warnings = 0;

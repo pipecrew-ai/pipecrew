@@ -40,8 +40,14 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+    /* light disc so the logo's dark outlines read on the dark header */
+    background: #f3efe7;
+    border-radius: 50%;
+    padding: 4px;
+    box-shadow: 0 0 0 1px rgba(245,166,35,0.5), 0 2px 8px rgba(0,0,0,0.4);
   }
-  .brand-mark svg { width: 100%; height: 100%; display: block; }
+  .brand-mark svg,
+  .brand-mark img { width: 100%; height: 100%; display: block; }
   .brand-mark .apex-spark {
     transform-box: fill-box;
     transform-origin: center;
@@ -1175,36 +1181,343 @@
   .md-rendered strong { color: #e9d3b0; font-weight: 700; }
   .md-rendered em { font-style: italic; color: #c9b38a; }
   .md-rendered hr { border: 0; border-top: 1px dashed rgba(122, 90, 32, 0.5); margin: 12px 0; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     V2 — STAGE-FLOW PIPELINE
+     The run is shown as 6 ordered chapters the real /deliver phases fall
+     into: Understand → Contract → Build → Verify → Ship → Learn. A rail
+     across the top lights up station-by-station; below it, a swimlane per
+     stage holds that stage's crew. The monument totem on the right gains a
+     tier each time a stage finishes.
+     ═══════════════════════════════════════════════════════════════════ */
+  :root {
+    --stage-dim:    #4b4633;
+    --stage-pend:   #8a7a4a;
+    --stage-active: #f5a623;
+    --stage-done:   #4ade80;
+  }
+  .pipeline-wrap {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 0 24px 28px;
+  }
+
+  /* ── slim sky band: keeps the construction charm (sun + birds) without the
+     full scene. The sun's halo shifts to the active stage colour. ── */
+  /* Pharaoh hero — the pyramid is the centrepiece of a desert-dusk band. */
+  .pharaoh-hero {
+    position: relative;
+    height: 200px;
+    margin: 8px 0 4px;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 50% 8%, rgba(255,210,130,0.18) 0%, rgba(255,210,130,0) 55%),
+      linear-gradient(180deg, #241a2e 0%, #4a2f15 48%, #6b4520 78%, #845426 100%);
+    border: 1px solid rgba(180,130,55,0.45);
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.45);
+  }
+  .pharaoh-hero .pharaoh-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage-headline {
+    position: absolute;
+    right: 20px; top: 18px;
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #d8c39a;
+    z-index: 2;
+  }
+  .stage-headline .now {
+    font-size: 9px; letter-spacing: 2px; color: #b59b6a;
+    display: block; margin-bottom: 3px;
+  }
+  .stage-headline #stage-headline-label {
+    font-size: 20px; font-weight: 700; letter-spacing: 2px;
+    color: #ffd98a; text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(245,166,35,0.5);
+  }
+  .stage-headline.complete #stage-headline-label { color: var(--stage-done); text-shadow: 0 0 12px rgba(74,222,128,0.5); }
+  .ship-stats {
+    margin-top: 8px;
+    display: flex; gap: 16px; justify-content: flex-end;
+    font-size: 10px; letter-spacing: 1px; color: #b59b6a;
+    text-transform: uppercase;
+  }
+  .ship-stats b { color: #ffd98a; font-weight: 700; font-size: 12px; letter-spacing: 0.5px; }
+  .stage-headline.complete .ship-stats b { color: var(--stage-done); }
+
+  /* ── the rail: 6 stations + connectors. ── */
+  .stage-rail {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    align-items: start;
+    margin: 18px 0 6px;
+    position: relative;
+  }
+  .stage-station {
+    position: relative;
+    text-align: center;
+    padding-top: 30px;
+  }
+  /* connector line behind the nodes — sits at node centre (y≈11 from top). */
+  .stage-station::before {
+    content: '';
+    position: absolute;
+    top: 11px; left: -50%; width: 100%; height: 3px;
+    background: var(--stage-dim);
+    z-index: 0;
+    transition: background 0.5s ease;
+  }
+  .stage-station:first-child::before { display: none; }
+  .stage-station.lit::before,
+  .stage-station.done::before { background: var(--stage-done); }
+  /* Active connector fills green up to the stage's intra-progress (--stage-progress,
+     set per-update from done/total agents), then amber for the remainder — so the
+     bar advances agent-by-agent, not only when the whole stage flips to done. */
+  .stage-station.active::before {
+    background: linear-gradient(90deg,
+      var(--stage-done)   0%,
+      var(--stage-done)   var(--stage-progress, 0%),
+      var(--stage-active) var(--stage-progress, 0%),
+      var(--stage-active) 100%);
+  }
+  /* travelling spark flowing INTO the active station */
+  .stage-station.active::after {
+    content: '';
+    position: absolute;
+    top: 8px; left: 0; width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--stage-active);
+    box-shadow: 0 0 10px 3px rgba(245,166,35,0.7);
+    z-index: 1;
+    animation: railSpark 1.6s linear infinite;
+  }
+  @keyframes railSpark {
+    0%   { left: -46%; opacity: 0; }
+    15%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { left: 46%; opacity: 0; }
+  }
+  .stage-node {
+    position: relative;
+    z-index: 2;
+    width: 24px; height: 24px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--stage-dim);
+    color: var(--stage-dim);
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s ease;
+  }
+  .stage-station.pending .stage-node { border-color: var(--stage-pend); color: var(--stage-pend); }
+  .stage-station.active  .stage-node {
+    border-color: var(--stage-active); color: var(--stage-active);
+    box-shadow: 0 0 0 4px rgba(245,166,35,0.18);
+    animation: nodePulse 1.6s ease-in-out infinite;
+  }
+  .stage-station.done .stage-node,
+  .stage-station.lit  .stage-node {
+    border-color: var(--stage-done); color: var(--bg); background: var(--stage-done);
+  }
+  @keyframes nodePulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(245,166,35,0.12); }
+    50%      { box-shadow: 0 0 0 7px rgba(245,166,35,0.28); }
+  }
+  .stage-node .check { display: none; }
+  .stage-station.done .stage-node .num,
+  .stage-station.lit  .stage-node .num { display: none; }
+  .stage-station.done .stage-node .check,
+  .stage-station.lit  .stage-node .check { display: inline; }
+  .stage-name {
+    margin-top: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--stage-pend);
+    transition: color 0.4s ease;
+  }
+  .stage-station.active .stage-name { color: var(--stage-active); }
+  .stage-station.done .stage-name,
+  .stage-station.lit  .stage-name  { color: var(--stage-done); }
+  .stage-blurb {
+    font-size: 7.5px; letter-spacing: 1px; color: var(--muted);
+    margin-top: 2px; min-height: 10px;
+  }
+  /* gate marker — a small ⏸ that drops under the station whose phase is blocked */
+  .stage-gate-flag {
+    display: none;
+    margin-top: 4px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    color: #ffe066;
+    animation: gateFlag 1.2s ease-in-out infinite;
+  }
+  .stage-station.gated .stage-gate-flag { display: block; }
+  @keyframes gateFlag { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* ── swimlanes: one column per stage, aligned under the rail stations. ── */
+  .swimlanes {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+    align-items: stretch;
+  }
+  .lane {
+    border: 1px solid rgba(122,90,32,0.22);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.18);
+    padding: 8px 4px 10px;
+    min-height: 150px;
+    display: flex; flex-direction: column;
+    transition: border-color 0.4s ease, background 0.4s ease;
+  }
+  .lane.active { border-color: rgba(245,166,35,0.55); background: rgba(245,166,35,0.05); }
+  .lane.done   { border-color: rgba(74,222,128,0.35); }
+  .lane-head {
+    text-align: center;
+    font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 6px; margin-bottom: 6px;
+    border-bottom: 1px dashed rgba(122,90,32,0.3);
+  }
+  .lane-head .lane-count { color: var(--line); font-weight: 700; }
+  .lane-head .lane-state { display: block; font-size: 7.5px; margin-top: 2px; letter-spacing: 1px; }
+  .lane.active .lane-head .lane-state { color: var(--stage-active); }
+  .lane.done   .lane-head .lane-state { color: var(--stage-done); }
+  /* per-stage token total — sum across the stage's crew */
+  .lane-head .lane-tokens {
+    display: block; margin-top: 3px;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--line);
+  }
+  .lane-head .lane-tokens:not(:empty)::after { content: ' tok'; font-weight: 400; color: var(--muted); }
+  .lane-cards {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    flex: 1;
+  }
+  .lane-empty {
+    color: var(--stage-dim); font-size: 9px; letter-spacing: 1px;
+    margin: auto 0; text-align: center; opacity: 0.7;
+  }
+  /* cards inside a lane flow statically (override the v1 absolute positioning) */
+  .lane-cards .card {
+    position: static; left: auto; top: auto;
+    width: 100%; max-width: 150px;
+    transform: scale(var(--qscale, 1));
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    pointer-events: auto;
+  }
+  .lane-cards .card .stage { width: 58px; height: 58px; }
+  .lane-cards .card.done { --qscale: 0.92; }
+  .lane-cards .card.working { --qscale: 1; }
+  .lane-cards .card .char-label .name { font-size: 8.5px; max-width: 140px; }
+  .lane-cards .card .char-label .repo { font-size: 7.5px; max-width: 140px; }
+  /* a working card gets a soft glowing platform so the eye lands on it */
+  .lane-cards .card.working {
+    background: radial-gradient(ellipse at 50% 80%, rgba(245,166,35,0.16), transparent 70%);
+    border-radius: 8px;
+  }
+
+  /* ── pyramid monument: 6 sandstone tiers, one per completed stage. ── */
+  .monument-totem .tier {
+    opacity: 0.1;
+    transition: opacity 0.7s ease, filter 0.7s ease;
+  }
+  .monument-totem .tier.built {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(245,190,110,0.55));
+  }
+  .monument-totem.complete .tier.built {
+    filter: drop-shadow(0 0 7px rgba(255,215,130,0.85));
+  }
+  .monument-caption {
+    position: absolute;
+    left: 20px; bottom: 14px;
+    font-size: 11px; letter-spacing: 1.5px; color: #c9ad78;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .monument-caption b { color: #ffd98a; font-size: 14px; }
+  .monument-caption.complete { color: var(--stage-done); }
+  .monument-caption.complete b { color: var(--stage-done); }
+  /* topping-out: the pyramidion + flag fade in and glow when the run completes */
+  .monument-totem .topper { opacity: 0; transition: opacity 0.6s ease; }
+  .monument-totem.complete .topper { opacity: 1; animation: capstoneGlow 2.4s ease-in-out infinite; }
+  @keyframes capstoneGlow {
+    0%, 100% { filter: drop-shadow(0 0 3px rgba(255,233,176,0.6)); }
+    50%      { filter: drop-shadow(0 0 9px rgba(255,233,176,1)); }
+  }
+
+  /* completion confetti — lightweight CSS sprinkle, only while .celebrate is set */
+  .confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; display: none; }
+  .confetti-layer.celebrate { display: block; }
+  .confetti-bit {
+    position: absolute; top: -12px; width: 8px; height: 12px; opacity: 0.9;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+    100% { transform: translateY(102vh) rotate(540deg);  opacity: 0.3; }
+  }
+
+  /* ── completion celebration — the crew jumps and waves. Fired alongside the
+     confetti when the run reaches "complete" (see maybeCelebrate). `body.celebrate`
+     is a stable ancestor class, so it survives card re-renders; a per-card
+     --cdelay staggers the crew so they cheer in a wave, not in lockstep. ── */
+  body.celebrate svg.char .char-body {
+    animation: charCheer 0.9s ease-in-out infinite;
+    animation-delay: var(--cdelay, 0s);
+    transform-box: fill-box;
+    transform-origin: center bottom;
+  }
+  body.celebrate svg.char .arm-l {
+    animation: armCheerL 0.5s ease-in-out infinite;
+    animation-delay: var(--cdelay, 0s);
+  }
+  body.celebrate svg.char .arm-r {
+    animation: armCheerR 0.5s ease-in-out infinite;
+    animation-delay: var(--cdelay, 0s);
+  }
+  @keyframes charCheer {
+    0%, 100% { transform: translateY(0); }
+    25%      { transform: translateY(-16px); }
+    45%      { transform: translateY(0); }
+    65%      { transform: translateY(-9px); }
+    85%      { transform: translateY(0); }
+  }
+  @keyframes armCheerL {
+    0%, 100% { transform: rotate(-8deg); }
+    50%      { transform: rotate(-62deg); }
+  }
+  @keyframes armCheerR {
+    0%, 100% { transform: rotate(8deg); }
+    50%      { transform: rotate(62deg); }
+  }
+
+  @media (max-width: 1080px) {
+    .stage-rail, .swimlanes { grid-template-columns: repeat(3, 1fr); }
+    .stage-station:nth-child(4)::before { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stage-station.active::after,
+    .stage-station.active .stage-node,
+    .stage-gate-flag,
+    .monument-totem.complete .topper { animation: none; }
+    .confetti-bit { animation-duration: 0.01s !important; }
+    body.celebrate svg.char .char-body,
+    body.celebrate svg.char .arm-l,
+    body.celebrate svg.char .arm-r { animation: none !important; }
+  }
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand-mark" aria-label="PipeCrew">
-    <svg viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg">
-      <!-- stepped pyramid outline -->
-      <g fill="none" stroke="#f5a623" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M5 30 L20 7 L35 30 Z"/>
-        <line x1="11" y1="21" x2="29" y2="21"/>
-        <line x1="15" y1="14" x2="25" y2="14"/>
-      </g>
-      <!-- apex sun: tiny rays + body (pulsing) -->
-      <g class="apex-spark">
-        <g stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" fill="none">
-          <line x1="20" y1="2"  x2="20" y2="5"/>
-          <line x1="14.5" y1="4" x2="13"  y2="2.5"/>
-          <line x1="25.5" y1="4" x2="27"  y2="2.5"/>
-        </g>
-        <circle cx="20" cy="7" r="2.1" fill="#fbbf24" stroke="#f5a623" stroke-width="0.9"/>
-      </g>
-      <!-- base pipe + 3 crew dots -->
-      <line x1="5" y1="35" x2="35" y2="35" stroke="#5c4420" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
-      <g fill="#f5a623" stroke="#5c4420" stroke-width="0.8">
-        <circle cx="10" cy="35" r="2.2"/>
-        <circle cx="20" cy="35" r="2.6"/>
-        <circle cx="30" cy="35" r="2.2"/>
-      </g>
-    </svg>
+    <!-- Brand logo — same asset as the website (public/icon-tip-hat-3d.svg). -->
+    <img src="/icon-tip-hat-3d.svg" alt="PipeCrew" />
   </div>
   <div>
     <h1><span id="feature-name">Pipeline View</span></h1>
@@ -1259,15 +1572,84 @@
 </div>
 
 <div class="token-summary">
-  <span>ORCHESTRATOR <b id="orch-tokens">0</b>K</span>
-  <span>AGENTS <b id="agent-tokens">0</b>K</span>
-  <span>TOTAL <b id="total-tokens">0</b>K
+  <span title="Main-loop (orchestrator) token overhead — loading skills, reading files/specs, scratchpad updates, approval gates, and reading agent results. Derived from this run's Claude session transcript (input + output + cache-creation; cache-reads excluded). It accrues from pre-flight onward, so it is intentionally non-zero before any sub-agent finishes.">ORCHESTRATOR <b id="orch-tokens">0</b></span>
+  <span title="Sum of per-sub-agent token cost across every card, derived from each sub-agent's own transcript. Separate from the orchestrator's own usage above.">AGENTS <b id="agent-tokens">0</b></span>
+  <span>TOTAL <b id="total-tokens">0</b>
     <span class="bar"><span class="bar-fill" id="token-bar" style="width: 0%"></span></span>
     <span class="budget-warn" id="token-budget-warn" title="Total tokens exceeded 1M — budget warning">OVER 1M</span>
   </span>
 </div>
 
-<div class="scene-wrap">
+<!-- ═══ V2 STAGE-FLOW PIPELINE ═══════════════════════════════════════════
+     Rail + swimlanes + monument are populated by initStages()/layout() from
+     the STAGES model. The v1 construction scene below is kept in the DOM but
+     hidden — `/` still serves the original UI for rollback. -->
+<div class="pipeline-wrap">
+  <!-- Pharaoh hero — the monument is the centrepiece: a desert-dusk scene with
+       a stepped Egyptian pyramid that gains a tier as each stage completes.
+       Keeps #monument-totem / .tier / #sun / #monument-caption so layout()'s
+       build-up + completion logic is unchanged. -->
+  <div class="pharaoh-hero">
+    <svg class="pharaoh-svg" viewBox="0 0 1400 200" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <radialGradient id="raGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"  stop-color="#ffd98a" stop-opacity="0.95"/>
+          <stop offset="55%" stop-color="#f5a623" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#f5a623" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <!-- drifting birds — all 8 flight paths (varied speed / altitude / direction) -->
+      <g id="sky-birds">
+        <g class="bird-fly bird-1"><path class="bird-body" d="M0 0 q 4 -5 8 0 t 8 0"   fill="none" stroke="#7a5a28" stroke-width="1.3" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-2"><path class="bird-body" d="M0 0 q 5 -6 10 0 t 10 0" fill="none" stroke="#6f5224" stroke-width="1.5" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-3"><path class="bird-body" d="M0 0 q 3 -4 7 0 t 7 0"   fill="none" stroke="#8a6a30" stroke-width="1.1" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-4"><path class="bird-body" d="M0 0 q 3 -4 6 0 t 6 0"   fill="none" stroke="#8a6a30" stroke-width="1.0" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-5"><path class="bird-body" d="M0 0 q 4 -5 9 0 t 9 0"   fill="none" stroke="#7a5a28" stroke-width="1.4" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-6"><path class="bird-body" d="M0 0 q 3 -4 7 0 t 7 0"   fill="none" stroke="#8a6a30" stroke-width="1.2" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-7"><path class="bird-body" d="M0 0 q 5 -6 10 0 t 10 0" fill="none" stroke="#6f5224" stroke-width="1.5" stroke-linecap="round"/></g>
+        <g class="bird-fly bird-8"><path class="bird-body" d="M0 0 q 3 -4 6 0 t 6 0"   fill="none" stroke="#8a6a30" stroke-width="1.0" stroke-linecap="round"/></g>
+      </g>
+      <!-- sun-disc of Ra, set off to the left so it clears the pyramid -->
+      <g id="sun" transform="translate(255, 62)">
+        <circle r="78" fill="url(#raGlow)"/>
+        <circle r="34" fill="#f5a623" opacity="0.95"/>
+      </g>
+      <!-- desert dunes at the base -->
+      <path d="M0 172 Q 320 150 640 170 T 1400 166 L1400 200 L0 200 Z" fill="#5a3d16" opacity="0.85"/>
+      <path d="M0 184 Q 400 168 820 182 T 1400 180 L1400 200 L0 200 Z" fill="#3f2a0f" opacity="0.9"/>
+      <!-- the stepped pyramid — 6 tiers, bottom (tier-1) → apex (tier-6) -->
+      <g class="monument-totem" id="monument-totem" aria-label="build progress">
+        <path class="tier" data-tier="1" d="M560 172 L840 172 L820 150 L580 150 Z" fill="#caa14a"/>
+        <path class="tier" data-tier="2" d="M580 150 L820 150 L800 128 L600 128 Z" fill="#d3aa52"/>
+        <path class="tier" data-tier="3" d="M600 128 L800 128 L780 106 L620 106 Z" fill="#dcb35c"/>
+        <path class="tier" data-tier="4" d="M620 106 L780 106 L760 84 L640 84 Z"   fill="#e3bd6a"/>
+        <path class="tier" data-tier="5" d="M640 84  L760 84  L738 62 L662 62 Z"   fill="#ecc77a"/>
+        <path class="tier" data-tier="6" d="M662 62  L738 62  L700 40 Z"           fill="#f6d68f"/>
+        <!-- pyramidion capstone + topping-out flag (appears on completion) -->
+        <g class="topper">
+          <path d="M662 62 L738 62 L700 40 Z" fill="#ffe9b0" stroke="#fff3d0" stroke-width="1"/>
+          <line x1="700" y1="40" x2="700" y2="20" stroke="#4ade80" stroke-width="2"/>
+          <path d="M700 20 L724 25 L700 31 Z" fill="#4ade80"/>
+        </g>
+      </g>
+    </svg>
+    <div class="monument-caption" id="monument-caption"><b>0</b> / 6 stages complete</div>
+    <div class="stage-headline" id="stage-headline">
+      <span class="now">CURRENT STAGE</span>
+      <span id="stage-headline-label">—</span>
+      <div class="ship-stats" id="ship-stats">
+        <span><b id="ship-tokens">—</b> tokens</span>
+        <span><b id="ship-duration">—</b> total</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage-rail" id="stage-rail"></div>
+  <div class="swimlanes" id="swimlanes"></div>
+</div>
+<div class="confetti-layer" id="confetti-layer"></div>
+
+<div class="scene-wrap" style="display:none" aria-hidden="true">
   <section class="queue-scene">
     <svg class="queue-bg" viewBox="0 0 1400 520" preserveAspectRatio="xMidYMin meet">
       <!-- ground — separates working/queue zone (above) from completed zone (below) -->
@@ -1465,13 +1847,13 @@
 
 <!-- Completed section — flows naturally below the SVG scene so the footer
      dynamically pushes down as more agents finish (Polish round 9). -->
-<div class="finished-grid-header" id="finished-grid-header">
+<div class="finished-grid-header" id="finished-grid-header" style="display:none" aria-hidden="true">
   Completed <span class="count" id="finished-count">0</span>
 </div>
-<div class="finished-grid" id="finished-grid"></div>
+<div class="finished-grid" id="finished-grid" style="display:none" aria-hidden="true"></div>
 
 <div class="footer">
-  <span>PIPELINE VIEW · v1</span>
+  <span>PIPELINE VIEW · v2 (stage-flow)</span>
   <span>SSE STREAM → http://127.0.0.1:5173/events</span>
   <span>CTRL+C TO STOP SERVER</span>
 </div>
@@ -1792,6 +2174,28 @@ function bodySage() { return `
   </svg>`;
 }
 
+// Loop — the feedback-learner that closes the run (the Learn stage). A
+// recycle/loop motif above the head distinguishes it from the rest of the crew.
+function bodyLoop() { return `
+  <svg class="char" viewBox="0 0 160 160">
+    <g class="char-body">
+    <!-- feedback-loop arrows over the head -->
+    <path d="M64 32 A18 18 0 1 1 62 48" class="stroke-main" fill="none"/>
+    <path d="M62 48 L57 42 M62 48 L69 45" class="stroke-main" fill="none"/>
+    <!-- head -->
+    <circle cx="80" cy="64" r="17" class="stroke-main"/>
+    <!-- body -->
+    <rect x="64" y="81" width="32" height="33" class="stroke-main"/>
+    <!-- arms -->
+    <g class="arm-l"><line x1="64" y1="87" x2="53" y2="106" class="stroke-main"/></g>
+    <g class="arm-r"><line x1="96" y1="87" x2="107" y2="106" class="stroke-main"/></g>
+    <!-- legs -->
+    <line x1="72" y1="114" x2="70" y2="132" class="stroke-main"/>
+    <line x1="88" y1="114" x2="90" y2="132" class="stroke-main"/>
+    </g>
+  </svg>`;
+}
+
 const BODIES = {
   pip:     bodyPip,
   archie:  bodyArchie,
@@ -1807,6 +2211,7 @@ const BODIES = {
   judge:   bodyJudge,
   scribe:  bodyScribe,
   sage:    bodySage,
+  loop:    bodyLoop,
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1815,6 +2220,106 @@ const BODIES = {
 // IDs are unique per task (e.g. "bruno-1", "bruno-2", "crit-1").
 // ══════════════════════════════════════════════════════════
 let currentCharIds = new Set();
+
+// ══════════════════════════════════════════════════════════
+// V2 — STAGE MODEL. The 6 chapters the real /deliver phases
+// fall into. A character is assigned to a stage by its role
+// (stable) first, then by its active phase label as a fallback.
+// ══════════════════════════════════════════════════════════
+const STAGES = [
+  { id: 'understand', n: 1, label: 'Understand', blurb: 'WHAT · HOW',
+    roles: ['pip', 'archie'],          phases: ['requirements', 'arch'] },
+  { id: 'contract',   n: 2, label: 'Contract',   blurb: 'SCHEMAS · API · PLAN',
+    roles: ['yara', 'foreman'],        phases: ['spec', 'sync', 'plan'] },
+  { id: 'build',      n: 3, label: 'Build',      blurb: 'IMPLEMENT · FIX',
+    roles: ['tya', 'bruno', 'pixel', 'echo', 'stratos'], phases: ['impl'] },
+  { id: 'verify',     n: 4, label: 'Verify',     blurb: 'REVIEW · SEC · ASSESS',
+    roles: ['crit', 'shield', 'judge'], phases: ['review', 'security', 'assess'] },
+  { id: 'ship',       n: 5, label: 'Ship',       blurb: 'REPORT · PUBLISH',
+    roles: ['scribe', 'sage'],         phases: ['report', 'publish'] },
+  { id: 'learn',      n: 6, label: 'Learn',      blurb: 'FEEDBACK LOOP',
+    roles: ['loop'],                   phases: ['learn'] },
+];
+const STAGE_INDEX = {};
+const ROLE_STAGE = {};
+const PHASE_STAGE = {};
+STAGES.forEach((s, i) => {
+  STAGE_INDEX[s.id] = i;
+  s.roles.forEach(r => { ROLE_STAGE[r] = s.id; });
+  s.phases.forEach(p => { PHASE_STAGE[p] = s.id; });
+});
+
+// Map a raw phase number (when a char carries no chip sequence) to a label,
+// same convention the v1 sun-label used.
+function rawPhaseToLabel(phase) {
+  const p = String(phase || '').toLowerCase();
+  if (/^5[a-z]?$/.test(p)) return 'impl';
+  if (p === '5.5')  return 'review';
+  if (p === '5.75') return 'security';
+  if (p === '6')    return 'assess';
+  if (p === '1')    return 'requirements';
+  if (p === '2')    return 'arch';
+  if (p === '3' || p === '3a' || p === '3b') return 'spec';
+  if (p === '4')    return 'sync';
+  if (p === '4.5')  return 'plan';
+  if (p === '7')    return 'report';
+  if (p === '8')    return 'publish';
+  return null;
+}
+
+// Resolve which stage a character belongs to. The server now declares a
+// canonical `stage` (role-first, then phase) — trust it when present; the
+// role/phase heuristics below are only a fallback for older server payloads.
+const STAGE_IDS = new Set(['understand', 'contract', 'build', 'verify', 'ship', 'learn']);
+function stageForChar(c) {
+  if (c.stage && STAGE_IDS.has(c.stage)) return c.stage;
+  if (c.role && ROLE_STAGE[c.role]) return ROLE_STAGE[c.role];
+  // active chip first
+  if (Array.isArray(c.phases) && c.activePhaseIndex >= 0) {
+    const lbl = c.phases[c.activePhaseIndex];
+    if (PHASE_STAGE[lbl]) return PHASE_STAGE[lbl];
+    if (String(lbl).startsWith('fix-')) return 'verify';
+  }
+  // any known phase in the sequence, newest first
+  if (Array.isArray(c.phases)) {
+    for (let i = c.phases.length - 1; i >= 0; i--) {
+      const p = c.phases[i];
+      if (PHASE_STAGE[p]) return PHASE_STAGE[p];
+      if (String(p).startsWith('fix-')) return 'verify';
+    }
+  }
+  // raw phase number fallback
+  const lbl = rawPhaseToLabel(c.phase);
+  if (lbl && PHASE_STAGE[lbl]) return PHASE_STAGE[lbl];
+  return 'build'; // unknown crew default to the construction floor
+}
+
+// Build the rail stations + swimlanes once, from the model.
+function initStages() {
+  const rail = document.getElementById('stage-rail');
+  const lanes = document.getElementById('swimlanes');
+  if (!rail || !lanes || rail.childElementCount) return; // idempotent
+  for (const s of STAGES) {
+    const st = document.createElement('div');
+    st.className = 'stage-station';
+    st.id = 'station-' + s.id;
+    st.innerHTML =
+      `<div class="stage-node"><span class="num">${s.n}</span><span class="check">✓</span></div>` +
+      `<div class="stage-name">${s.label}</div>` +
+      `<div class="stage-blurb">${s.blurb}</div>` +
+      `<div class="stage-gate-flag">⏸ waiting</div>`;
+    rail.appendChild(st);
+
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    lane.id = 'lane-wrap-' + s.id;
+    lane.innerHTML =
+      `<div class="lane-head">${s.label} <span class="lane-count">0</span>` +
+      `<span class="lane-state"></span><span class="lane-tokens"></span></div>` +
+      `<div class="lane-cards" id="lane-${s.id}"><div class="lane-empty">—</div></div>`;
+    lanes.appendChild(lane);
+  }
+}
 
 function formatTokens(n) {
   if (!n || n === 0) return '';
@@ -1828,6 +2333,18 @@ function escapeHtml(s) {
   return String(s).replace(/[<>&"']/g, ch => (
     { '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[ch]
   ));
+}
+
+// Wall-clock run duration → compact "1h 23m" / "12m 30s" / "45s".
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return '—';
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 }
 
 // Compose a compact "52k · 1:38" metrics string — ask #1. Ordering: tokens
@@ -1862,19 +2379,10 @@ function ensureCard(c) {
       <span class="skipped-chip" style="display:none">skipped</span>
     </div>
   `;
-  // Polish round 7: default container based on status. Working cards live
-  // in the absolute-overlay #grid (they animate + bob over the SVG scene).
-  // Queued + finished cards live in their own DOM grids below. layout()
-  // moves them between containers as status changes.
-  const targetId = c.status === 'working' ? 'grid'
-                 : (c.status === 'done' || c.status === 'failed' || c.status === 'skipped') ? 'finished-grid'
-                 : 'queue-grid';
-  if (targetId === 'grid') {
-    // Start off-screen right so it slides in
-    div.style.setProperty('--qx', '1400px');
-    div.style.setProperty('--qy', '170px');
-  }
-  document.getElementById(targetId).appendChild(div);
+  // V2: every card lives in its stage lane. layout() keeps lane membership +
+  // in-lane ordering current as status changes.
+  const lane = document.getElementById('lane-' + stageForChar(c)) || document.getElementById('lane-build');
+  if (lane) lane.appendChild(div);
   return div;
 }
 
@@ -1894,6 +2402,11 @@ function applyState(state) {
   const waiting = state.awaitingInput;
   const claudeApproval = state.claudeApproval;
   const isPaused = !!(waiting || claudeApproval);
+  // v2: remember which phase the gate is on so layout() can flag its station.
+  activeGatePhase = waiting ? (waiting.phase != null ? waiting.phase : null) : null;
+  // Terminal run status (from the run_end checkpoint) — layout() treats a
+  // "completed" run as done even when optional roles never dispatched.
+  runEndStatus = state.runEndStatus || null;
   const baseTitle =
     state.workspace && state.featureName ? `${state.workspace} · ${state.featureName}` :
     state.workspace                     ? `${state.workspace} · (waiting for run)` :
@@ -2024,6 +2537,11 @@ function applyState(state) {
   document.getElementById('orch-tokens').textContent = formatTokens(orchTokens);
   document.getElementById('agent-tokens').textContent = formatTokens(agentTokens);
   document.getElementById('total-tokens').textContent = formatTokens(totalTokens);
+  // Hero ship-stats — running totals under the stage headline.
+  const shipTok = document.getElementById('ship-tokens');
+  const shipDur = document.getElementById('ship-duration');
+  if (shipTok) shipTok.textContent = totalTokens > 0 ? formatTokens(totalTokens) : '—';
+  if (shipDur) shipDur.textContent = formatDuration(state.runDurationMs);
   // Bar fill scaled to a 1M budget: 100% at 1M tokens. When total exceeds
   // 1M, the bar sticks at 100% and gets a red pulse + "OVER 1M" warning chip.
   const TOKEN_BUDGET = 1_000_000;
@@ -2040,177 +2558,212 @@ function applyState(state) {
 // FINISHED zone (bottom): done, failed, skipped. Each card's absolute
 // position is recomputed per state update; the zones are visually fenced
 // by .zone-header + .zone-divider in the DOM.
+// Phase set to gate-stage that the orchestrator is currently blocked on — set
+// by applyState from awaitingInput, read by layout to flag the right station.
+let activeGatePhase = null;
+let runEndStatus = null;
+
+// In-lane status ordering: working on top, then queued, then finished.
+function statusRank(c) {
+  if (c.status === 'working') return 0;
+  if (c.status === 'queued' || !c.status) return 1;
+  return 2; // done / failed / skipped
+}
+
 function layout(characters) {
-  const working = [];
-  const queued = [];
-  const finished = []; // done + failed + skipped
+  initStages();
+
+  // Bucket characters by stage, preserving status info.
+  const byStage = {};
+  for (const s of STAGES) byStage[s.id] = [];
   for (const c of characters) {
-    if (c.status === 'working') working.push(c);
-    else if (c.status === 'done' || c.status === 'failed' || c.status === 'skipped') finished.push(c);
-    else queued.push(c); // queued / unknown
+    const sid = stageForChar(c);
+    (byStage[sid] || byStage.build).push(c);
   }
 
-  // Polish round 7 — grid layout. Only working cards stay absolute-positioned
-  // (they animate + bob over the SVG scene). Queued and finished cards live
-  // in their own DOM grids below the scene and flow naturally — 5 per row,
-  // wrapping. We move cards between DOM containers here as status changes.
-  const gridEl = document.getElementById('grid');
-  const queueGridEl = document.getElementById('queue-grid');
-  const finishedGridEl = document.getElementById('finished-grid');
+  // Place each card into its stage lane, ordered working → queued → finished.
+  for (const s of STAGES) {
+    const laneCards = document.getElementById('lane-' + s.id);
+    if (!laneCards) continue;
+    const list = byStage[s.id].slice().sort((a, b) =>
+      statusRank(a) - statusRank(b) || String(a.id).localeCompare(String(b.id)));
+    for (const c of list) {
+      const el = document.getElementById('card-' + c.id);
+      if (!el) continue;
+      el.style.removeProperty('--qx');
+      el.style.removeProperty('--qy');
+      laneCards.appendChild(el); // appendChild re-orders if already present
+    }
+    // empty-lane placeholder
+    let empty = laneCards.querySelector('.lane-empty');
+    const hasCards = laneCards.querySelector('.card');
+    if (!hasCards && !empty) {
+      empty = document.createElement('div');
+      empty.className = 'lane-empty';
+      empty.textContent = '—';
+      laneCards.appendChild(empty);
+    } else if (empty) {
+      empty.style.display = hasCards ? 'none' : 'block';
+    }
+  }
 
-  working.forEach((c, i) => {
-    const el = document.getElementById('card-' + c.id);
-    if (!el) return;
-    if (el.parentElement !== gridEl) gridEl.appendChild(el);
-    // Stack working agents vertically. Start near the top of the scene so
-    // the column doesn't overflow into the Completed zone (y=430+). 3 agents
-    // at 105px spacing fit between y=20 and y=~410.
-    el.style.setProperty('--qx', '410px');
-    el.style.setProperty('--qy', (20 + i * 105) + 'px');
+  // Per-stage state + rail/lane/monument/headline.
+  const gatedStage = (() => {
+    const lbl = rawPhaseToLabel(activeGatePhase);
+    return lbl ? PHASE_STAGE[lbl] : null;
+  })();
+  const loopDone = characters.some(c => c.role === 'loop' && c.status === 'done');
+
+  // Pass 1 — raw state + counts per stage (no DOM yet).
+  let activeStageId = null;        // rightmost stage with a working agent
+  let lastResolvedId = null;       // rightmost stage that's done
+  const stageState = {};
+  const stageCounts = {};
+  STAGES.forEach((s) => {
+    const cs = byStage[s.id];
+    const total = cs.length;
+    const working = cs.filter(c => c.status === 'working').length;
+    const queued  = cs.filter(c => c.status === 'queued' || !c.status).length;
+    const done    = cs.filter(c => c.status === 'done' || c.status === 'skipped' || c.status === 'failed').length;
+    const tokens  = cs.reduce((sum, c) => sum + (c.tokens || 0), 0);
+    let state;
+    if (working > 0) state = 'active';
+    else if (total > 0 && queued === 0) state = 'done';     // all terminal (done/skipped/failed)
+    else if (total > 0) state = 'pending';                  // some queued, not started/finished
+    else state = 'upcoming';                                // no crew yet
+    stageState[s.id] = state;
+    stageCounts[s.id] = { total, working, queued, done, tokens };
+    if (state === 'active') activeStageId = s.id;
   });
 
-  queued.forEach((c) => {
-    const el = document.getElementById('card-' + c.id);
-    if (!el) return;
-    if (el.parentElement !== queueGridEl) queueGridEl.appendChild(el);
-    el.style.removeProperty('--qx');
-    el.style.removeProperty('--qy');
+  // Run-complete override: once the run wraps (Loop done, or Understand..Ship
+  // all resolved), a stage left 'pending' only by a skipped/optional agent
+  // (e.g. security-consultant never triggered) is effectively finished — flip
+  // it to 'done' so the rail reads as a clean finish rather than stuck on a
+  // skipped step.
+  const loopDoneComplete = loopDone;
+  const shippedRaw = STAGES.slice(0, 5).every(s => stageState[s.id] === 'done' || stageState[s.id] === 'upcoming') &&
+                     stageState['ship'] === 'done';
+  // A `run_end: completed` checkpoint is the authoritative "finished" signal — it
+  // makes the run read as complete even when optional roles (ux/security/feedback)
+  // were never dispatched and would otherwise sit as queued preseeds forever.
+  // Only "completed" celebrates; failed/aborted must not.
+  const runShipped = runEndStatus === 'completed';
+  const complete = loopDoneComplete || shippedRaw || runShipped;
+  if (complete) {
+    STAGES.forEach((s) => { if (stageState[s.id] === 'pending') stageState[s.id] = 'done'; });
+  }
+  STAGES.forEach((s) => { if (stageState[s.id] === 'done') lastResolvedId = s.id; });
+
+  // Pass 2 — apply station + lane chrome from (possibly overridden) state.
+  STAGES.forEach((s) => {
+    const state = stageState[s.id];
+    const { total, working, queued, done } = stageCounts[s.id];
+    // Intra-stage progress (0-100). The rail connector into the active station
+    // fills green up to this %, so the bar advances as each agent in the stage
+    // finishes instead of sitting flat on "active" until the whole stage is done.
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const st = document.getElementById('station-' + s.id);
+    if (st) {
+      st.classList.toggle('active',  state === 'active');
+      st.classList.toggle('done',    state === 'done');
+      st.classList.toggle('pending', state === 'pending');
+      st.classList.toggle('gated',   gatedStage === s.id);
+      st.style.setProperty('--stage-progress', (state === 'done' ? 100 : pct) + '%');
+    }
+    const lane = document.getElementById('lane-wrap-' + s.id);
+    if (lane) {
+      lane.classList.toggle('active', state === 'active');
+      lane.classList.toggle('done',   state === 'done');
+      const cnt = lane.querySelector('.lane-count');
+      const stt = lane.querySelector('.lane-state');
+      const tok = lane.querySelector('.lane-tokens');
+      if (cnt) cnt.textContent = total;
+      if (stt) {
+        // Active stages surface done/total so the count moves per agent, not just
+        // per stage; keep the working count as a secondary signal.
+        stt.textContent =
+          state === 'active' ? `${done}/${total} done · ${working} working` :
+          state === 'done'   ? 'done' :
+          state === 'pending'? `${queued} queued` : '';
+      }
+      if (tok) tok.textContent = stageCounts[s.id].tokens > 0 ? formatTokens(stageCounts[s.id].tokens) : '';
+    }
   });
 
-  finished.forEach((c) => {
-    const el = document.getElementById('card-' + c.id);
-    if (!el) return;
-    if (el.parentElement !== finishedGridEl) finishedGridEl.appendChild(el);
-    el.style.removeProperty('--qx');
-    el.style.removeProperty('--qy');
-  });
+  // Monument: one tier per resolved stage (count, so a stage finishing out of
+  // order can't over-fill the pyramid). loopDone tops it out.
+  let builtTiers = STAGES.filter(s => stageState[s.id] === 'done').length;
+  if (loopDone) builtTiers = 6;
+  const totem = document.getElementById('monument-totem');
+  if (totem) {
+    totem.querySelectorAll('.tier').forEach((t) => {
+      t.classList.toggle('built', Number(t.dataset.tier) <= builtTiers);
+    });
+  }
+  if (totem) totem.classList.toggle('complete', complete);
+  const cap = document.getElementById('monument-caption');
+  if (cap) {
+    cap.classList.toggle('complete', complete);
+    cap.innerHTML = complete
+      ? '✓ feature shipped'
+      : `<b>${builtTiers}</b> / 6 stages complete`;
+  }
+  maybeCelebrate(complete);
 
-  // Update zone counts
-  const bc = document.getElementById('building-count');
-  const qc = document.getElementById('queue-count');
-  const fc = document.getElementById('finished-count');
-  const workingCount = working.length;
-  const queuedCount = queued.length;
-  const finishedCount = finished.length;
-  const buildingCount = workingCount + queuedCount; // for SVG chrome visibility
-  if (bc) bc.textContent = workingCount;
-  if (qc) qc.textContent = queuedCount;
-  if (fc) fc.textContent = finishedCount;
-
-  // Polish round 7: "Currently building" header in the SVG overlay only
-  // applies to workers; queue has its own header below. Hide when zero.
-  // SVG scaffolding/crane/build-elements still collapse when build zone is
-  // empty (the background scenery implies activity). Queue and Finished
-  // DOM grids hide via `.hidden` on their headers + grid containers.
-  const toggleHidden = (id, hidden) => {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle('hidden', hidden);
-  };
-  toggleHidden('zone-building', workingCount === 0);
-  toggleHidden('queue-grid-header', queuedCount === 0);
-  toggleHidden('queue-grid', queuedCount === 0);
-  toggleHidden('finished-grid-header', finishedCount === 0);
-  toggleHidden('finished-grid', finishedCount === 0);
-  toggleHidden('work-zone-group', buildingCount === 0);
-  // Polish round 11: pyramid + scaffolding outline stay visible once built.
-  // Hide only in the pre-dispatch state (nothing working, nothing finished).
-  // Progression accumulates as agents work AND remains after everyone is
-  // done as the monument of the completed feature.
-  toggleHidden('build-elements-group', workingCount === 0 && finishedCount === 0);
-  toggleHidden('scaffolding-frame', workingCount === 0 && finishedCount === 0);
-  toggleHidden('finished-zone-label', finishedCount === 0);
-  toggleHidden('finished-frame', finishedCount === 0);
-  // (Polish round 7: zone-divider removed — the DOM grid below has its own
-  // headers, no horizontal SVG divider needed.)
-
-  // Crane trolley animates only when at least one agent is actually working.
-  // Queued-only states keep the crane parked (nothing to lift yet).
-  const crane = document.querySelector('.crane');
-  if (crane) crane.classList.toggle('active', working.length > 0);
-
-  // Live phase label beside the sun. Empties when nobody's working so the
-  // text disappears entirely (queued-only and all-done states).
-  updateSunPhaseLabel(working);
+  // Headline — the sun-disc of Ra stays golden; completion is signalled by the
+  // green checks / flag / headline, not by recolouring the sun.
+  const headline = document.getElementById('stage-headline');
+  const hlLabel = document.getElementById('stage-headline-label');
+  let label;
+  if (complete) label = 'SHIPPED ✓';
+  else if (activeStageId) label = STAGES[STAGE_INDEX[activeStageId]].label;
+  else if (gatedStage) label = STAGES[STAGE_INDEX[gatedStage]].label + ' · paused';
+  else if (lastResolvedId) label = STAGES[STAGE_INDEX[lastResolvedId]].label + ' done';
+  else label = 'starting…';
+  if (hlLabel) hlLabel.textContent = label.toUpperCase();
+  if (headline) headline.classList.toggle('complete', complete);
 }
 
-// Phase chip ordering — used to put the "latest" phase first when multiple
-// phases overlap. Matches the pipeline order the orchestrator goes through.
-const PHASE_LABEL_ORDER = [
-  'requirements', 'arch', 'spec', 'sync', 'plan',
-  'impl', 'review', 'security', 'assess', 'report', 'publish',
-];
-function phaseLabelRank(label) {
-  if (!label) return -1;
-  // Fix rounds belong with review (phase 5.5) — keep them grouped.
-  if (label.startsWith('fix-')) return PHASE_LABEL_ORDER.indexOf('review') + 0.5;
-  return PHASE_LABEL_ORDER.indexOf(label);
-}
-function updateSunPhaseLabel(working) {
-  const el = document.getElementById('sun-phase-label');
-  if (!el) return;
-  if (!working || working.length === 0) {
-    el.textContent = '';
+// updateBuildingProgress is folded into layout() in v2; kept as a no-op so the
+// existing applyState() call site stays valid.
+function updateBuildingProgress() {}
+
+// ── completion celebration — a short confetti sprinkle, fired once per
+// transition into the "complete" state. ──
+let celebrated = false;
+function maybeCelebrate(complete) {
+  if (!complete) {
+    celebrated = false;
+    document.body.classList.remove('celebrate');
     return;
   }
-  // Pick each working character's current chip (activePhaseIndex). Fall
-  // back to their seeded `phase` field for chars promoted via Phase Status
-  // alone (no dispatch chip).
-  const labels = [];
-  for (const c of working) {
-    let label = null;
-    if (Array.isArray(c.phases) && c.phases.length > 0 && c.activePhaseIndex >= 0) {
-      label = c.phases[c.activePhaseIndex];
-    } else if (c.phase) {
-      // Map raw phase number to label using the same convention as the server.
-      const p = String(c.phase).toLowerCase();
-      if (/^5[a-z]?$/.test(p)) label = 'impl';
-      else if (p === '5.5') label = 'review';
-      else if (p === '5.75') label = 'security';
-      else if (p === '6') label = 'assess';
-      else if (p === '1') label = 'requirements';
-      else if (p === '2') label = 'arch';
-      else if (p === '3') label = 'spec';
-      else if (p === '4') label = 'sync';
-      else if (p === '4.5') label = 'plan';
-      else if (p === '7') label = 'report';
-      else if (p === '8') label = 'publish';
-    }
-    if (label) labels.push(label);
+  if (celebrated) return;
+  celebrated = true;
+  const layer = document.getElementById('confetti-layer');
+  if (!layer) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // The crew cheers — jump + wave — alongside the confetti. Stagger each card so
+  // they cheer in a wave. `body.celebrate` drives the CSS; it's on a stable
+  // ancestor so it survives card re-renders during the burst.
+  document.querySelectorAll('.card').forEach((card, i) => {
+    card.style.setProperty('--cdelay', ((i % 6) * 0.09).toFixed(2) + 's');
+  });
+  document.body.classList.add('celebrate');
+  setTimeout(() => { document.body.classList.remove('celebrate'); }, 6500);
+  const colors = ['#f5a623', '#4ade80', '#93c5fd', '#fdba74', '#d8b4fe'];
+  layer.innerHTML = '';
+  for (let i = 0; i < 80; i++) {
+    const bit = document.createElement('div');
+    bit.className = 'confetti-bit';
+    bit.style.left = (Math.floor((i / 80) * 100)) + '%';
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDuration = (2.4 + (i % 5) * 0.5) + 's';
+    bit.style.animationDelay = ((i % 10) * 0.12) + 's';
+    layer.appendChild(bit);
   }
-  const unique = [...new Set(labels)];
-  // Sort by pipeline order so the latest phase comes first when multiple
-  // overlap (e.g. fix-r1 and impl both running → "FIX-R1 · IMPL").
-  unique.sort((a, b) => phaseLabelRank(b) - phaseLabelRank(a));
-  el.textContent = unique.join(' · ').toUpperCase();
-}
-
-function updateBuildingProgress(characters) {
-  // Map progress to the 10 building blocks proportionally.
-  // With 6 characters, each completes ~1.67 blocks. With 15, each completes ~0.67.
-  //
-  // Special case: feedback-learner (role='loop') is the run's terminal agent —
-  // it only fires after the user opts in to feedback at Phase 8 Step 8.6. When
-  // Loop is `done`, the run is truly wrapped up, so we close the pyramid (all
-  // 10 blocks visible) regardless of any other characters that intentionally
-  // stayed queued (e.g. shield when security review was skipped, or sage when
-  // --no-context-update was passed). Without this override, those queued cards
-  // would keep the pyramid stuck below 100% even after the run finishes.
-  const loopDone = characters.some(c => c.role === 'loop' && c.status === 'done');
-  let blocksToShow;
-  if (loopDone) {
-    blocksToShow = 10;
-  } else {
-    const total = characters.length || 1;
-    let completed = 0;
-    for (const c of characters) {
-      if (c.status === 'working' || c.status === 'done') completed++;
-    }
-    blocksToShow = Math.round((completed / total) * 10);
-  }
-  for (let i = 1; i <= 10; i++) {
-    const block = document.getElementById('build-' + i);
-    if (block) block.classList.toggle('visible', i <= blocksToShow);
-  }
+  layer.classList.add('celebrate');
+  setTimeout(() => { layer.classList.remove('celebrate'); layer.innerHTML = ''; }, 6500);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2976,6 +3529,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Boot
+initStages(); // build the rail + lanes up front so the scene renders pre-run
 if (window.INITIAL_STATE) applyState(window.INITIAL_STATE);
 connect();
 </script>

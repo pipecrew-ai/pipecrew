@@ -51,18 +51,19 @@ node scripts/<name>.test.js # a single unit test
   chapters: Understand → Contract → Build → Verify → Ship → Learn). The site-view server, the
   checkpoint validator, and any future reporter derive stages from it. `phase` is authoritative;
   `stage_group` is an optional, derived, validated echo.
-- **Site-view:** the v2 stage-flow UI (`skills/site-view/public/index-v2.html`) is the default at
-  `/`; the original stays at `/v1` for rollback. Both share the same `/state` + `/events` backend.
+- **Site-view:** a single stage-flow UI (`skills/site-view/public/index.html`) served at `/`,
+  backed by `/state` + `/events`. (The pre-stage-flow page and the `/v1` route were retired in
+  v1.8.0 — there is one page to maintain.)
 
 ## Previewing site-view / UI changes
 
 ```bash
-node scripts/simulate-run.js --port=5173               # live demo, animates ~33s (v2 at /)
+node scripts/simulate-run.js --port=5173               # live demo, animates ~33s
 node scripts/simulate-run.js --step-ms=0 --port=5173   # static, completed run
 ```
 
 Fabricates a demo workspace under `{workspace_root}/simulate-run-demo/` and serves the UI — no
-agent tokens spent. Open `http://127.0.0.1:5173/` (v2) or `/v1`. See `docs/site-view.md`.
+agent tokens spent. Open `http://127.0.0.1:5173/`. See `docs/site-view.md`.
 
 ## Releasing — how users actually get updates
 

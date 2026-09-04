@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.8.0] - 2026-09-04
+
+### Changed
+- **Site-view is now a single UI.** The pre-stage-flow page and the `/v1`
+  (and `/v2`/`/index-v2.html`) routes were retired. The stage-flow UI — the
+  default since it shipped — is now the only page: `index-v2.html` was renamed to
+  `public/index.html`, the legacy `index.html` was removed, and the server serves
+  one page at `/`. No change to what `/deliver` or `/simulate-run` open (they
+  always used the stage-flow UI); this removes the divergent second UI that no
+  longer received fixes and was a source of drift.
+
 ## [1.7.2] - 2026-09-04
 
 ### Fixed

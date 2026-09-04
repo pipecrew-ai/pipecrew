@@ -1915,23 +1915,18 @@ function broadcast() {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/' || req.url === '/index.html'
-      || req.url === '/v2' || req.url === '/v2.html' || req.url === '/index-v2.html'
-      || req.url === '/v1' || req.url === '/v1.html' || req.url === '/index-v1.html') {
-    // v2 = the stage-flow redesign (Understand → Contract → Build → Verify →
-    // Ship → Learn) and is now the DEFAULT at `/`. The original UI stays
-    // reachable at `/v1` for rollback. Both consume the same /state + /events
-    // backend, so only the page differs.
-    const isV1 = req.url === '/v1' || req.url === '/v1.html' || req.url === '/index-v1.html';
-    const file = isV1 ? 'index.html' : 'index-v2.html';
+  if (req.url === '/' || req.url === '/index.html') {
+    // Single stage-flow UI (Understand → Contract → Build → Verify → Ship →
+    // Learn). The legacy pre-stage-flow page was retired in v1.8.0 — there is now
+    // one page to maintain, served at `/`.
     try {
-      let html = fs.readFileSync(path.join(PUBLIC_DIR, file), 'utf8');
+      let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
       html = html.replace('/*INITIAL_STATE*/', 'window.INITIAL_STATE = ' + JSON.stringify(getState()) + ';');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
     } catch (e) {
       res.writeHead(500);
-      res.end('Failed to read ' + file + ': ' + e.message);
+      res.end('Failed to read index.html: ' + e.message);
     }
   } else if (req.url === '/state' || req.url === '/state.json') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

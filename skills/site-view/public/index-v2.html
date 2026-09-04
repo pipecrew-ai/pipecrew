@@ -1271,8 +1271,15 @@
   .stage-station:first-child::before { display: none; }
   .stage-station.lit::before,
   .stage-station.done::before { background: var(--stage-done); }
+  /* Active connector fills green up to the stage's intra-progress (--stage-progress,
+     set per-update from done/total agents), then amber for the remainder — so the
+     bar advances agent-by-agent, not only when the whole stage flips to done. */
   .stage-station.active::before {
-    background: linear-gradient(90deg, var(--stage-done) 0%, var(--stage-active) 100%);
+    background: linear-gradient(90deg,
+      var(--stage-done)   0%,
+      var(--stage-done)   var(--stage-progress, 0%),
+      var(--stage-active) var(--stage-progress, 0%),
+      var(--stage-active) 100%);
   }
   /* travelling spark flowing INTO the active station */
   .stage-station.active::after {
@@ -2617,6 +2624,7 @@ function layout(characters) {
     const total = cs.length;
     const working = cs.filter(c => c.status === 'working').length;
     const queued  = cs.filter(c => c.status === 'queued' || !c.status).length;
+    const done    = cs.filter(c => c.status === 'done' || c.status === 'skipped' || c.status === 'failed').length;
     const tokens  = cs.reduce((sum, c) => sum + (c.tokens || 0), 0);
     let state;
     if (working > 0) state = 'active';
@@ -2624,7 +2632,7 @@ function layout(characters) {
     else if (total > 0) state = 'pending';                  // some queued, not started/finished
     else state = 'upcoming';                                // no crew yet
     stageState[s.id] = state;
-    stageCounts[s.id] = { total, working, queued, tokens };
+    stageCounts[s.id] = { total, working, queued, done, tokens };
     if (state === 'active') activeStageId = s.id;
   });
 
@@ -2650,13 +2658,18 @@ function layout(characters) {
   // Pass 2 — apply station + lane chrome from (possibly overridden) state.
   STAGES.forEach((s) => {
     const state = stageState[s.id];
-    const { total, working, queued } = stageCounts[s.id];
+    const { total, working, queued, done } = stageCounts[s.id];
+    // Intra-stage progress (0-100). The rail connector into the active station
+    // fills green up to this %, so the bar advances as each agent in the stage
+    // finishes instead of sitting flat on "active" until the whole stage is done.
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     const st = document.getElementById('station-' + s.id);
     if (st) {
       st.classList.toggle('active',  state === 'active');
       st.classList.toggle('done',    state === 'done');
       st.classList.toggle('pending', state === 'pending');
       st.classList.toggle('gated',   gatedStage === s.id);
+      st.style.setProperty('--stage-progress', (state === 'done' ? 100 : pct) + '%');
     }
     const lane = document.getElementById('lane-wrap-' + s.id);
     if (lane) {
@@ -2667,8 +2680,10 @@ function layout(characters) {
       const tok = lane.querySelector('.lane-tokens');
       if (cnt) cnt.textContent = total;
       if (stt) {
+        // Active stages surface done/total so the count moves per agent, not just
+        // per stage; keep the working count as a secondary signal.
         stt.textContent =
-          state === 'active' ? `${working} working` :
+          state === 'active' ? `${done}/${total} done · ${working} working` :
           state === 'done'   ? 'done' :
           state === 'pending'? `${queued} queued` : '';
       }

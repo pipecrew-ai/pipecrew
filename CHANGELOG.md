@@ -16,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.7.2] - 2026-09-04
+
+### Fixed
+- **Stage rail now shows intra-stage progress.** The 6-station stage rail
+  previously advanced only at whole-stage granularity — a station sat on
+  "active" until *every* agent in the stage finished, so during the long Build
+  stage (4-6 implementers) the bar looked frozen even as agents completed one by
+  one. The active station's connector now fills proportionally to `done/total`
+  agents in that stage (a `--stage-progress` CSS variable set per update), and
+  the lane header shows `done/total done · N working`, so progress moves
+  agent-by-agent. (The `.lit` rail styling was already present but never wired;
+  this uses the existing `done`/`active` states plus the new proportional fill.)
+
 ## [1.7.1] - 2026-09-03
 
 ### Added

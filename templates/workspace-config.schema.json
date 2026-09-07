@@ -51,7 +51,11 @@
         "properties": {
           "path": {
             "type": "string",
-            "description": "Absolute path to the repo root on disk"
+            "description": "Absolute path to the repo root on disk (local, machine-specific — gitignored from the memory repo)"
+          },
+          "repo_url": {
+            "type": "string",
+            "description": "OPTIONAL git remote URL of this repo (e.g. git@github.com:org/acme-backend.git). Machine-independent, so it rides into config.portable.json and lets /join clone the repo on a teammate's machine. MUST NOT embed credentials — /discover captures it sanitized (strips any user:token@ prefix); the validator warns if one is present. Absent ⇒ /join falls back to point-to-local for this repo. Backward compatible: existing configs without it keep working."
           },
           "type": {
             "type": "string",

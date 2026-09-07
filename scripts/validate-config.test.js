@@ -235,6 +235,44 @@ test('service references unknown repo is an error', () => {
   assert(r.exitCode === 1, `expected 1, got ${r.exitCode}`);
 });
 
+// -------- repo_url (optional clone URL for /join) --------
+
+test('repo_url with an SSH git URL is accepted', () => {
+  const cfg = makeWorkspace(
+    { 'svc-a': { type: 'spring-boot', role: 'api-service', spec_file: 'openapi.yaml',
+                 repo_url: 'git@github.com:acme/svc-a.git' } },
+    { 'svc-a': { repo: 'svc-a', spec_policy: 'api-first' } },
+  );
+  const r = run(cfg);
+  assert(r.exitCode === 0, `exit ${r.exitCode}; stderr: ${r.stderr}`);
+});
+
+test('repo_url with a bare https URL is accepted', () => {
+  const cfg = makeWorkspace(
+    { 'svc-a': { type: 'react', role: 'frontend', repo_url: 'https://github.com/acme/svc-a.git' } },
+  );
+  const r = run(cfg);
+  assert(r.exitCode === 0, `exit ${r.exitCode}; stderr: ${r.stderr}`);
+});
+
+test('repo_url embedding credentials (user:token@) is a hard error', () => {
+  const cfg = makeWorkspace(
+    { 'svc-a': { type: 'react', role: 'frontend',
+                 repo_url: 'https://x-access-token:ghp_deadbeef@github.com/acme/svc-a.git' } },
+  );
+  const r = run(cfg);
+  assert(r.exitCode === 1, `expected 1, got ${r.exitCode}`);
+  assert(r.stderr.includes('credentials'), `expected a credentials error; stderr: ${r.stderr}`);
+});
+
+test('repo_url that is an empty string is an error', () => {
+  const cfg = makeWorkspace(
+    { 'svc-a': { type: 'react', role: 'frontend', repo_url: '' } },
+  );
+  const r = run(cfg);
+  assert(r.exitCode === 1, `expected 1, got ${r.exitCode}`);
+});
+
 // -------- Cleanup --------
 fs.rmSync(TMP, { recursive: true, force: true });
 

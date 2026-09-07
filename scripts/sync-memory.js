@@ -238,7 +238,7 @@ function regeneratePortableConfig() {
     const reposRoot = local.repos_root || longestCommonDir(paths);
     const portable = JSON.parse(JSON.stringify(cfg));
     portable._portable = true;
-    portable._repos_root_note = 'Absolute paths stripped. On a fresh clone, run /discover --rehydrate to rebuild config.json by supplying repos_root locally (config.local.json).';
+    portable._repos_root_note = 'Absolute paths stripped (machine-independent). On a teammate machine, run /pipecrew:join <memory-repo-url> to rebuild config.json — it clones repos from each repo_url (or points at local copies) and writes repos_root into config.local.json.';
     portable.repos_root = reposRoot ? '${REPOS_ROOT}' : undefined;
     for (const [, r] of Object.entries(portable.repos || {})) {
       if (r.path) {

@@ -64,6 +64,17 @@ if (!config.repos || typeof config.repos !== 'object') {
       const resolved = repo.path.replace(/^~/, process.env.HOME || process.env.USERPROFILE || '~');
       if (!fs.existsSync(resolved)) err(`repos.${name}.path does not exist: ${resolved}`);
     }
+    // repo_url is optional (machine-independent clone URL for /join). If present,
+    // it must be a string and MUST NOT embed credentials — a user:token@ prefix
+    // would leak into the committed config.portable.json.
+    if (repo.repo_url !== undefined) {
+      if (typeof repo.repo_url !== 'string' || !repo.repo_url.trim()) {
+        err(`repos.${name}.repo_url must be a non-empty string when present`);
+      } else if (/^https?:\/\/[^@/]+@/.test(repo.repo_url)) {
+        err(`repos.${name}.repo_url embeds credentials (user:token@…) — strip them; it flows into the committed config.portable.json. Use git@… (SSH) or a bare https URL.`);
+      }
+    }
+
     if (!repo.type) err(`repos.${name}.type is required`);
     else if (!VALID_TYPES.includes(repo.type))
       warn(`repos.${name}.type "${repo.type}" is not in the known list: ${VALID_TYPES.join(', ')}`);

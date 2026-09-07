@@ -163,6 +163,30 @@ requirements, UX, or a new cross-repo contract: it applies decisions, it doesn't
 /context-refresh publisher-service --mode=audit         # audit/refresh agent-context
 ```
 
+### 5. Work as a team
+
+PipeCrew's cross-repo knowledge — `platform.md`, diagrams, tuned agents, accumulated
+learnings — is a per-workspace **shared memory** that can live in a private GitHub repo.
+The owner turns it on once:
+
+```bash
+/memory-sync enable        # bootstrap a private {slug}-memory repo + first sync
+```
+
+From then on every `/discover` / `/deliver` / `/learn` / `/context-refresh` run pulls the
+team's latest at pre-flight and syncs changes back automatically. A teammate joins with a
+single command — no re-onboarding, no code analysis:
+
+```bash
+/join git@github.com:acme/acme-saas-memory.git   # clone shared memory, wire up config.json
+```
+
+`/join` clones the memory repo, then either clones each code repo (from the `repo_url`
+recorded at onboarding, into `{slug}-repos/`) or points at copies the teammate already has,
+and rebuilds their machine-local `config.json`. They immediately run `/deliver` against the
+same shared platform context. Day-to-day, `/memory-sync status | pull | sync` keeps everyone
+level. See [`docs/design/github-memory.md`](docs/design/github-memory.md).
+
 ---
 
 ## Skills
@@ -180,6 +204,7 @@ The full pipeline is one command — but **every capability is also a standalone
 | `/context-refresh` | Audit or refresh a repo's agent-context |
 | `/draw-diagram` | Generate or refresh a workspace's architecture diagrams — canonical Mermaid files, or a focused `--topic` view |
 | `/memory-sync` | Manage the workspace's shared, GitHub-backed memory — status, pull, publish |
+| `/join` | Onboard a teammate onto an existing workspace from its shared memory repo — clone/rehydrate `config.json`, no re-`/discover` |
 | `/scaffold` | Greenfield project scaffolding from a brainstorm — repos, config, context |
 | `/troubleshoot` | Read-only cross-repo incident triage → root cause at `file:line` |
 | `/site-view` | Live browser dashboard of the crew — queued, building, done, in real time |

@@ -245,6 +245,7 @@ Build it from the discovered repos + domain answers:
     // one entry per confirmed repo from Phase A
     "{repo-short-name}": {
       "path": "{absolute path}",
+      "repo_url": "{sanitized git origin — see 'Capturing repo_url' below; omit if none}",
       "type": "{detected type}",
       "role": "{detected role}",
       "description": "{from CLAUDE.md or Phase A detection}",
@@ -273,6 +274,29 @@ Build it from the discovered repos + domain answers:
   }
 }
 ```
+
+#### Capturing `repo_url` (optional — enables `/join` to clone on a teammate's machine)
+
+`path` is machine-specific and gitignored from the memory repo; `repo_url` is the
+machine-independent clone URL that rides into `config.portable.json` so a teammate
+running `/join` can clone the repo instead of hand-pointing to a local copy. For each
+repo, read its git origin and **strip any embedded credentials** before writing:
+
+```bash
+url=$(git -C "{repo.path}" remote get-url origin 2>/dev/null)
+# Sanitize: https://user:token@github.com/... -> https://github.com/...
+url=$(printf '%s' "$url" | sed -E 's#^(https?://)[^@/]+@#\1#')
+echo "$url"
+```
+
+- Non-empty result → set `repos.{name}.repo_url` to it.
+- Empty / not a git repo / no `origin` → **omit** `repo_url` entirely (do not fabricate).
+  `/join` will route that repo to point-to-local, which is fine.
+- Never write a URL containing `user:token@` — the validator rejects it, and it would
+  leak into the committed `config.portable.json`.
+
+This is a per-repo one-shot capture at onboarding; it is **not** re-derived on every
+memory sync (the value simply flows through `sync-memory.js`'s deep-copy into portable).
 
 #### Filling `spec_policy` per service
 

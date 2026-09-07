@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.9.0] - 2026-09-07
+
+### Added
+- **`/join` — teammate onboarding from shared memory.** A teammate can now join an
+  existing workspace with one command — `/pipecrew:join <memory-repo-url>` — instead
+  of re-running `/discover`. It clones the private memory repo (`context/`, `agents/`,
+  `history/`, `config.portable.json`), then rebuilds the machine-local `config.json`:
+  for each repo it either clones from the new optional `repo_url` (into a
+  `{slug}-repos/` sibling) or points at a copy the teammate already has. The inverse
+  of what the owner publishes via `memory-sync`.
+- **Optional `repo_url` per repo in `config.json`.** Machine-independent git clone URL
+  that rides into `config.portable.json` (via the existing deep-copy — no sync-generator
+  change) so `/join` can clone on another machine. `/discover` captures it (sanitized)
+  at onboarding; absent ⇒ `/join` falls back to point-to-local. Fully backward compatible.
+- **`scripts/rehydrate-config.js`** — deterministic, side-effect-free portable→local
+  config transform (handles the Windows drive-root join case; `--map`/`--repos-root`/
+  `--skip`), with a co-located round-trip test that closes the previously-untested
+  portable↔local loop.
+
+### Changed
+- **`config` validator** now accepts `repo_url` and **hard-errors** if it embeds
+  credentials (`user:token@`), which would otherwise leak into the committed
+  `config.portable.json`.
+- Fixed the stale `config.portable.json` note that pointed at a non-existent
+  `/discover --rehydrate`; it now points at `/pipecrew:join`.
+
 ## [1.8.0] - 2026-09-04
 
 ### Changed

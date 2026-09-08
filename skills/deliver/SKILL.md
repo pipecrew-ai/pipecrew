@@ -58,10 +58,10 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 
 ### CRITICAL RULES
 
-1. **Read the workspace config first.** Resolve the config path:
-   - If `--workspace=<slug>` was passed: use `{workspace_root}/{slug}/config.json`
-   - If not passed: resolve `{workspace_root}` via `node {plugin}/scripts/workspace-root.js --get` and scan `{workspace_root}/*/config.json`. If exactly one exists, use it. If multiple exist, list them and ask the user to pick.
-   - If none exist, print the detailed "missing config" block below and stop — do NOT proceed to Phase 1.
+1. **Read the workspace config first.** Resolve the workspace from the registry:
+   - Run `node {plugin}/scripts/workspace-registry.js --resolve --json` (add `--workspace=<slug>` if it was passed). On success it prints `{slug, path, root}` — set `{slug}` = `.slug` and `{workspace_root}` = `.root`, and the config path is `{path}/config.json`.
+   - If it exits 3, it prints the candidates on stderr: if several are listed, ask the user which slug; if none, print the detailed "missing config" block below and stop — do NOT proceed to Phase 1.
+   - (Workspaces may live in different directories; the registry is the source of truth, not a scan of any single parent. `{workspace_root}` is just the resolved workspace's parent, so `{workspace_root}/{slug}/…` paths below still hold.)
 
    Parse the JSON. Validate with `node {plugin}/scripts/validate-config.js {config-path}`. If validation fails, report errors and stop. All repo paths, service mappings, spec file locations, and domain context come from this config — nothing is hardcoded.
 

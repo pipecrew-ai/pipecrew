@@ -34,8 +34,7 @@ The first positional token is the **subcommand** (defaults to `status` if omitte
 ### Step 1: Resolve workspace + subcommand
 
 1. **Subcommand**: first non-flag positional token → one of `status` / `pull` / `sync` / `enable`. If absent, default to `status`.
-2. **`{workspace_root}`**: `node {plugin_dir}/scripts/workspace-root.js --get`. If it exits non-zero, tell the user to run `/discover` first.
-3. **`{slug}`**: from `--workspace=<slug>` if given; else scan `{workspace_root}/*/config.json` — if exactly one workspace, use it; if multiple, ask which.
+2. **Resolve the workspace** from the registry: `node {plugin_dir}/scripts/workspace-registry.js --resolve --json` (add `--workspace=<slug>` if given) → `{slug, path, root}`. Set `{slug}` = `.slug` and `{workspace_root}` = `.root`. If it exits 3, it lists candidates: one → use it, many → ask which slug, none → tell the user to run `/discover` or `/join`.
 4. Validate config: `node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json`. Halt on errors.
 5. Read `config.workspace.memory`. For `status` / `pull` / `sync`: if memory is **absent or `enabled:false`**, tell the user it's off and point them at `enable` (don't error). For `enable`: proceed even when off — that's the point.
 

@@ -53,7 +53,7 @@ description: "Audit or refresh PipeCrew context docs at three scopes: a single r
 
 ### Step 1: Resolve scope + workspace
 
-**Step 1.0 — resolve `{workspace_root}`**: run `node {plugin_dir}/scripts/workspace-root.js --get` to capture the user's configured workspaces root. Use `{workspace_root}` everywhere paths below reference workspace dirs. If the script exits non-zero (root never configured), tell the user to run `/discover` first — context-refresh has nothing to refresh against without an onboarded workspace.
+**Step 1.0 — resolve the workspace**: once you know the target slug (from `--workspace=<slug>` or auto-detected in Step 1.1), resolve it from the registry with `node {plugin_dir}/scripts/workspace-registry.js --resolve --workspace=<slug> --json` → `{slug, path, root}`; set `{workspace_root}` = `.root`. If the slug isn't known yet, `node {plugin_dir}/scripts/workspace-registry.js --list --json` enumerates the registered workspaces (each with its absolute `path`) to match against a repo path. If nothing is registered, tell the user to run `/discover` first — context-refresh has nothing to refresh against without an onboarded workspace. Use `{workspace_root}` everywhere paths below reference workspace dirs.
 
 **Step 1.1 — pick scope from args**:
 - If first positional arg is present and not a flag → **single-repo scope**. Resolve repo-key-or-path the same way `/review` does. Auto-detect workspace from repo path if `--workspace` omitted.

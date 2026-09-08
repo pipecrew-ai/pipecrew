@@ -53,7 +53,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 | `--branch=<name>` | Branch name to diff (local). Base defaults to `main` or `dev` — whichever the workspace uses. |
 | `--base=<name>` | Override the base branch for `--branch` mode. |
 | `--session=<path\|id\|current>` | Learn from a Claude Code session. `current` = the live conversation (the orchestrator distills its salient feedback turns); a `.jsonl` path or a bare session id = a past transcript (collected via `collect-session-feedback.js`). Weakest signal class — see the source-reliability note. Composes with `--note` (that **is** the "free text + session" combination — no separate flag needed). Requires `--workspace` (no repo to auto-detect from). |
-| `--workspace=<slug>` | Which workspace's docs to update. Auto-detects if omitted (scans `{workspace_root}/*/config.json` for repo paths that match the PR / branch). |
+| `--workspace=<slug>` | Which workspace's docs to update. Auto-detects if omitted (checks each registered workspace's `config.json` for repo paths that match the PR / branch). |
 | `--dry-run` | Show findings + proposed updates, but skip the apply step. Implies `--no-fix` (a dry run never dispatches implementers). |
 | `--apply-all` | Skip per-finding approval and apply every non-plugin-level finding. Does NOT imply `--auto-fix` — the fix-round prompt still runs after applies unless `--auto-fix` / `--no-fix` is also passed. |
 | `--fix-branch=<name>` | Optional branch name to dispatch the fix round against. If omitted, the orchestrator uses each affected repo's currently checked-out branch and asks the user to confirm before dispatching. |
@@ -110,10 +110,14 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 
 **Step 1.0 — resolve `{workspace_root}`**: run `node {plugin_dir}/scripts/workspace-root.js --get` to capture the user's configured workspaces root (the same resolution `/deliver` and `/discover` use). Use `{workspace_root}` everywhere the steps below reference workspace paths. If the script exits non-zero (root never configured), tell the user to run `/discover` first — feedback has nothing to learn against without an onboarded workspace.
 
-If `--workspace=<slug>` is provided, use `{workspace_root}/{slug}/config.json`. If not:
+If `--workspace=<slug>` is provided, resolve it via
+`node {plugin_dir}/scripts/workspace-registry.js --resolve --workspace=<slug> --json`
+(→ `{slug, path, root}`; set `{workspace_root}` = `.root`). If not, enumerate the
+registered workspaces with `node {plugin_dir}/scripts/workspace-registry.js --list --json`
+and match:
 
-- For `--pr` / `--branch`: extract the repo path from the PR URL or current working directory. Scan `{workspace_root}/*/config.json` for any workspace whose `repos.*.path` matches. If exactly one matches, use it. If multiple, ask the user.
-- For `--run`: the run ID contains the workspace slug inherently — `{workspace_root}/*/runs/feature/{run_id}/` unique match.
+- For `--pr` / `--branch`: extract the repo path from the PR URL or current working directory. Read each registered workspace's `{path}/config.json` and find the one whose `repos.*.path` matches. If exactly one matches, use it. If multiple, ask the user.
+- For `--run`: the run ID contains the workspace slug inherently — match it against the registry's slugs (`{path}/runs/feature/{run_id}/` for the matching workspace).
 - For `--session` and free-form text: no repo to auto-detect from. If `--workspace` is omitted, ask.
 
 Validate the resolved config via `node {plugin_dir}/scripts/validate-config.js {config-path}`. Halt on errors.

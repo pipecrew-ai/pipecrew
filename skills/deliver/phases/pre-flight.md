@@ -152,7 +152,7 @@ Workspaces live under `{workspace_root}/<slug>/`. The root is resolved by `node 
 
 2. Save the answer (or the default if the user pressed Enter) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes `~/.claude/pipecrew/config.json` so future runs don't re-prompt.
 
-3. Capture the resolved path: `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get)`. Use this alias everywhere in the remaining steps — wherever a phase file shows the literal `~/.claude/pipecrew/workspaces/`, substitute `{workspace_root}/`.
+3. Capture the resolved path: `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get --workspace={workspace})` — passing the selected slug returns the parent of *that* workspace, so this is correct even when the workspace lives outside the default root (workspaces are registry-tracked and can live anywhere; see `docs/design/workspace-registry.md`). If the slug isn't known yet, omit `--workspace` to get the default/current root. Use this alias everywhere in the remaining steps — wherever a phase file shows the literal `~/.claude/pipecrew/workspaces/`, substitute `{workspace_root}/`.
 
 **Step 1: Load and validate workspace config.**
 

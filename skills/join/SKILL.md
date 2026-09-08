@@ -94,10 +94,13 @@ Then record the teammate's root so future `config.portable.json` regens stay sta
 
 ```bash
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
+node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
 node {plugin_dir}/scripts/sync-memory.js status {workspace_root}/{slug}
 ```
 - The validator confirms every resolved `path` exists on disk (so it catches a clone that
   didn't land or a wrong local path) — fix and re-run Step 5 on any error.
+- `--register … --current` adds the joined workspace to the teammate's registry and makes it
+  active, so subsequent `/deliver`, `/memory-sync`, etc. resolve it by slug from anywhere.
 - `status` confirms the memory repo is wired and reports how fresh it is.
 
 Report one concise summary: workspace joined, N repos wired (cloned / local / skipped),

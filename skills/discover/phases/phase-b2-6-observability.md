@@ -19,10 +19,9 @@ The phase logic below (Steps 1–5) is identical in either entry path — only t
 
 **Refresh entry checklist** (only when `--refresh-observability` is the entry point — otherwise skip and use the normal phase entry from B2):
 
-1. Resolve `{workspace_root}` via `node {plugin_dir}/scripts/workspace-root.js --get`. Halt if unset.
-2. Resolve the workspace slug:
-   - If `--workspace=<slug>` was passed, use it.
-   - Otherwise scan `{workspace_root}/*/config.json` — if exactly one workspace exists, use it; if multiple, ask the user.
+1. Resolve the workspace from the registry (skip if the slug is already known from the enclosing `/discover` run):
+   `node {plugin_dir}/scripts/workspace-registry.js --resolve --json` (add `--workspace=<slug>` if passed) → `{slug, path, root}`.
+   Set `{slug}` = `.slug` and `{workspace_root}` = `.root`. If it exits 3 with multiple candidates, ask the user which slug; if none, halt.
 3. Validate `{workspace_root}/{slug}/config.json` with `node {plugin_dir}/scripts/validate-config.js {config-path}`. Halt on errors.
 4. Detect current state of the observability routing table:
    - If `{workspace_root}/{slug}/context/observability.json` exists → **Mode: drift refresh.** Parse it (if it's malformed JSON, surface the error and halt — the user should hand-fix or `rm` it). Save the parsed JSON for diffing in Step 4.

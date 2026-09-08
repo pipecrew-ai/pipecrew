@@ -187,6 +187,25 @@ and rebuilds their machine-local `config.json`. They immediately run `/deliver` 
 same shared platform context. Day-to-day, `/memory-sync status | pull | sync` keeps everyone
 level. See [`docs/design/github-memory.md`](docs/design/github-memory.md).
 
+### Multiple workspaces
+
+You can onboard as many workspaces as you like — one per project/platform — and each can
+live **wherever its repos live** (a workspace is a self-contained folder). PipeCrew tracks
+them in a **registry** (`~/.claude/pipecrew/config.json`), so onboarding a new one never
+hides the others, and skills resolve any of them by slug (`--workspace=<slug>`) from
+anywhere. Manage the registry with:
+
+```bash
+node <plugin>/scripts/workspace-registry.js --list                 # every workspace + which is current
+node <plugin>/scripts/workspace-registry.js --set-current=<slug>   # switch the active workspace
+node <plugin>/scripts/workspace-registry.js --adopt=<dir>          # register workspaces already on disk under <dir>
+```
+
+Upgrading from an older version auto-migrates your single `workspace_root` into the
+registry on first run — nothing to do. If you previously kept workspaces under more than
+one root, `--adopt=<that-root>` brings the rest back into view. See
+[`docs/design/workspace-registry.md`](docs/design/workspace-registry.md).
+
 ---
 
 ## Skills

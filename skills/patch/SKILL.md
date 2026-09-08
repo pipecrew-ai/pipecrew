@@ -76,9 +76,11 @@ and bounces (see "Escalation boundary").
    `/deliver`. Emit `run_start` / `phase_*` / `agent_end` / `run_end` events to `checkpoints.jsonl`.
 
 ### Step 0: Resolve workspace + preflight
-1. Resolve `{workspace_root}` via `node {plugin_dir}/scripts/workspace-root.js --get`.
-2. Resolve config: `--workspace=<slug>` → `{workspace_root}/{slug}/config.json`; else scan
-   `{workspace_root}/*/config.json` (one → use it; many → ask). Validate with
+1. Resolve the workspace from the registry: `node {plugin_dir}/scripts/workspace-registry.js --resolve --json`
+   (add `--workspace=<slug>` if passed) → `{slug, path, root}`. Set `{slug}` = `.slug`,
+   `{workspace_root}` = `.root`.
+2. Config path is `{path}/config.json`. If `--resolve` exits 3, it lists candidates —
+   one → use it, many → ask, none → tell the user to run `/discover` or `/join`. Validate with
    `node {plugin_dir}/scripts/validate-config.js <path>`. Stop on failure.
 3. Create a run dir: `{workspace_root}/{slug}/runs/patch/{run_id}/` where
    `run_id = {YYYY-MM-DD-HHMMSS}-{slug-of-selector}`. Subdirs: `outputs/`, `tasks/`. Emit

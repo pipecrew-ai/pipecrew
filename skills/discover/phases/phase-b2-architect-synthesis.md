@@ -343,11 +343,19 @@ If a match is found, record the path (relative to the consuming repo's root) und
 
 Also probe with any alternate filenames (e.g., a typo'd spec — ABVI has `user-managment-api-specs.yaml` with a missing `e`). Match by basename as declared in the api-service, not by a cleaned-up name.
 
-Write the file. Run the validator:
+Write the file. Run the validator, then register the workspace so it's resolvable
+by slug from anywhere (and set as current):
 
 ```bash
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
+node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
 ```
+
+Registration records the workspace's absolute path in the registry
+(`~/.claude/pipecrew/config.json`). This is what lets a workspace live wherever it
+makes sense (next to its repos) and never get orphaned when another workspace is
+onboarded elsewhere — see `docs/design/workspace-registry.md`. Idempotent on re-runs
+(incremental mode re-registers the same path).
 
 Expect **0 warnings** after the probing step. If validation emits path-not-found warnings for `spec_copies`, the probe missed something — do not ignore; re-run the probe with a wider search (e.g., increase maxdepth, include additional exclude-dir patterns) and fix the paths in config before continuing.
 

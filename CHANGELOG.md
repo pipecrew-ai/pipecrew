@@ -16,6 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.10.0] - 2026-09-08
+
+### Added
+- **Workspace registry — workspaces can live anywhere, and never get orphaned.**
+  Replaces the single mutable `workspace_root` with a registry
+  (`~/.claude/pipecrew/config.json` → `workspaces[]` + `current`) so you can onboard
+  many workspaces, each next to its own repos, and switch between them by slug from
+  anywhere. Onboarding a new workspace no longer hides ones under a different root.
+  New `scripts/workspace-registry.js` with `--list` / `--resolve` / `--register` /
+  `--set-current` / `--adopt=<dir>` / `--forget`. `/discover` and `/join` register the
+  workspace they create; `/deliver`, `/memory-sync`, `/patch`, `/learn`, `/context-refresh`
+  resolve via the registry. See `docs/design/workspace-registry.md`.
+- **`--adopt=<dir>`** re-registers workspaces already on disk under a directory — the
+  one-shot recovery for anyone who previously split workspaces across two roots.
+
+### Changed
+- **`scripts/workspace-root.js` is now a backward-compatible shim** over the registry:
+  `--get [--workspace=<slug>]` returns the parent of the given/current workspace (so
+  existing `{workspace_root}/{slug}` paths keep resolving wherever the workspace lives),
+  `--check`/`--set`/`--config-path` unchanged. `--set` also adopts workspaces already
+  under the given root.
+- **Auto-migration (idempotent):** the first run after upgrading converts a legacy
+  `workspace_root` string into the registry by scanning it once; nothing is moved or
+  deleted. `$PIPECREW_WORKSPACE_ROOT` still overrides everything (ephemeral, non-persisted).
+
 ## [1.9.0] - 2026-09-07
 
 ### Added

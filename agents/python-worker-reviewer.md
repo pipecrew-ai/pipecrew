@@ -1,7 +1,7 @@
 ---
 name: python-worker-reviewer
 description: "Reviews Python event-driven worker implementations (AWS Lambda / SQS / SNS / Kinesis / Kafka / Celery / scheduled) for event-schema compliance, idempotency, retry/DLQ behaviour, partial-failure handling, and test quality. Produces a structured report with findings grouped by severity."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

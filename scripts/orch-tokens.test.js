@@ -5,7 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { orchFromLines, agentsFromLines, resolveSessionJsonl, readSessionIdFromRunDir } = require('./orch-tokens.js');
+const { orchFromLines, agentsFromLines, resolveSessionJsonl, readSessionIdFromRunDir, sessionSummaryFromFile, rateFor, costFromByModel, DEFAULT_PRICING } = require('./orch-tokens.js');
 
 let passed = 0;
 function ok(name, fn) { fn(); passed++; console.log(`  ✓ ${name}`); }
@@ -71,6 +71,73 @@ ok('agentsFromLines pairs Agent dispatch → toolUseResult tokens/duration', () 
   assert.strictEqual(agents[0].tokens, 51234);
   assert.strictEqual(agents[0].durationMs, 90000);
   assert.strictEqual(agents[0].agentId, 'ag-1');
+});
+
+ok('orchFromLines buckets usage per model id', () => {
+  const lines = [
+    { type: 'assistant', message: { model: 'claude-opus-4-6', usage: { input_tokens: 100, output_tokens: 10, cache_creation_input_tokens: 5, cache_read_input_tokens: 1000 } } },
+    { type: 'assistant', message: { model: 'claude-haiku-4-5', usage: { input_tokens: 50, output_tokens: 20 } } },
+    { type: 'assistant', message: { usage: { input_tokens: 7 } } },   // no model → 'unknown' bucket
+  ];
+  const t = orchFromLines(lines);
+  assert.strictEqual(t.byModel['claude-opus-4-6'].cacheRead, 1000);
+  assert.strictEqual(t.byModel['claude-haiku-4-5'].output, 20);
+  assert.strictEqual(t.byModel['unknown'].input, 7);
+});
+
+ok('rateFor matches by substring; unknown model → null (unmeasured, not guessed)', () => {
+  assert.strictEqual(rateFor('claude-opus-4-6', DEFAULT_PRICING).output, 25);
+  assert.strictEqual(rateFor('claude-haiku-4-5-20251001', DEFAULT_PRICING).input, 1);
+  assert.strictEqual(rateFor('unknown', DEFAULT_PRICING), null);
+  assert.strictEqual(rateFor('', DEFAULT_PRICING), null);
+});
+
+ok('costFromByModel includes cache-read at its own rate; flags unknown models unmeasured', () => {
+  // 1M of each field on opus: 5 + 25 + 6.25 + 0.5 = 36.75
+  const c = costFromByModel({ 'claude-opus-4-6': { input: 1e6, output: 1e6, cacheCreate: 1e6, cacheRead: 1e6 } }, DEFAULT_PRICING);
+  assert.strictEqual(c.usd, 36.75);
+  assert.strictEqual(c.unmeasured, false);
+  const u = costFromByModel({ mystery: { input: 1e6, output: 0, cacheCreate: 0, cacheRead: 0 } }, DEFAULT_PRICING);
+  assert.strictEqual(u.unmeasured, true);
+  assert.strictEqual(u.usd, 0);
+});
+
+ok('sessionSummaryFromFile attaches per-agent usage + costUSD from sub-transcripts, and run totals', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchsum-'));
+  const sess = path.join(tmp, 'sess-1.jsonl');
+  const subDir = path.join(tmp, 'sess-1', 'subagents');
+  fs.mkdirSync(subDir, { recursive: true });
+  const sessionLines = [
+    { type: 'assistant', message: { model: 'claude-opus-4-6', usage: { input_tokens: 1e6, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 2e6 } } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'x', description: 'measured agent' } }] } },
+    { type: 'user', toolUseResult: { agentId: 'ag1' }, message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't2', name: 'Agent', input: { subagent_type: 'y', description: 'unmeasured agent' } }] } },
+    { type: 'user', toolUseResult: { totalTokens: 500, agentId: 'ag-gone' }, message: { content: [{ type: 'tool_result', tool_use_id: 't2', content: 'ok' }] } },
+  ];
+  fs.writeFileSync(sess, sessionLines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  fs.writeFileSync(path.join(subDir, 'agent-ag1.jsonl'),
+    JSON.stringify({ type: 'assistant', message: { model: 'claude-haiku-4-5', usage: { input_tokens: 1e6, output_tokens: 1e6, cache_creation_input_tokens: 0, cache_read_input_tokens: 1e6 } } }) + '\n');
+  const s = sessionSummaryFromFile(sess);
+  // orchestrator: opus 1M input ($5) + 2M cacheRead ($1) = $6; total excludes cacheRead
+  assert.strictEqual(s.orch.costUSD, 6);
+  assert.strictEqual(s.orch.total, 1e6);
+  const measured = s.agents.find((a) => a.description === 'measured agent');
+  // haiku 1M in ($1) + 1M out ($5) + 1M cacheRead ($0.1) = $6.1; usage carries cacheRead
+  assert.strictEqual(measured.costUSD, 6.1);
+  assert.strictEqual(measured.usage.cacheRead, 1e6);
+  assert.strictEqual(measured.tokens, 2e6);   // input+output (cacheRead excluded from total)
+  const unmeasured = s.agents.find((a) => a.description === 'unmeasured agent');
+  assert.strictEqual(unmeasured.costUSD, null);  // sub-transcript absent → unmeasured, not zero
+  assert.strictEqual(unmeasured.usage, undefined);
+  assert.strictEqual(unmeasured.tokens, 500);    // legacy toolUseResult total still honored
+  // totals: newTokens = orch 1M + measured 2M + unmeasured legacy 500
+  assert.strictEqual(s.totals.newTokens, 1e6 + 2e6 + 500);
+  assert.strictEqual(s.totals.cacheReadTokens, 2e6 + 1e6);
+  assert.strictEqual(s.totals.costUSD, 12.1);
+  assert.strictEqual(s.totals.agentsWithUsage, 1);
+  assert.strictEqual(s.totals.agentsTotal, 2);
+  assert.strictEqual(s.totals.orchestratorCostShare, Math.round((6 / 12.1) * 1000) / 1000);
+  fs.rmSync(tmp, { recursive: true, force: true });
 });
 
 console.log(`\n${passed} tests passed.`);

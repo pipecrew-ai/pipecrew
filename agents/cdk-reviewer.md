@@ -1,7 +1,7 @@
 ---
 name: cdk-reviewer
 description: "Reviews AWS CDK (TypeScript / Python) stack implementations for INFRASTRUCTURE_IMPACT compliance, security defaults (encryption, IAM least-privilege, removalPolicy), cross-stack references, tagging, and test coverage. Produces a structured report with findings grouped by severity. Read-only — `cdk synth` / `cdk diff` output is consumed as a verification artifact alongside the source diff."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

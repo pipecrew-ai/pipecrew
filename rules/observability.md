@@ -10,8 +10,9 @@ This is the **source of truth** for how every skill in the plugin records what i
 ├── checkpoints.jsonl          machine-readable event log (this doc)
 ├── outputs/                   phase artifacts consumed by later phases
 │   └── phase-{n}-{name}.md
-├── review/                    per-repo code-review reports (optional, /deliver only)
-├── security-review.md         optional — if --force-security-review (or trigger) was passed
+├── review/                    per-repo diffs + reviewer-written reports ({repo}.diff, {repo}-report.md; /deliver only)
+├── security-review/           optional — per-repo security reports, if --force-security-review (or trigger) was passed
+│                              (legacy runs may have a single security-review.md instead)
 ├── assessment.md              optional — /deliver Phase 6 output
 ├── fix-rounds/                optional — per fix-round outputs
 └── report.md                  final run report (reporter agent output)
@@ -171,19 +172,14 @@ Required: `agent_type`, `description`. Optional: `task` (the task-file id, when 
   "stage": "Architect Discovery",
   "agent_type": "solution-architect",
   "description": "Architect discovery for Digital Arabic Library",
-  "input_tokens": 23105,
-  "output_tokens": 8942,
-  "cache_read_tokens": 45780,
-  "cache_write_tokens": 0,
-  "total_tokens": 77922,
-  "tool_uses": 28,
-  "duration_ms": 242835,
   "status": "ok",
   "audit_findings_count": 3
 }
 ```
 
-Required: `agent_type`, `description`, `status`, `duration_ms`, and the token fields the `<usage>` block provided. Optional: `audit_findings_count` (only if the agent emitted a `## Audit Findings` section).
+Required: `agent_type`, `description`, `status`. Optional: `task` (task-file id), `audit_findings_count` (only if the agent emitted a `## Audit Findings` section).
+
+**No token or duration fields** — current Claude Code gives the orchestrator no inline visibility into per-agent usage, so it MUST NOT emit (or fabricate) `total_tokens` / `input_tokens` / `duration_ms` here. Consumers (site-view, reporter) derive them from the session transcript via `scripts/orch-tokens.js` — see "Per-agent tokens & duration" below. Legacy logs from older Claude Code versions may carry `<usage>`-derived token fields on `agent_end`; consumers still honor them when present.
 
 `status` enum: `ok` | `retry` | `failed` | `deferred`.
 
@@ -194,7 +190,7 @@ The tokens the **orchestrator itself** burns (loading skills, reading files/spec
 **This is now DERIVED, not hand-computed.** The old approach — the orchestrator inline byte-offset-diffing its own session JSONL and emitting an `orch_checkpoint` per phase — was too complex and was skipped in practice (real runs emitted empty `orch_checkpoint`s, so overhead showed as 0). Instead:
 
 - **`run_start` records `session_id`** (`$CLAUDE_CODE_SESSION_ID`).
-- **`scripts/orch-tokens.js`** computes overhead deterministically = the sum of the session transcript's own `assistant` `message.usage` (`input` + `output` + `cache_creation`). Sub-agent tokens live in **separate** `subagents/agent-*.jsonl` transcripts, so they are NOT in the parent session's usage — **no subtraction**. cache-read is excluded (re-reads of the growing context).
+- **`scripts/orch-tokens.js`** computes overhead deterministically = the sum of the session transcript's own `assistant` `message.usage` (`input` + `output` + `cache_creation`). Sub-agent tokens live in **separate** `subagents/agent-*.jsonl` transcripts, so they are NOT in the parent session's usage — **no subtraction**. cache-read is excluded from the headline `total` (it counts re-reads of the growing context, not new tokens) but **included in every `costUSD`** at the cache-read rate — on long orchestrator sessions cache reads are the dominant token class, so a cost figure that drops them badly under-counts. The script also emits per-agent `usage` breakdowns + `costUSD` (from the sub-transcripts) and run `totals` incl. `orchestratorCostShare`; a `null costUSD` means unmeasured — consumers report it as such, never estimate.
 - The **site-view** and **reporter** call it (keyed on `session_id`) — no orchestrator math required.
 
 `orch_checkpoint` events remain **optional/legacy**: consumers still sum any `orch_since_last` deltas as a fallback for runs with no `session_id`, but new runs should rely on `session_id` + `orch-tokens.js` rather than hand-emitting them.

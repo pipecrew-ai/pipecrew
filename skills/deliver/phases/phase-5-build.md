@@ -116,6 +116,9 @@ Dispatch the base plugin UX consultant `pipecrew:ux-consultant` in its default *
 ```
 Provide UX recommendations for this feature. Research and recommendations only — do not implement, do not create a worktree.
 
+CONSULTATION FILE (Write your full consultation here — your final message is only the digest per your system prompt's Consultation delivery rule):
+{run_dir}/outputs/phase-5b-ux-spec.md
+
 TARGET REPO: {frontend.path}
 
 FEATURE: {feature_summary}
@@ -134,21 +137,21 @@ INSTRUCTIONS:
 2. Follow CLAUDE.md's pointers to find the design system docs (typically under agent-context-v2/common/ or agent-context/common/). Read them.
 3. Find and read the storybook foundation stories (src/stories/**/*.stories.tsx) — Colors, Typography, Spacing at minimum. Read component stories on demand.
 4. Read 2-4 existing feature docs under agent-context-v2/features/ or agent-context/features/ for features similar to what you're designing.
-5. Produce the consultation in the format your system prompt specifies, including the IMPLEMENTATION_SPEC block delimited by <!-- BEGIN IMPLEMENTATION_SPEC --> and <!-- END IMPLEMENTATION_SPEC -->.
+5. Write the full consultation (format your system prompt specifies, including the IMPLEMENTATION_SPEC block delimited by <!-- BEGIN IMPLEMENTATION_SPEC --> and <!-- END IMPLEMENTATION_SPEC -->) to the CONSULTATION FILE above, then return only the digest per your Consultation delivery rule.
 
 Your recommendations must use actual tokens, primitives, and patterns from what you read — not generic UX advice. Match established patterns from existing features unless there is a strong reason to deviate (which you must call out explicitly).
 
 CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgotten):
-- **Emit IMPLEMENTATION_SPEC block.** The dispatch's downstream consumer (Phase 5b Step 3 frontend implementer) reads `<!-- BEGIN IMPLEMENTATION_SPEC --> ... <!-- END IMPLEMENTATION_SPEC -->` from your output and appends it to the task file. Missing block = the implementer has no UX direction and falls back to whatever it invents.
-- **Read-only.** Do not Edit, Write, or run state-mutating commands. Do not create a worktree. Your output is the recommendation only.
+- **Write the consultation to the CONSULTATION FILE; return only the digest.** The digest (key decisions, deviations, new primitives, open questions) is what the user sees at the approval gate — put every decision they should weigh in on there. The IMPLEMENTATION_SPEC in the file is what the implementer + reviewer consume; a missing block = the implementer has no UX direction and falls back to whatever it invents.
+- **Read-only on the repo.** Do not Edit or write anything inside the target repo, do not run state-mutating commands, do not create a worktree. `Write` is for the CONSULTATION FILE only.
 - **Use only what you read.** Tokens, primitives, component names, and i18n key conventions must come from the actual design system + storybook + existing feature docs you read above. No invented primitives, no generic Tailwind / Material advice the repo doesn't already use.
 - **Cite established patterns.** When you recommend a pattern, name the existing feature you're matching (e.g., "follow the row-actions pattern from `agent-context/features/orders.md`"). When you deviate, explain *why* in one sentence.
 - **Spec field names are non-negotiable.** Endpoints' request/response field names above are the contract. Do not rename them in your recommendation.
 
-Now: produce UX recommendations for the feature in `{frontend.path}` and emit the IMPLEMENTATION_SPEC block in the format your system prompt specifies.
+Now: produce UX recommendations for the feature in `{frontend.path}`, write the full consultation to the CONSULTATION FILE, and return the digest.
 ```
 
-**After**: Present UX summary to user. Wait for approval.
+**After**: Verify `{run_dir}/outputs/phase-5b-ux-spec.md` exists and contains the IMPLEMENTATION_SPEC markers (if not, the consultant violated its delivery contract — re-dispatch via `SendMessage` telling it to Write the file). Present the consultant's **digest** to the user — do NOT read the consultation file into your context.
 
 **UX Approval Gate**: Show key UX decisions, deviations from standard patterns, and anything the user should weigh in on. Wrap the wait in a gate (CRITICAL RULE 5) so the site-view banner lights:
 
@@ -164,7 +167,15 @@ Ask: "Approve UX recommendations to proceed with frontend implementation?"
 
 **Step 3: Feature Implementer**
 
-**Append the UX `IMPLEMENTATION_SPEC` into the existing frontend task file** before dispatching. Open the frontend task file from `~/.claude/dal-pipeline/tasks/` (created in Phase 4.5) and add the extracted `<!-- BEGIN IMPLEMENTATION_SPEC --> ... <!-- END IMPLEMENTATION_SPEC -->` block at the end of the body (or replace any placeholder the task file already reserved for it). This is the **only** piece of new information that enters the task file at Phase 5b — the UX consultant produces it in the same phase, so it wasn't available when Phase 4.5 wrote the initial task.
+**Append the UX `IMPLEMENTATION_SPEC` into the existing frontend task file** before dispatching — via shell redirection, so the spec body never enters your context:
+
+```bash
+{ echo ''; echo '<!-- BEGIN IMPLEMENTATION_SPEC -->';
+  node {plugin_dir}/scripts/extract-block.js {run_dir}/outputs/phase-5b-ux-spec.md IMPLEMENTATION_SPEC --raw;
+  echo '<!-- END IMPLEMENTATION_SPEC -->'; } >> {frontend_task_file}
+```
+
+This appends the block to the end of the frontend task file (created in Phase 4.5). It is the **only** piece of new information that enters the task file at Phase 5b — the UX consultant produces it in the same phase, so it wasn't available when Phase 4.5 wrote the initial task. Verify the append landed (`grep -c 'BEGIN IMPLEMENTATION_SPEC' {frontend_task_file}` → 1); do not Read the spec into context.
 
 Then use the lean task-ID dispatch template from Phase 4.5:
 

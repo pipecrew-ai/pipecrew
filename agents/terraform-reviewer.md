@@ -1,7 +1,7 @@
 ---
 name: terraform-reviewer
 description: "Reviews Terraform / HCL implementations for INFRASTRUCTURE_IMPACT compliance, security defaults (encryption, IAM least-privilege, lifecycle protection), state safety, provider / module pinning, tagging, and test coverage. Produces a structured report with findings grouped by severity. Read-only — `terraform plan` output is consumed as a verification artifact alongside the source diff."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

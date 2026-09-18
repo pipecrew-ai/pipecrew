@@ -59,7 +59,7 @@ If the type has no reviewer, report "No reviewer agent for type '{type}'. Skippi
 
 ### Step 3: Pre-compute the diff (reviewers have no `Bash`)
 
-Reviewer agents are granted `Read, Glob, Grep` only — no `Bash` — so they cannot run `git diff` themselves (and cannot mutate the repo: the hard prevention for the reviewer-violates-read-only failure mode). Pre-compute the diff to a file first; the helper prints only a byte-count, so the diff body never enters your context:
+Reviewer agents are granted `Read, Glob, Grep, Write` — no `Bash` — so they cannot run `git diff` themselves (`Write` exists solely for persisting a report file in the `/deliver` pipeline; their read-only-on-code rule plus the Step 5 backstop keeps the repo untouched). Pre-compute the diff to a file first; the helper prints only a byte-count, so the diff body never enters your context:
 
 ```bash
 node {plugin_dir}/scripts/write-review-diff.js --worktree={repo_path} --base={base_branch} --out={diff_out}
@@ -92,9 +92,9 @@ Produce your full report in the Output Format from your system prompt.
 
 ### Step 5: Backstop + present the report
 
-**Read-only backstop:** after the reviewer returns, run `git -C {repo_path} status --porcelain`. If non-empty, the reviewer mutated the repo (a read-only violation that should be impossible with its `Read, Glob, Grep`-only grant — a stale cached agent definition). Revert (`git -C {repo_path} checkout -- . && git -C {repo_path} clean -fd`, or `git stash`), and warn the user that a reviewer mutated the tree and a `claude` restart / plugin reinstall may be needed. The findings are still valid.
+**Read-only backstop:** after the reviewer returns, run `git -C {repo_path} status --porcelain`. If non-empty, the reviewer mutated the repo (a read-only-on-code violation — its `Write` grant is for report files only, never the repo). Revert (`git -C {repo_path} checkout -- . && git -C {repo_path} clean -fd`, or `git stash`), and warn the user that a reviewer mutated the tree and a `claude` restart / plugin reinstall may be needed. The findings are still valid.
 
-Show the reviewer's full report to the user. Highlight critical findings count.
+Show the reviewer's full report to the user (this standalone skill passes no `REPORT FILE`, so the reviewer returns the full report per its Report delivery rule). Highlight critical findings count.
 
 If critical findings exist:
 ```

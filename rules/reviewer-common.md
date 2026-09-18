@@ -19,7 +19,7 @@ These rules compose on top of each reviewer's stack-specific Step 5. Where a sha
 4. **Every edge case (EC-X) must have a test or a guard** — preferably both. If an edge case has neither, that's a Critical finding.
 5. **Cite, don't assert.** Every finding must point to concrete code (file:line) and — where relevant — a specific requirement, convention, spec element, or event schema field. "This is wrong" is not acceptable; "line 42 names the field `bookId` but the spec schema names it `book_id` — the generated client will not deserialize it" is.
 6. **Raise issues, don't fix them.** Do not produce code modifications. You may include short illustrative snippets to explain a finding, but the fix itself is the implementer's job.
-7. **You are structurally read-only.** Your tool grant is `Read, Glob, Grep` — you have **no `Bash`, no `Edit`, no `Write`**. You cannot and must not mutate the worktree: no applying a fix, no `git checkout`/`reset`/`stash`, no running a formatter or build that writes files. The diff is handed to you as a file (see Step 2); you read it, you do not produce it. If you find yourself wanting to "just fix this one thing," that is the implementer's job — record it as a finding instead. (The orchestrator also verifies the worktree is clean after you return and reverts + flags any change, so a violation cannot silently land — but with no mutating tool, there is nothing to revert.)
+7. **You are read-only on the code.** Your tool grant is `Read, Glob, Grep, Write` — **no `Bash`, no `Edit`**. `Write` exists for exactly ONE purpose: persisting your report to the `REPORT FILE` path the dispatch gives you (under the run directory, never inside the worktree). You must not mutate the worktree in any way: no applying a fix, no writing/overwriting any file under the repo path, no formatter output. The diff is handed to you as a file (see Step 2); you read it, you do not produce it. If you find yourself wanting to "just fix this one thing," that is the implementer's job — record it as a finding instead. The orchestrator verifies the worktree is clean after you return and reverts + flags any change, so a violation cannot silently land.
 8. **Established patterns are a checklist, not background reading.** Before forming findings, load the workspace `platform.md § Established Patterns` (the dispatch gives you its path) and the target repo's `agent-context/` convention docs, and treat each applicable rule as an explicit checklist item the diff must satisfy. Walk the diff against them and cite the file:line that complies — or raise a finding for each violation, graded per the R10 / convention severity below. This is the mechanism that makes a convention the team taught the pipeline via `/learn` actually bite on the next run instead of sitting unread in a doc the reviewer never opens.
 
 ---
@@ -84,6 +84,24 @@ The reviewer follows this 11-step process. Step 5 is the **only** stack-specific
 ---
 
 ## Output Format
+
+### Report delivery — file + digest, not a narrative return
+
+Your full report is a **file**, not a message. What you return to the orchestrator becomes permanent context it re-reads on every subsequent turn for the rest of the run — the full narrative there is pure carried weight, while a file on disk costs nothing until someone actually needs it.
+
+- **When the dispatch provides a `REPORT FILE` path** (the `/deliver` pipeline always does): `Write` the complete report (the full format below) to that path. Your **final message is only the digest**:
+
+  ```
+  Report: {REPORT FILE path}
+  Overall: {PASS / NEEDS FIXES / BLOCKED} — {2–3 sentences: the review's shape, the most important finding, anything the fix round must know}
+
+  <!-- BEGIN FINDINGS_SUMMARY --> … <!-- END FINDINGS_SUMMARY -->
+  <!-- BEGIN FINDINGS --> … <!-- END FINDINGS -->
+  ```
+
+  The two machine blocks appear **byte-identical in both places** (file and final message) — the orchestrator parses the final message to persist task files without reading the report; the file is for the fix-round implementer, the assessor, and `/learn`. Do NOT include the prose findings, the coverage map, or per-finding detail in the final message — that is what the file is for.
+
+- **When no `REPORT FILE` path is given** (standalone `/review`): return the full report as your final message, as before.
 
 ```markdown
 # {Stack} Code Review — {feature name}

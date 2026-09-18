@@ -31,6 +31,9 @@ Mode: Code Review
 
 Review the implementation diffs in the repo at {worktree_path} (branch: feature/{feature-slug}).
 
+REPORT FILE (Write your full report here — your final message is only the digest per your system prompt's Report delivery rule):
+{run_dir}/security-review/{repo-name}.md
+
 Get the diff:
   cd {worktree_path} && git diff {base}...feature/{feature-slug}
 
@@ -43,14 +46,14 @@ Scan for:
 - Auth implementation gaps (missing guards, wrong ownership checks)
 - Insecure patterns (disabled CORS, verify=False, weak hashing)
 
-Produce the security findings report in the Output Format from your system prompt.
+Write the full report (Output Format from your system prompt) to the REPORT FILE, then return the digest: report path + Summary counts + Recommendation + the SECURITY_FINDINGS block. Never write inside the worktree.
 ```
 
 Dispatch all repos in parallel (one Agent call per repo in a single message).
 
 ### Step 2: Present findings
 
-Compile a summary:
+Compile the summary from the returned digests (do not read the report files — the fix-round implementer reads them):
 
 ```
 ## Security Review Results

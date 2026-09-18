@@ -59,6 +59,21 @@ The orchestrator:
 
 ---
 
+### Return Contract — digests in, artifacts on disk
+
+**Everything an agent returns becomes permanent orchestrator context, re-read on every turn until the run ends.** A return is rented for the rest of the run; a file is free until someone Reads it. So the universal contract for every dispatch, in every phase:
+
+1. **The dispatch names a run-dir file for any heavyweight output** (report, design, spec, consultation — anything over roughly 1K tokens of narrative). The agent writes the full artifact there itself.
+2. **The agent's final message is a digest**: the artifact path, a verdict/summary of 2–3 sentences, any machine-readable blocks the orchestrator parses (FINDINGS, counts, status), and any small must-carry sections (`## Notes for /learn`, `## Assumptions` — these stay in the digest because the orchestrator routes them). Target ≤ ~30 lines.
+3. **The digest must be decision-sufficient.** Whatever the orchestrator's next action needs — gate presentation, fix routing, scratchpad fields (files changed, test result, status) — must be IN the digest. A digest so thin the orchestrator has to Read the artifact back defeats the purpose and is worse than a right-sized return.
+4. **The orchestrator never reads the artifact back into context.** Downstream consumers (implementers, reviewers, the assessor, `/learn`, the reporter) receive the *path* and Read it themselves — subagent context is disposable, orchestrator context is not. When a slice of an artifact must enter a later dispatch prompt, extract just that block (`extract-block.js`), or better, pass the path.
+5. **Small structured returns skip the ceremony.** A spec-editor diff summary or a "done, N handlers" is fine inline — don't create files for returns already digest-sized.
+6. **No file path in the dispatch → legacy contract.** An agent asked for heavyweight output without a named artifact file returns it in full, as before. This keeps standalone skills (`/review`) and third-party dispatches working.
+
+Who writes what today: reviewers → `review/{repo}-report.md`; architect → `outputs/phase-2-architecture.md`; product-owner → `outputs/phase-1-requirements.md`; ux-consultant → `outputs/phase-5b-ux-spec.md`; assessor → `assessment.md`; security-consultant → `security-review/{repo}.md`; implementers → `## Implementation Report` appended to their own task file (and fix-round reports to `fix-rounds/round-{N}/{repo}.md`); reporter → `report.md`.
+
+---
+
 ### Execution Tracking (per phase, per agent dispatch, per task)
 
 The scratchpad tracks duration and token usage at three granularities, all derived from one source: the **Agent Dispatch Log**.

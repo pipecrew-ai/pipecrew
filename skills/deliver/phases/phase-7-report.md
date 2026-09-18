@@ -19,13 +19,19 @@ Generate the execution report for this run.
 
 Run dir:     {run_dir}
 Scratchpad:  {run_dir}/scratchpad.md
-Checkpoints: {run_dir}/checkpoints.jsonl
+Checkpoints: {run_dir}/checkpoints.jsonl   (timings/structure only — NOT tokens)
 Stats cache: ~/.claude/stats-cache.json
 Prior runs:  {workspace_root}/{slug}/runs/deliver/         (sibling run_id dirs — use for trend comparison)
 
 Validate the checkpoints log first:
   node {plugin_dir}/scripts/validate-checkpoints.js {run_dir}/checkpoints.jsonl
 On exit 1, surface the schema violation in the report header. On exit 2, note warnings but continue.
+
+Tokens and cost come ONLY from:
+  node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir}
+Parse its JSON per your system prompt's Token & Cost Breakdown section. Include the
+orchestrator-vs-agents cost split and the cache-read share. Render null costUSD as
+"unmeasured" — never estimate.
 
 Write the report to: {run_dir}/report.md
 ```

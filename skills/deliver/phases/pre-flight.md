@@ -20,7 +20,7 @@ The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `{workspac
     ├── tasks/                         <- implementation tasks + review findings
     │   └── *.md
     ├── review/                        <- per-repo code-review reports (Phase 5.5)
-    ├── security-review.md             <- optional (--force-security-review)
+    ├── security-review/               <- optional (--force-security-review; per-repo reports)
     ├── assessment.md                  <- Phase 6 output
     ├── fix-rounds/                    <- optional (per fix-round artifacts)
     └── report.md                      <- Phase 7 final report (from reporter)

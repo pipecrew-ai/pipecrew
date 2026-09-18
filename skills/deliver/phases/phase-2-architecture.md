@@ -42,7 +42,10 @@ INFRA REPOS:
 {for each repo with role "infrastructure":}
   - {repo.key}: {repo.path}
 
-Produce the Technical Design Document using the required section delimiters.
+DESIGN FILE (Write the complete Technical Design Document here yourself — you have Write):
+{run_dir}/outputs/phase-2-architecture.md
+
+Produce the Technical Design Document using the required section delimiters, Write it to the DESIGN FILE, and make your final message only the gate digest per your system prompt's design-mode output rules: headline decision + rationale (2–3 sentences), affected repos/services/contracts (one line each), endpoint list (method + path only), data-model deltas (table + change kind only), top risks and open assumptions, the runner-up alternative and why it lost, and the DESIGN FILE path. Do NOT repeat the full document in the final message — the orchestrator presents your digest at the approval gate and extracts the structured blocks from the file.
 
 CRITICAL FOR THIS DISPATCH:
 - **Ask before guessing.** Walk the clarification-protocol dimension list in your system prompt. For every dimension not pinned by the requirements or `platform.md`, emit a clarifying question and STOP — do not silently fill gaps. Run the adversarial pass before emitting. Section markers come only after every dimension is either pinned, justifiably skipped as N/A, or captured under a top-level `## Assumptions` block.
@@ -57,7 +60,7 @@ CRITICAL FOR THIS DISPATCH:
 Now: design the technical architecture for the feature in {run_dir}/outputs/phase-1-requirements.md and write the full design document.
 ```
 
-**After**: Present to user. Wait for approval. Wrap the wait in a gate so the
+**After**: Verify the architect wrote `{run_dir}/outputs/phase-2-architecture.md` (exists, non-trivial, contains the section markers — if not, the architect violated its output contract: re-dispatch via `SendMessage` telling it to Write the file). Present the architect's **digest** to the user — do NOT read the full design file into your context; the digest is the gate presentation, and the user can open the file for detail (name its path when presenting). If the user asks about a specific section, extract just that block (`node {plugin_dir}/scripts/extract-block.js {run_dir}/outputs/phase-2-architecture.md {SECTION}`) rather than reading the whole file. Wait for approval. Wrap the wait in a gate so the
 site-view banner lights (CRITICAL RULE 5) — open before you present, close once
 the user answers:
 
@@ -74,7 +77,7 @@ node {plugin_dir}/scripts/gate.js close --run-dir={run_dir}
 - **yes** → dispatch the `solution-architect` agent: `"Write one new ADR file under {workspace_root}/{slug}/context/adrs/ for the key decision(s). Determine the next ADR number by listing the existing ADR files in context/adrs/ and adding 1 (start at 1 if the directory is missing or empty; ignore INDEX.md when counting). Filename pattern: 'ADR-NNN-<kebab-slug>.md' where NNN is zero-padded to 3 digits and <kebab-slug> is a short title (e.g., 'ADR-007-bulk-upload-idempotency.md'). The file body must include: H1 title, Decision, Rationale, Dimensions pinned, Status (proposed/accepted/superseded). Then append a one-line index entry to context/adrs/INDEX.md using the format '- ADR-NNN [tag1, tag2]: one-line decision summary. → ADR-NNN-<slug>.md' — tags MUST cite the affected service and/or the dimension(s) the ADR pins (e.g., [bulk-upload, idempotency], [auth, tenancy]). Create the context/adrs/ directory and INDEX.md if they don't exist. INDEX.md is capped at 200 lines."` Wait, then continue.
 - **no** → continue immediately.
 
-**Materialize per-block side files**: after writing `outputs/phase-2-architecture.md`, run:
+**Materialize per-block side files**: after the gate approves (the architect already wrote `outputs/phase-2-architecture.md`), run:
 
 ```bash
 node {plugin_dir}/scripts/split-design.js {run_dir}/outputs/phase-2-architecture.md
@@ -82,11 +85,11 @@ node {plugin_dir}/scripts/split-design.js {run_dir}/outputs/phase-2-architecture
 
 This scans every `<!-- BEGIN X -->` block, extracts each `\`\`\`json` fence, and writes one file per block to `{run_dir}/outputs/blocks/<slug>.json` (e.g., `affected-services.json`, `api-design.json`, `data-model.json`, `infrastructure-impact.json`, `contract-design.json`, `task-skeleton.json`). Prose-only blocks are skipped silently. **Loud-fails on JSON parse error** — exit 3 means the architect emitted malformed JSON; halt the pipeline and surface the error to the user.
 
-**Verify TASK_SKELETON exists**: after `split-design.js` runs, check that `{run_dir}/outputs/blocks/task-skeleton.json` was produced. If missing (architect skipped the block), do NOT proceed — Phase 4.5 will fail without it. Re-dispatch the architect via `SendMessage` with: `"Your output is missing the TASK_SKELETON block. Read templates/blocks/task-skeleton.example.json and emit the block now — same conversation, do not redo the rest of the design."`
+**Verify TASK_SKELETON exists**: after `split-design.js` runs, check that `{run_dir}/outputs/blocks/task-skeleton.json` was produced. If missing (architect skipped the block), do NOT proceed — Phase 4.5 will fail without it. Re-dispatch the architect via `SendMessage` with: `"Your design file is missing the TASK_SKELETON block. Read templates/blocks/task-skeleton.example.json and add the block to {run_dir}/outputs/phase-2-architecture.md now — same conversation, do not redo the rest of the design."` Then re-run `split-design.js`.
 
 Downstream phases (3, 4, 5) read these side files instead of the markdown. The orchestrator no longer pulls `phase-2-architecture.md` into context — that file is the human-narrative artifact for the Phase 2 gate review only.
 
-**Update scratchpad**: Set Phase 2 Status to COMPLETED. Write full approved tech design to `outputs/phase-2-architecture.md`. Extract and store in the scratchpad (`{run_dir}/scratchpad.md`): Affected Contracts, Affected Services, Contract Edit Order, Spec Edit Order, and the auto-detected phase flags:
+**Update scratchpad**: Set Phase 2 Status to COMPLETED. The approved design already lives at `outputs/phase-2-architecture.md` (architect-written — do not re-write or re-read it). From the `outputs/blocks/*.json` side files (not the markdown), extract and store in the scratchpad (`{run_dir}/scratchpad.md`): Affected Contracts, Affected Services, Contract Edit Order, Spec Edit Order, and the auto-detected phase flags:
 - Contracts Required = Yes if architect's AFFECTED_CONTRACTS is non-empty (not `N/A`)
 - Frontend Required = Yes if architect's design includes frontend changes AND config has a frontend repo
 - Mock Required = Yes if config has a mock-server repo AND architect didn't explicitly exclude it

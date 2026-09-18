@@ -132,7 +132,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
        ├── outputs/
        ├── tasks/
        ├── review/                  per-repo code-review reports
-       ├── security-review.md       (optional — --force-security-review)
+       ├── security-review/         (optional — --force-security-review; per-repo reports)
        ├── assessment.md            Phase 6 output
        ├── fix-rounds/              (optional — per fix-round artifacts)
        └── report.md                Phase 7 final report

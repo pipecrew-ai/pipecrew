@@ -1,7 +1,7 @@
 ---
 name: nestjs-reviewer
 description: "Reviews NestJS / TypeScript backend implementations for spec compliance, business logic coverage, test quality, and NestJS-specific patterns. Produces a structured report with findings grouped by severity."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

@@ -25,13 +25,15 @@ Dispatch every applicable reviewer as a **background** Agent (`run_in_background
 
 As each background reviewer completes, the harness notifies you. **Process that reviewer immediately** (Step 1.5 → Step 2 for its repo) before the others finish — do not collect them into a batch. While you are blocked on one repo's gate, the remaining reviewers keep running in the background; their completions queue and are handled in turn once the current gate resolves.
 
-**Pre-compute each repo's diff to a file — reviewers have no `Bash`.** Reviewers are dispatched with a `Read, Glob, Grep` tool grant only (no `Bash`, no `Edit`, no `Write`) so they are structurally incapable of mutating the worktree — that is the hard prevention for the reviewer-violates-read-only failure mode. Because they can't run `git diff` themselves, **before** each reviewer dispatch run the diff helper, which writes the diff to a file and prints only a byte-count (the diff body never enters your context):
+**Pre-compute each repo's diff to a file — reviewers have no `Bash`.** Reviewers are dispatched with a `Read, Glob, Grep, Write` tool grant (no `Bash`, no `Edit`) — `Write` exists solely so the reviewer persists its own report to the run dir instead of returning the full narrative into your context (see the report/digest contract below); the worktree stays protected by the reviewer's read-only-on-code rule plus the Step 1.4 clean-tree backstop. Because reviewers can't run `git diff` themselves, **before** each reviewer dispatch run the diff helper, which writes the diff to a file and prints only a byte-count (the diff body never enters your context):
 
 ```bash
 node {plugin_dir}/scripts/write-review-diff.js --worktree={worktree_path} --out={run_dir}/review/{repo}.diff [--base={diff_base}]
 ```
 
 Pass the resulting path (`{run_dir}/review/{repo}.diff`) into the reviewer prompt as its `DIFF FILE`. The reviewer `Read`s that file instead of running git. Omit `--base` to let the helper auto-resolve (origin/main → main → dev → master); pass it when the repo's base branch is non-standard.
+
+**Report/digest contract — keep reviewer narratives out of your context.** Each dispatch also carries a `REPORT FILE` path: `{run_dir}/review/{repo}-report.md`. Per `reviewer-common.md § Report delivery`, the reviewer `Write`s its full report there and its final message is only a digest: the report path, the overall verdict + 2–3 sentences, and the two machine blocks (`FINDINGS_SUMMARY`, `FINDINGS`). That digest is everything Steps 1.5–3 need — do NOT read the report file back into your context; it exists for the fix-round implementer, the assessor (Phase 6), and `/learn`, all of whom Read it themselves.
 
 **Empty-diff guard — do NOT dispatch a reviewer against nothing.** The reviewer diffs *committed* history (`merge-base..HEAD`), so if the helper prints `EMPTY DIFF` (0 bytes) this repo has **no committed changes to review**. Do **not** dispatch its reviewer. Instead, mark the repo's Phase 5.5 row `SKIPPED ⚠` with reason `"empty review diff — no committed changes for {repo}"`, and surface it loudly in the phase summary:
 
@@ -64,7 +66,10 @@ For each entry in `services[]` (the `spec_policy` field is already there — no 
 **prompt template**:
 
 ```
-Review the backend implementation of feature "{feature_summary}" at `{service_worktree_path}` (branch `feature/{feature-slug}`). Read-only — produce a structured findings report only.
+Review the backend implementation of feature "{feature_summary}" at `{service_worktree_path}` (branch `feature/{feature-slug}`). Read-only on the code — produce a structured findings report only.
+
+REPORT FILE (Write your full report here — your final message is only the digest per your system prompt's Report delivery rule):
+{run_dir}/review/{repo}-report.md
 
 FEATURE: {feature_summary}
 
@@ -121,18 +126,19 @@ INSTRUCTIONS:
 6. **Verify each bullet in the task file's `## Known Anti-Patterns` section was actively avoided.** Treat the section as a checklist: for each anti-pattern, either cite the file:line where the implementation handled it, or flag the bullet as a Critical or Non-critical finding depending on severity. If the section is missing, flag that itself as a process issue.
 7. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
 8. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
-9. Produce the report in the Output Format from your system prompt. Every finding must have file:line and a citation.
+9. Write the full report (Output Format from your system prompt) to the REPORT FILE above, then return only the digest: report path + overall verdict + 2–3 sentences + the FINDINGS_SUMMARY and FINDINGS blocks (byte-identical to the file). Every finding must have file:line and a citation.
 
-Do not fix anything. Your output is a report the orchestrator will pass to an implementer for fix dispatch if needed.
+Do not fix anything. Your report is what the orchestrator will pass to an implementer for fix dispatch if needed.
 
 CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgotten):
-- **FINDINGS_SUMMARY block first.** The first machine-readable block in your report MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
+- **Write the report to the REPORT FILE; return only the digest.** Your final message must NOT contain the prose findings or coverage map — the report file carries those. The digest is: report path, overall verdict + 2–3 sentences, FINDINGS_SUMMARY block, FINDINGS block.
+- **FINDINGS_SUMMARY block first.** The first machine-readable block in your digest (and in the report file) MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
 - **Classify every Critical.** Every Critical finding MUST carry `**Classification**: mechanical` or `**Classification**: architectural` in its prose entry, AND a 5th pipe field on its `critical` FINDINGS row. Missing classifications default to architectural — costs a user-gate round-trip.
 - **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
 - **Hard checks are non-droppable.** HC-1 (modified ORM model / `@Entity` ⇒ matching migration in the diff) and HC-2 (unjustified contract-shape divergence from the nearest sibling) MUST NOT be downgraded to a false positive on a hunch. For HC-1 the only valid "no migration needed" outcome is citing the existing changeset by file:line; when uncertain, raise the Critical.
 - **Established patterns are a checklist, not background reading.** Confirm the diff complies with each applicable rule in `platform.md § Established Patterns` and the repo conventions — a convention the team taught the pipeline via `/learn` is as binding as any older one.
 - **Apply only your system-prompt passes.** Contract / craft / security / test / scope-drift are defined in your agent system prompt. Do not invent additional checks. Do not flag findings the prompt didn't authorize.
-- **Read-only — structurally enforced.** Your tool grant is `Read, Glob, Grep` only: no `Bash`, no `Edit`, no `Write`. You cannot mutate the worktree, run git, apply a fix, or run a formatter/build. Output is the report only. (The orchestrator also re-checks the worktree is clean after you return.)
+- **Read-only on the code.** Your tool grant is `Read, Glob, Grep, Write`: no `Bash`, no `Edit`. `Write` is for the REPORT FILE only — never write inside the worktree, never apply a fix, never run git or a formatter/build. (The orchestrator re-checks the worktree is clean after you return and reverts any change.)
 
 Now: review the diff in `{service_worktree_path}` for the feature, against the requirements and contract above.
 ```
@@ -147,7 +153,10 @@ Look up the reviewer via `TYPE_TO_AGENT`: resolve the frontend repo (`config.rep
 **prompt template**:
 
 ```
-Review the frontend implementation of feature "{feature_summary}" at `{frontend_worktree_path}` (branch `feature/{feature-slug}`). Read-only — produce a structured findings report only.
+Review the frontend implementation of feature "{feature_summary}" at `{frontend_worktree_path}` (branch `feature/{feature-slug}`). Read-only on the code — produce a structured findings report only.
+
+REPORT FILE (Write your full report here — your final message is only the digest per your system prompt's Report delivery rule):
+{run_dir}/review/{repo}-report.md
 
 FEATURE: {feature_summary}
 
@@ -160,8 +169,8 @@ ENDPOINTS INTEGRATED:
 SPEC FILES TO VALIDATE TYPES AGAINST:
 {absolute paths to every OpenAPI spec the feature touches inside this worktree}
 
-UX SPEC (to verify what was built matches what was designed):
-{<!-- BEGIN IMPLEMENTATION_SPEC --> from the Phase 5b ux-consultant output}
+UX SPEC FILE (Read it — verify what was built matches what was designed; the IMPLEMENTATION_SPEC block inside is the contract):
+{run_dir}/outputs/phase-5b-ux-spec.md
 
 ESTABLISHED PATTERNS (load as a review checklist — Invariant 8):
 {workspace_root}/{slug}/context/platform.md  (read the § Established Patterns section)
@@ -178,27 +187,37 @@ INSTRUCTIONS:
 6. Run the framework-specific passes (typing, data fetching, routing, i18n/RTL, accessibility, tests) described in your system prompt.
 7. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
 8. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
-9. Produce the report in the Output Format from your system prompt. Every finding must have file:line and a citation.
+9. Write the full report (Output Format from your system prompt) to the REPORT FILE above, then return only the digest: report path + overall verdict + 2–3 sentences + the FINDINGS_SUMMARY and FINDINGS blocks (byte-identical to the file). Every finding must have file:line and a citation.
 
-Do not fix anything. Your output is a report the orchestrator will pass to an implementer for fix dispatch if needed.
+Do not fix anything. Your report is what the orchestrator will pass to an implementer for fix dispatch if needed.
 
 CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgotten):
-- **FINDINGS_SUMMARY block first.** The first machine-readable block in your report MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
+- **Write the report to the REPORT FILE; return only the digest.** Your final message must NOT contain the prose findings or coverage map — the report file carries those. The digest is: report path, overall verdict + 2–3 sentences, FINDINGS_SUMMARY block, FINDINGS block.
+- **FINDINGS_SUMMARY block first.** The first machine-readable block in your digest (and in the report file) MUST be `<!-- BEGIN FINDINGS_SUMMARY -->` containing the JSON counts (per `{plugin_dir}/templates/blocks/findings-summary.example.json`). The orchestrator's gate decision in Step 2 reads this — missing block forces a fallback row-count and logs a warning.
 - **Classify every Critical.** Every Critical finding MUST carry `**Classification**: mechanical` or `**Classification**: architectural` in its prose entry, AND a 5th pipe field on its `critical` FINDINGS row. Missing classifications default to architectural — costs a user-gate round-trip.
 - **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
 - **Spec field-name fidelity.** Frontend types must match the OpenAPI spec field names byte-for-byte. Renaming a spec field (e.g., `bookId` → `id`) is a Critical type-drift finding. Walk every typed model field-by-field.
 - **Established patterns are a checklist + HC-2 applies.** Confirm the diff complies with each applicable rule in `platform.md § Established Patterns` and the repo conventions (a `/learn`-taught convention is as binding as any older one), and flag an unjustified contract-shape divergence from the nearest sibling (HC-2).
 - **Apply only your system-prompt passes.** Typing / data-fetching / routing / i18n / RTL / accessibility / tests / scope-drift are defined in your agent system prompt. Do not invent additional checks.
-- **Read-only — structurally enforced.** Your tool grant is `Read, Glob, Grep` only: no `Bash`, no `Edit`, no `Write`. You cannot mutate the worktree, run git, apply a fix, or run a formatter/build. Output is the report only. (The orchestrator also re-checks the worktree is clean after you return.)
+- **Read-only on the code.** Your tool grant is `Read, Glob, Grep, Write`: no `Bash`, no `Edit`. `Write` is for the REPORT FILE only — never write inside the worktree, never apply a fix, never run git or a formatter/build. (The orchestrator re-checks the worktree is clean after you return and reverts any change.)
 
 Now: review the diff in `{frontend_worktree_path}` for the feature, against the requirements and the spec field names above.
 ```
 
-**On completion of each reviewer**: save the report to `outputs/phase-5-5-code-review.md` (append one section per reviewed repo). Update the scratchpad with the review findings count.
+**On completion of each reviewer**: the reviewer has already written its full report to `{run_dir}/review/{repo}-report.md` — verify the file exists and is non-trivial (if missing, the reviewer violated its report contract: log a warning and fall back to saving its returned text there yourself). Then append one **index entry** (not the report) to `outputs/phase-5-5-code-review.md`:
+
+```markdown
+## {repo}
+- **Report**: {run_dir}/review/{repo}-report.md
+- **Overall**: {verdict from the digest} — {the digest's 2–3 sentence summary}
+- **Counts**: {critical_total} critical ({critical_mechanical} mechanical / {critical_architectural} architectural), {non_critical_total} non-critical, {scope_total} scope
+```
+
+This keeps `outputs/phase-5-5-code-review.md` as the stable entry point Phase 6 and `/learn` already consume — now a small index of pointers instead of concatenated narratives. Do NOT read the report file back into your context. Update the scratchpad with the review findings count.
 
 #### Step 1.4: Read-only backstop — assert the reviewer left the worktree clean
 
-Immediately when a reviewer returns (before Step 1.5 / Step 2 for that repo), verify it did not mutate the worktree. With reviewers granted only `Read, Glob, Grep` this should be impossible — this check is defense-in-depth that also catches any pre-existing reviewer (an older cached agent that still has `Bash`) or a recipe drift:
+Immediately when a reviewer returns (before Step 1.5 / Step 2 for that repo), verify it did not mutate the worktree. Reviewers carry `Write` (solely for their REPORT FILE under the run dir), so this backstop is the enforcement that keeps the code read-only — it catches a reviewer that wrote inside the worktree despite its contract, an older cached agent that still has `Bash`, or a recipe drift:
 
 ```bash
 git -C {worktree_path} status --porcelain
@@ -209,13 +228,13 @@ git -C {worktree_path} status --porcelain
   ```bash
   git -C {worktree_path} stash --include-untracked   # or: git -C {worktree_path} checkout -- . && git -C {worktree_path} clean -fd
   ```
-  Log to the scratchpad's Phase 5.5 row: `"⚠ {reviewer_agent} mutated {repo} during review (read-only violation) — reverted N files. Findings still consumed."` The reviewer's *findings* are still valid and proceed through Step 1.5 as normal; only its illicit edits are discarded. Surface the violation in the Phase 7 report so the agent grant can be audited (a reviewer that mutated despite a `Read, Glob, Grep`-only grant means a stale agent definition is loaded — prompt a `claude` restart / plugin reinstall).
+  Log to the scratchpad's Phase 5.5 row: `"⚠ {reviewer_agent} mutated {repo} during review (read-only violation) — reverted N files. Findings still consumed."` The reviewer's *findings* are still valid and proceed through Step 1.5 as normal; only its illicit edits are discarded. Surface the violation in the Phase 7 report so the agent contract can be audited (the reviewer's `Write` grant is for its REPORT FILE under the run dir only — a worktree write means the contract was ignored or a stale agent definition is loaded; prompt a `claude` restart / plugin reinstall).
 
 #### Step 1.5: Persist each finding as a task file (per reviewer, the moment it completes)
 
 This runs **once per reviewer, as that reviewer completes** — not in a batch after all are done. Immediately after persisting a reviewer's findings here, route its repo through Step 2 before moving to the next completion. Steps 1.5 → 2 → (3) form a per-repo chain that runs independently for each reviewer.
 
-**Parse the `<!-- BEGIN FINDINGS -->` / `<!-- END FINDINGS -->` block** at the end of its report (every code reviewer now emits this machine-readable block — see the spring-boot-reviewer and react-reviewer agent definitions). The format is:
+**Parse the `<!-- BEGIN FINDINGS -->` / `<!-- END FINDINGS -->` block** from the reviewer's returned digest (every code reviewer emits this machine-readable block in both its final message and its report file — parse the final message; do not read the report file). The format is:
 
 ```
 critical | {short-title} | {file}:{line} | {one-line-problem} | {mechanical|architectural}
@@ -247,7 +266,7 @@ created: "{ISO-date}"
 **Target**: `{file}:{line}`
 **Problem**: {one-line-problem}
 
-**Full finding context**: see `{run_dir}/outputs/phase-5-5-code-review.md` under the {repo} section.
+**Full finding context**: see `{run_dir}/review/{repo}-report.md` (the reviewer's full report).
 
 ## Fix plan
 (Filled in when a fix dispatch is triggered — implementer writes the approach and resolution here.)
@@ -259,13 +278,13 @@ If a `critical` row arrives without a 5th field, treat the missing classificatio
 
 Findings arrive **per reviewer** — Step 1.5 persists each repo's task files the moment that repo's reviewer returns. Route each repo as soon as its findings are persisted; do NOT barrier on the slowest reviewer unless the repo actually needs your approval. A fast reviewer's fix round must not wait behind a slow sibling reviewer when no human decision gates it.
 
-For each repo, pull its reviewer's pre-computed counts from the FINDINGS_SUMMARY block — do NOT re-count FINDINGS rows:
+For each repo, pull its reviewer's pre-computed counts from the FINDINGS_SUMMARY block in the returned digest — do NOT re-count FINDINGS rows. If you prefer the deterministic path (or the digest block is malformed), extract it from the reviewer's report file:
 
 ```bash
-node {plugin_dir}/scripts/extract-block.js {repo_report_path} FINDINGS_SUMMARY
+node {plugin_dir}/scripts/extract-block.js {run_dir}/review/{repo}-report.md FINDINGS_SUMMARY
 ```
 
-(returns `{critical_total, critical_mechanical, critical_architectural, non_critical_total, scope_total}` for that repo. Missing block → fall back to counting that repo's FINDINGS rows and log a warning. Schema in `{plugin_dir}/templates/blocks/block-schemas.md`.)
+(returns `{critical_total, critical_mechanical, critical_architectural, non_critical_total, scope_total}` for that repo. Missing block in both digest and file → fall back to counting that repo's FINDINGS rows and log a warning. Schema in `{plugin_dir}/templates/blocks/block-schemas.md`.)
 
 Classify the repo into exactly one lane:
 
@@ -320,16 +339,16 @@ INSTRUCTIONS:
 2. Apply the fix at the cited file:line. Cite by R6 — do NOT touch lines outside the fix list.
 3. After all fixes, re-run the repo's test command (`mvn test` / `npm test` / `pytest` — whatever the stack uses).
 4. Update each fix task's frontmatter: `status: todo` → `status: done` after applying. Bump `updated_at` to the current UTC ISO-8601 timestamp.
-5. Report what you changed in the standard report format (files modified, FR/EC coverage map, test results, commands run).
+5. Write your full fix-round report (files modified with what changed, per-item outcome, test results, commands run) to {run_dir}/fix-rounds/round-{N}/{repo-name}.md, then return only the digest: report path, per-item status line (`{task-id}: done | skipped | failed — one-line reason`), files changed (paths only), test result. The orchestrator will not read the report file — the digest must carry every per-item outcome.
 
 Per common-rules R6 (scope discipline): touch ONLY the lines the fix list cites. Do not refactor adjacent code, do not add unrequested improvements, do not "while-I'm-here" anything. Per R7, if any fix-list entry is ambiguous (the reviewer's one-liner doesn't tell you exactly what to change), emit an `## Assumptions` block before writing code.
 ```
 
 3. **Dispatch — one repo, immediately, as a background Agent (`run_in_background: true`).** Fire this repo's fix round the instant it's cleared (auto-routed or gate-approved); do not hold it to batch with other repos. A single repo per dispatch is expected and correct — overlap comes from the background dispatches running concurrently against separate worktrees, not from batching them into one message. This holds for both lanes: the auto lane fires on reviewer completion, the gate lane fires on the user's `yes`.
 
-4. **Per-round artifacts**: save each implementer's report to `{run_dir}/fix-rounds/round-1/{repo-name}.md`. If a second round runs (e.g., user re-triggers after another review), the directory becomes `round-2/`, etc.
+4. **Per-round artifacts**: the implementer writes its own report to `{run_dir}/fix-rounds/round-1/{repo-name}.md` per its dispatch instructions (verify the file exists; if the agent returned a full report instead, save it there yourself and log a warning). If a second round runs (e.g., user re-triggers after another review), the directory becomes `round-2/`, etc.
 
-5. **On completion**: parse each implementer's report. If any fix-list item is reported "skipped" or "failed", record it in the scratchpad's Phase 5.5 row for human follow-up — do not silently swallow. Update the scratchpad's Phase 5.5 status to:
+5. **On completion**: read the per-item outcomes from the implementer's returned digest — do not read the report file. If any fix-list item is "skipped" or "failed", record it in the scratchpad's Phase 5.5 row for human follow-up — do not silently swallow. Update the scratchpad's Phase 5.5 status to:
    - `COMPLETED` if all fix-list items reported done
    - `COMPLETED ⚠` if any items were skipped/failed (note the count)
 

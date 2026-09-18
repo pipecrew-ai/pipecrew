@@ -16,6 +16,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.11.0] - 2026-09-11
+
+### Added
+- **Real token + dollar-cost accounting in the reporter.** `scripts/orch-tokens.js` now
+  emits per-model usage buckets, per-agent 4-field usage breakdowns (input / output /
+  cache-write / cache-read, derived from sub-agent transcripts), per-agent and
+  orchestrator `costUSD` at per-model list rates (override with `--pricing=<json>`),
+  and run `totals` including `orchestratorCostShare`. Cache reads are **included in
+  every cost figure** at the cache-read rate (they dominate long orchestrator
+  sessions) while staying excluded from the headline new-token `total`. A `null
+  costUSD` means unmeasured — consumers report it as such, never estimate.
+- **Reporter report now leads with the two actionable numbers**: orchestrator-vs-agents
+  cost split and cache-read share. Motivated by a measured `/deliver` run pair where
+  the orchestrator was ~68% of real spend and the old output-only numbers understated
+  usage ~500×.
+
+### Changed
+- **Reporter rewired to `orch-tokens.js`** (`agents/reporter.md`): tokens/cost come only
+  from the derivation script; the dead `orch_checkpoint` / `agent_end`-token path is
+  now an explicitly-labeled legacy fallback for pre-upgrade logs. Never fabricates.
+- **Digest return contracts — agent narratives stay out of orchestrator context.**
+  Whatever a subagent returns is re-read by the orchestrator on every turn for the
+  rest of the run, so heavyweight results now go to disk and only a digest returns:
+  - **Reviewers** (`rules/reviewer-common.md` § Report delivery + all ten
+    `*-reviewer` agents): in `/deliver`, the reviewer `Write`s its full report to
+    `{run_dir}/review/{repo}-report.md` and returns only report path + verdict +
+    FINDINGS_SUMMARY + FINDINGS blocks. Tool grant is now `Read, Glob, Grep, Write`
+    (no `Bash`, no `Edit`); `Write` is contractually report-file-only, with the
+    Phase 5.5 worktree-clean backstop as enforcement. Standalone `/review` still
+    returns the full report (no `REPORT FILE` in its dispatch).
+    `outputs/phase-5-5-code-review.md` becomes a small per-repo index (verdict +
+    counts + pointer) — the stable entry point Phase 6 and `/learn` already read.
+  - **Solution-architect** (design mode): `Write`s the full Technical Design Document
+    to `{run_dir}/outputs/phase-2-architecture.md` itself and returns a gate digest;
+    the orchestrator presents the digest and extracts blocks from the file
+    (`split-design.js` / `extract-block.js`), never re-reading the full markdown.
+- **`observability.md` reconciled**: the `agent_end` example no longer shows token
+  fields (the orchestrator cannot see them in current Claude Code and must not
+  fabricate); consumers derive tokens from transcripts via `orch-tokens.js`.
+- **Return Contract codified plugin-wide** (`dispatch-rules.md` § Return Contract):
+  every dispatch names a run-dir file for heavyweight output; the agent's final
+  message is a decision-sufficient digest (≤ ~30 lines); the orchestrator never
+  reads artifacts back — downstream consumers get paths. Applied beyond the
+  reviewers/architect to:
+  - **product-owner**: writes `outputs/phase-1-requirements.md` itself, returns a
+    gate digest (template updated; legacy workspace agents fall back gracefully).
+  - **ux-consultant**: writes `outputs/phase-5b-ux-spec.md` (tool grant +
+    `Write`, consultation-file-only), returns a gate digest; the orchestrator
+    appends the IMPLEMENTATION_SPEC to the frontend task file via shell
+    redirection (never enters context) and the Phase 5.5 frontend reviewer now
+    receives the spec as a file path instead of pasted content.
+  - **implementers** (`implementer-common.md` § Final report delivery): append the
+    full report to their own task file, return a digest (status, files, tests,
+    coverage, blockers); fix-round reports self-written to
+    `fix-rounds/round-{N}/{repo}.md`.
+  - **security-consultant**: per-repo reports at `security-review/{repo}.md`
+    (was a single orchestrator-compiled `security-review.md`), digest return.
+
 ## [1.10.0] - 2026-09-08
 
 ### Added

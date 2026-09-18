@@ -1,7 +1,7 @@
 ---
 name: fastapi-reviewer
 description: "Reviews FastAPI / Python backend implementations for spec compliance, business logic coverage, test quality, and FastAPI-specific patterns. Produces a structured report with findings grouped by severity."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

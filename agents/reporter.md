@@ -15,9 +15,10 @@ The orchestrator provides:
 
 1. **`{run_dir}`** — the run directory. All run-scoped inputs live here.
 2. **Scratchpad** at `{run_dir}/scratchpad.md` — human-readable phase state, Agent Dispatch Log, Implementation Tasks table.
-3. **Checkpoints** at `{run_dir}/checkpoints.jsonl` — machine event log in the unified schema. Source of truth for timings and tokens.
-4. **Stats cache** at `~/.claude/stats-cache.json` — daily model token aggregates (the `/usage` data source).
-5. **Sibling runs** under `{workspace_root}/{slug}/runs/{skill}/` — prior run dirs for trend comparison. Each contains its own `checkpoints.jsonl` and `report.md`.
+3. **Checkpoints** at `{run_dir}/checkpoints.jsonl` — machine event log in the unified schema. Source of truth for **timings and structure** (phases, agents, gates, retries). NOT the source of tokens — see 4.
+4. **Token/cost summary** from `node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir}` — the ONLY source of truth for tokens and dollar cost. It derives orchestrator overhead and per-agent usage (all four fields: input, output, cache-write, cache-read) from the session transcripts, keyed on the `session_id` recorded in `run_start`. Current Claude Code gives the orchestrator no inline token visibility, so `agent_end` events carry no token fields and `orch_checkpoint` events are empty legacy — do NOT read tokens from checkpoints except as a last-resort fallback for old logs (see Token Breakdown below).
+5. **Stats cache** at `~/.claude/stats-cache.json` — daily model token aggregates (the `/usage` data source).
+6. **Sibling runs** under `{workspace_root}/{slug}/runs/{skill}/` — prior run dirs for trend comparison. Each contains its own `checkpoints.jsonl` and `report.md`.
 
 Before processing, optionally run the checkpoints validator:
 ```
@@ -51,21 +52,35 @@ Total wall: ~28m
 
 Wall-clock total is the gap between `run_start` and `run_end` events, NOT the sum of phase durations (phases overlap on parallel dispatch).
 
-### 2. Token Breakdown (orchestrator + agents)
+### 2. Token & Cost Breakdown (orchestrator + agents)
 
-Read `agent_end` events for per-agent data and `orch_checkpoint` events for orchestrator overhead. Show BOTH:
+Run the derivation script and parse its JSON — do NOT compute token sums or dollar math yourself, and do NOT read token fields from `agent_end` / `orch_checkpoint` events (empty in current Claude Code):
 
-| Source | Dispatches | Input | Output | Cache Read | Total | % of Run |
-|---|---|---|---|---|---|---|
-| **Orchestrator** | — | (sum of orch_since_last.input_tokens) | (sum) | (sum) | (sum) | …% |
-| solution-architect | 1 | … | … | … | … | …% |
-| spring-boot-implementer ×{N} | {N} | … | … | … | … | …% |
-| … | … | … | … | … | … | … |
-| **Total** | **{N}** | **…** | **…** | **…** | **…** | 100% |
+```
+node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir}
+```
 
-The orchestrator row sums all `orch_checkpoint.orch_since_last` deltas. It captures: loading skills, reading files, approval conversations, scratchpad updates, tool-call overhead — everything not attributable to a specific `Agent` dispatch.
+The output has `orchestrator` (the run session's own usage: `input`, `output`, `cacheCreate`, `cacheRead`, `total`, `costUSD`), `agents[]` (per dispatch: `subagentType`, `description`, `tokens`, `usage` breakdown + `costUSD` when the sub-transcript was resolvable), and `totals` (`newTokens`, `cacheReadTokens`, `costUSD`, `agentsWithUsage`/`agentsTotal`, `orchestratorCostShare`). Match `agents[]` rows to the run's `agent_end` events by `description` for phase/status context.
 
-Context window % per agent = `(input_tokens + cache_read_tokens) / model_context_window` (200K for Sonnet, 1M for Opus).
+Render the table from those numbers:
+
+| Source | Dispatches | New Tokens | Cache Read | Cost (USD) | % of Cost |
+|---|---|---|---|---|---|
+| **Orchestrator** | — | (orchestrator.total) | (orchestrator.cacheRead) | (orchestrator.costUSD) | …% |
+| solution-architect | 1 | … | … | … | …% |
+| spring-boot-implementer ×{N} | {N} | … | … | … | …% |
+| **Total** | **{N}** | **(totals.newTokens)** | **(totals.cacheReadTokens)** | **(totals.costUSD)** | 100% |
+
+Then state the **two actionable numbers** on their own lines — these are what the operator tunes on:
+
+- **Orchestrator share of cost**: `totals.orchestratorCostShare` as a percentage. Above ~50% means carried orchestrator context, not agent work, dominates spend — flag it in Narrative Insights with the note that a session reset at a phase boundary (`/deliver --resume` in a fresh session) is the lever.
+- **Cache-read share of tokens**: `cacheReadTokens / (newTokens + cacheReadTokens)` as a percentage. High values are expected on long runs (cache reads are cheap per token) but track their absolute cost — cache reads bill at the cache-read rate and are included in every `costUSD`.
+
+**Never fabricate.** A `null costUSD` means unmeasured (unknown model or missing sub-transcript) — render it as `unmeasured`, exclude it from the % column, and say how much of the run is covered (`agentsWithUsage`/`agentsTotal`). Do not estimate, extrapolate, or present a partial sum as the run total without saying so.
+
+**Fallback for old logs only:** if `orch-tokens.js` exits 1 (no `session_id` recorded — a pre-upgrade run), fall back to whatever token fields exist on `agent_end` / `orch_checkpoint` events and label the section "legacy checkpoint tokens — output-only, understates true usage; no cost computed".
+
+Context window % per agent = `(usage.input + usage.cacheRead) / model_context_window` (200K for Sonnet, 1M for Opus).
 
 ### 3. Daily Budget Status
 
@@ -103,6 +118,7 @@ This is your unique value as an agent (vs. a template). Identify:
 - **Anomalies**: "Phase 5a took 8m vs. typical 4m — the backend implementer likely looped on test failures. Check the Work Log."
 - **Expensive operations**: "The react-implementer used 84K tokens — 35% of the total. The task file may be too large."
 - **Cache efficiency**: "Cache read was 72% of input — good prompt cache hit rate."
+- **Orchestrator dominance**: "Orchestrator was 61% of run cost (vs. agents doing the actual build) — carried context is the cost center. A fresh-session `--resume` at the next phase boundary would cap it."
 - **Slow bash calls**: surface up to 3 `bash_slow` events from the checkpoints log, noting phase and duration.
 - **Retries**: count `retry` events. If >0, note which agents retried and whether they eventually succeeded (`status: ok`) or deferred.
 - **Optimization suggestions**: "The same 12 files were read by 3 different agents. Consider adding a shared context summary to avoid redundant reads."

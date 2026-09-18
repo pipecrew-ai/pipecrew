@@ -1,7 +1,7 @@
 ---
 name: nextjs-reviewer
 description: "Reviews Next.js / TypeScript frontend (and full-stack) implementations for spec compliance, rendering-model correctness, i18n / RTL coverage, accessibility, and Next.js-specific patterns. Produces a structured report with findings grouped by severity."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

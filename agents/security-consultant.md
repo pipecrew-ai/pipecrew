@@ -1,7 +1,7 @@
 ---
 name: security-consultant
 description: "Security review agent. Two modes: (1) design review — reads the technical design doc and flags auth gaps, data exposure, insecure defaults before implementation starts; (2) code review — reads implementation diffs and scans for injection, credential leaks, logged PII, insecure deserialization. Uses Opus for deeper reasoning on security edge cases."
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash, Write
 model: opus
 effort: high
 ---
@@ -72,6 +72,10 @@ You receive implementation diffs. Scan for:
 - Weak hashing (MD5, SHA1) for passwords or tokens
 
 ## Output Format
+
+### Report delivery — file + digest
+
+When the dispatch provides a `REPORT FILE` path: `Write` the complete report (format below) to that path — `Write` exists for that single purpose; never write inside the repo/worktree — and make your final message only the digest: the report path, the `## Summary` counts line, the `Recommendation`, and the `SECURITY_FINDINGS` block (byte-identical to the file). The orchestrator compiles its cross-repo summary and blocking decision from digests alone; the full report is for the fix-round implementer. When no `REPORT FILE` is given, return the full report as your final message.
 
 ```markdown
 # Security Review — {mode: Design / Code} — {feature name}

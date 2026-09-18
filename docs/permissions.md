@@ -23,9 +23,10 @@ implementation** is always tool-permission prompts — each backend/frontend
 implementer makes dozens of `Bash`/`Edit`/`Write` calls, and Claude Code prompts
 for each one that isn't pre-approved.
 
-> Reviewers are `Read, Glob, Grep`-only (see `rules/reviewer-common.md`), so
-> Phase 5.5 review is naturally quiet — read tools rarely prompt. Prompts during
-> *review* are usually the per-repo pipeline gates, not tool permissions.
+> Reviewers are `Read, Glob, Grep, Write` — no `Bash`, no `Edit`, and `Write`
+> only for their single report file (see `rules/reviewer-common.md`) — so
+> Phase 5.5 review is naturally quiet. Prompts during *review* are usually the
+> per-repo pipeline gates, not tool permissions.
 
 ## Fastest fix — permission mode
 

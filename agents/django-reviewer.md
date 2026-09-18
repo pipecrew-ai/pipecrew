@@ -1,7 +1,7 @@
 ---
 name: django-reviewer
 description: "Reviews Django / DRF Python backend implementations for spec compliance, business logic coverage, test quality, and Django-specific patterns (DRF serializers, querysets, permissions, migrations). Produces a structured report with findings grouped by severity."
-tools: Read, Glob, Grep
+tools: Read, Glob, Grep, Write
 model: haiku
 effort: high
 ---

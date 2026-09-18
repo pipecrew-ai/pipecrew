@@ -33,13 +33,13 @@ To keep token cost proportional to that value, **pass only these inputs** (do NO
 
 1. **Status summary table** (from pre-check above)
 2. **Phase 3 spec diffs** file path: `{run_dir}/outputs/phase-3-diffs.md` (lists what changed in each spec)
-3. **Phase 5.5 code-review report** path: `{run_dir}/outputs/phase-5-5-code-review.md` (findings + fix-round outcomes)
+3. **Phase 5.5 code-review index** path: `{run_dir}/outputs/phase-5-5-code-review.md` (per-repo verdicts + counts, each pointing to the full reviewer report at `{run_dir}/review/{repo}-report.md` — the assessor follows the pointers and Reads only the per-repo reports it needs)
 4. **Updated spec file paths** — one per affected service (the assessor reads them directly to verify wire shapes)
 5. **Files-modified list per repo** — extract from the scratchpad's Implementation Tasks "Files Changed" column. This lets the assessor target its reads to what actually changed, not the whole repo.
 6. **Endpoint inventory** — a flat list of `method path → DTO` entries extracted from the spec diffs. Pre-compute this in the orchestrator from Phase 3 output; the assessor uses it as its wire-shape checklist.
 7. **Recurring cross-repo gap checklist** — IF `{workspace_root}/{slug}/context/cross-repo-checklist.md` exists, pass its **contents**. It is a small, bounded, curated list of gap *classes* this workspace has hit before (written by `/learn` from prior assessor findings); the assessor folds it into its plan at Step 1.5 to check those classes proactively. This is a deliberately separate sidecar — passing it does **not** breach the "no `platform.md`" rule below, because the whole point of the sidecar is to stay small and assessor-only. Skip this input if the file doesn't exist yet.
 
-Do NOT pass requirements or architecture files in the prompt. The assessor is forbidden from re-reading them — if it needs a specific FR/EC detail, it reads the `phase-5-5-code-review.md` which already maps findings to requirements. This is a deliberate scope narrowing.
+Do NOT pass requirements or architecture files in the prompt. The assessor is forbidden from re-reading them — if it needs a specific FR/EC detail, it follows the `phase-5-5-code-review.md` index to the per-repo reviewer report, which already maps findings to requirements. This is a deliberate scope narrowing.
 
 #### Dispatch
 
@@ -57,7 +57,7 @@ IMPLEMENTATION TASK STATUSES:
 
 INPUT FILES (read these yourself via Read tool — do NOT request re-reads of platform.md or task bodies; scope is narrowed to these files):
 - Phase 3 spec diffs: {run_dir}/outputs/phase-3-diffs.md
-- Phase 5.5 code review + fix-round report: {run_dir}/outputs/phase-5-5-code-review.md
+- Phase 5.5 code-review index: {run_dir}/outputs/phase-5-5-code-review.md (per-repo verdicts + pointers; follow a pointer to {run_dir}/review/{repo}-report.md ONLY when you need that repo's finding detail)
 
 UPDATED SPEC FILES (read to verify wire shapes):
 {list spec file paths for each affected service}

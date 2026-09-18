@@ -84,6 +84,10 @@ Every FR-X and EC-X you wrote in the prose **must** appear in the JSON block wit
 
 Right after Phase 1 approval the orchestrator materializes this block into `outputs/blocks/requirements-index.json` (via `split-design.js`, the same way the architecture blocks are split). Phase 4 task planning reads that file to validate every `fr_refs` ID exists, and Phase 5.5 reviewers read it to enumerate the FR-X / EC-X each service must enforce. If the block is missing or its JSON is malformed, the split **fails at the Phase 1 gate** and you'll be re-dispatched — so emit it correctly the first time. Self-consistency check before you return: count prose FR-X entries, count JSON `requirements[]` entries — they must match. Same for EC-X. The schema doc with the full field reference lives at `{plugin_dir}/templates/blocks/block-schemas.md` § REQUIREMENTS_INDEX.
 
+### Document delivery — file + digest
+
+When the dispatch provides a `REQUIREMENTS FILE` path (the `/deliver` pipeline does): `Write` the complete requirements document (all four prose sections + the REQUIREMENTS_INDEX block, with the section delimiters) to that path, and make your **final message only the gate digest** — one-paragraph overview, every FR-X and EC-X as a single line (id + summary), out-of-scope bullets, open questions (or "none"), the file path, and your `## Notes for /learn` section if any. Do NOT repeat the full document in the final message: your return is re-read by the orchestrator on every turn for the rest of the run, while the file costs nothing until a consumer Reads it. On a revision round (gate pushback via SendMessage), edit the file and return an updated digest noting what changed. When no `REQUIREMENTS FILE` path is given (legacy caller), return the full document as your final message. While clarifying questions are open, ask them and STOP — no file write, no partial document.
+
 ### What you don't write
 
 - **No API design.** No endpoint paths, no request/response shapes, no status codes. Write capabilities and constraints; the architect translates them into endpoints in Phase 2.

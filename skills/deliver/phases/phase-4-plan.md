@@ -214,7 +214,7 @@ When you finish implementing and testing, update the task file's status before r
 - `status: todo` → `status: done`
 - `updated_at: <old timestamp>` → `updated_at: <current UTC ISO-8601 timestamp>`
 
-Leave the body verbatim. Then produce your report to the orchestrator in the format the task body specified.
+Leave the existing body verbatim, then APPEND your full report to the END of the task file as a `## Implementation Report — {timestamp}` section, and return only the digest — both exactly per `{plugin_dir}/rules/implementer-common.md` § "Final report delivery". Your final message is the digest (task status, report location, files changed, test result, coverage confirmation, blockers, plus your Assumptions / Notes-for-/learn blocks if any) — NOT the full report.
 
 CRITICAL FOR THIS DISPATCH (do not skip — these are the HARD RULES from `{plugin_dir}/rules/implementer-common.md` most often forgotten):
 - **R9 — COVERAGE block.** Emit BOTH the human-readable `## Requirement coverage` table AND the `<!-- BEGIN COVERAGE -->` JSON block. Count the `FR-X` and `EC-X` lines in your task file body before reporting done — your COVERAGE block must contain one entry per ID, each with a `file:line` enforcement point.

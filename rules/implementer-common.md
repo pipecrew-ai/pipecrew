@@ -259,3 +259,38 @@ If you find what looks like an anti-pattern in this repo but it is **not** liste
 The repo's `CLAUDE.md` wins for that repo. If the architect's `platform.md § Established Patterns` documents a workspace-wide rule that THIS repo doesn't follow, that's a divergence — the implementer follows the repo's actual pattern, but flags the divergence in the report so it can be either reconciled or explicitly recorded.
 
 If you genuinely need to deviate from a documented convention, surface it in your `## Assumptions` block with the reason and flag it as a doc-update candidate (under `/learn` or `/context-refresh`).
+
+---
+
+## Final report delivery — task file + digest
+
+Your full report is a **file artifact**, not a message. Whatever you return to the orchestrator becomes permanent context it re-reads on every turn for the rest of the run — so the narrative goes to disk and only a digest comes back.
+
+**When your dispatch is task-scoped** (a `TASK FILE` path was provided — the `/deliver` pipeline always does this): after flipping the task's frontmatter status, **append** a report section to the **end** of your task file (never modify the existing body):
+
+```markdown
+## Implementation Report — {UTC ISO-8601 timestamp}
+{## Assumptions block, if any — R7/R10}
+{Files created / modified — each with one line on what changed}
+{## Requirement coverage table + <!-- BEGIN COVERAGE --> JSON block — R9}
+{Test results — command, counts, pass/fail; failures verbatim}
+{## Doc-update candidate / deferral entries, if any — R5}
+{Anything a fix-round implementer or reviewer needs that the diff alone doesn't show}
+```
+
+A fix round appends a second `## Implementation Report — …` section; never rewrite an earlier one.
+
+**Your final message is only the digest:**
+
+```
+Task: {task-id} — {done | failed | blocked}
+Report: appended to {task file path}
+Files changed: {paths only}
+Tests: {pass | fail} ({N} run — {command}); {one line on failures if any}
+Coverage: all FR/EC enforced | GAPS: {ids}
+Blockers / skipped: {list, or "none"}
+{## Assumptions block — repeat it here in full if you emitted one; it is small and the orchestrator routes it}
+{## Notes for /learn — if any}
+```
+
+The digest must carry everything the orchestrator's bookkeeping needs (status, files changed for the scratchpad, test outcome, blockers) — it will NOT read your report section. Reviewers and fix-round implementers read the report from the task file. When no task file was provided (legacy or ad-hoc caller), return the full report as your final message.

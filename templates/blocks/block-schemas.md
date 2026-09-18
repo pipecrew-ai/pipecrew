@@ -277,7 +277,7 @@ The `services` mapping (which service owns which FR/EC) lives in `AFFECTED_SERVI
 
 **Producer**: every code reviewer (spring-boot, react, nestjs, nextjs)
 **Consumers**: Phase 5.5 Step 2 (gate decision logic)
-**File**: each reviewer's report (in-context, then archived to `{run_dir}/outputs/phase-5-5-code-review.md`)
+**File**: each reviewer's report at `{run_dir}/review/{repo}-report.md` (reviewer-written), echoed byte-identical in the reviewer's returned digest; `{run_dir}/outputs/phase-5-5-code-review.md` is an index of per-repo pointers + counts
 **Canonical example**: [`templates/blocks/findings-summary.example.json`](./findings-summary.example.json)
 
 **Field reference:**

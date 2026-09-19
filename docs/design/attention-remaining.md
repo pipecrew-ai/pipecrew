@@ -23,6 +23,14 @@
 - **M2** — reviewer dispatch lead tightening (feature name in first sentence)
 - **Side**: code reviewers downgraded to `model: haiku` + `effort: high`
 
+### v1.11.0 — Return Contract + real measurement (PR #62)
+
+Two additions that complete this doc's picture from the *results* direction:
+
+- **Return Contract** (`dispatch-rules.md` § Return Contract) — Pass A optimized the *dispatch* direction (critical rules restated at the end of the prompt, where recency attention is strongest). The Return Contract is its counterpart for the *return* direction: heavyweight agent output goes to a run-dir file; only a decision-sufficient digest re-enters orchestrator context. Same principle ("length is the enemy of attention" §2), applied to the orchestrator's own context instead of the subagent's — every token an agent returns dilutes the orchestrator's attention (and bills as cache-read) on every subsequent turn of the run.
+- **Partial answer to #8's "no receipts"** — the reporter now derives real per-agent + orchestrator token/cost numbers (`orch-tokens.js`: 4-field usage, per-model `costUSD`, `orchestratorCostShare`). This measures the *cost* side of attention decisions, not faithfulness (forgetting) — #8's LLM-judge remains the only path to forgetting-receipts. But the existing warning logs (missing FINDINGS_SUMMARY, missing classification) plus per-run cost splits now give a cheap proxy: any change that relocates critical rules (e.g., dispatch-prompt reminders → system prompt to slim phase files) can be A/B checked against warning frequency + fix-round count before being trusted.
+- **Standing caution derived from this doc**: do NOT move the CRITICAL dispatch blocks into agent system prompts to save phase-file tokens. That relocates rules from the highest-attention position (end of the active user message) to the lowest (mid-system-prompt) — the exact configuration §C records as having already failed for R9/coverage. Measure first (warning logs + fix rounds), move second.
+
 ---
 
 ## Remaining

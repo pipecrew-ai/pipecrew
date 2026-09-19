@@ -14,11 +14,18 @@
  *   - WARN:  a matching `vX.Y.Z` git tag should exist. Missing is legitimate
  *            between a version-bump merge and cutting the release, so it's only
  *            a warning by default; pass --strict to fail (use as a release gate).
+ *   - WARN:  a matching GitHub Release should exist (the tag alone notifies
+ *            nobody — the CHANGELOG tells users to Watch → Custom → Releases,
+ *            which only fires on the Release object; v1.11.0 initially shipped
+ *            tag-only and no watcher was notified). Warning by default, hard
+ *            error under --strict. Skipped (with a note under --strict) when
+ *            the `gh` CLI is unavailable or unauthenticated — never fails on
+ *            missing tooling.
  *
  * Zero deps. Run:
- *   node check-release-sync.js                     # dev check (missing tag = warning)
- *   node check-release-sync.js --strict            # release gate (missing tag = error)
- *   node check-release-sync.js --input=bundle.json # test hook, pure core, no git/fs of repo
+ *   node check-release-sync.js                     # dev check (missing tag/Release = warning)
+ *   node check-release-sync.js --strict            # release gate (missing tag/Release = error)
+ *   node check-release-sync.js --input=bundle.json # test hook, pure core, no git/gh/fs of repo
  */
 
 const fs = require('fs');
@@ -35,9 +42,11 @@ function parseChangelogVersion(text) {
 
 /**
  * Pure core — no I/O. Returns { ok, errors[], warnings[] }.
- * @param {{version:string, changelogVersion:string|null, tags:string[], strict:boolean}} input
+ * `releases` is the list of GitHub Release tag names, or null when the `gh`
+ * CLI was unavailable (unknown state — never treated as "missing").
+ * @param {{version:string, changelogVersion:string|null, tags:string[], releases?:string[]|null, strict:boolean}} input
  */
-function check({ version, changelogVersion, tags, strict }) {
+function check({ version, changelogVersion, tags, releases, strict }) {
   const errors = [];
   const warnings = [];
 
@@ -58,9 +67,30 @@ function check({ version, changelogVersion, tags, strict }) {
   if (version && !tagged) {
     const hint =
       `no git tag v${version} — cut the release:\n` +
-      `    git tag -a v${version} -m "PipeCrew v${version}" && git push origin v${version}`;
+      `    git tag -a v${version} -m "PipeCrew v${version}" && git push origin v${version}\n` +
+      `    gh release create v${version} --title "v${version}" --notes "<the CHANGELOG ## [${version}] section>"`;
     if (strict) errors.push(hint);
     else warnings.push(`${hint}\n  (expected between a version bump and its release tag)`);
+  }
+
+  // GitHub Release check — only meaningful when the tag exists (the no-tag hint
+  // above already covers the full release recipe) and gh gave us a real answer.
+  const releaseList = Array.isArray(releases) ? releases : null;
+  if (version && tagged) {
+    if (releaseList === null) {
+      if (strict) {
+        warnings.push(
+          `gh CLI unavailable — could not verify a GitHub Release exists for v${version} ` +
+          `(the tag alone does not notify watchers)`,
+        );
+      }
+    } else if (!releaseList.includes(`v${version}`)) {
+      const hint =
+        `tag v${version} exists but has no GitHub Release — watchers were not notified. Publish it:\n` +
+        `    gh release create v${version} --title "v${version}" --notes "<the CHANGELOG ## [${version}] section>"`;
+      if (strict) errors.push(hint);
+      else warnings.push(hint);
+    }
   }
 
   return { ok: errors.length === 0, errors, warnings };
@@ -75,6 +105,7 @@ function readInputs() {
       version: bundle.version,
       changelogVersion: bundle.changelogVersion,
       tags: Array.isArray(bundle.tags) ? bundle.tags : [],
+      releases: Array.isArray(bundle.releases) ? bundle.releases : null,
     };
   }
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, '.claude-plugin', 'plugin.json'), 'utf8'));
@@ -88,19 +119,37 @@ function readInputs() {
     // git unavailable (e.g. a tarball install) — treat as "no tags"; surfaces as a warning.
     tags = [];
   }
-  return { version: pkg.version, changelogVersion: parseChangelogVersion(changelog), tags };
+  let releases = null;
+  try {
+    releases = execSync('gh release list --limit 100 --json tagName --jq ".[].tagName"', {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .split(/\r?\n/)
+      .filter(Boolean);
+  } catch {
+    // gh missing / unauthenticated / offline — unknown, NOT "no releases".
+    releases = null;
+  }
+  return { version: pkg.version, changelogVersion: parseChangelogVersion(changelog), tags, releases };
 }
 
 function main() {
   const strict = process.argv.includes('--strict');
-  const { version, changelogVersion, tags } = readInputs();
-  const { ok, errors, warnings } = check({ version, changelogVersion, tags, strict });
+  const { version, changelogVersion, tags, releases } = readInputs();
+  const { ok, errors, warnings } = check({ version, changelogVersion, tags, releases, strict });
 
   for (const w of warnings) console.warn(`⚠ ${w}`);
   for (const e of errors) console.error(`✗ ${e}`);
   if (ok) {
-    const withTag = tags.includes(`v${version}`) ? ', and tag' : '';
-    console.log(`✓ release in sync: plugin.json, CHANGELOG${withTag} agree on ${version}`);
+    const parts = ['plugin.json', 'CHANGELOG'];
+    if (tags.includes(`v${version}`)) parts.push('tag');
+    if (Array.isArray(releases) && releases.includes(`v${version}`)) parts.push('GitHub Release');
+    const list = parts.length > 2
+      ? `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`
+      : parts.join(' and ');
+    console.log(`✓ release in sync: ${list} agree on ${version}`);
   }
   process.exit(ok ? 0 : 1);
 }

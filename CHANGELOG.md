@@ -16,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.11.1] - 2026-09-19
+
+### Added
+- **`check-release-sync.js` now verifies the GitHub Release**, not just the tag.
+  A pushed tag alone notifies nobody — the CHANGELOG's "Watch → Custom →
+  Releases" instruction only fires on the Release object, and v1.11.0 initially
+  shipped tag-only with the strict gate reporting "in sync". The check is a
+  warning by default, a hard error under `--strict`, and skips (with a note
+  under `--strict`) when the `gh` CLI is unavailable — missing tooling never
+  fails the gate. The missing-tag hint now includes the `gh release create`
+  step, and the success line reports all four layers: plugin.json, CHANGELOG,
+  tag, and GitHub Release. +6 tests.
+
 ## [1.11.0] - 2026-09-11
 
 ### Added

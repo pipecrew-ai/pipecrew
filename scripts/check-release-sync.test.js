@@ -36,8 +36,8 @@ test('returns null when there is no version heading', () => {
 });
 
 // --- check() pure core ---
-test('in sync (version == changelog, tag present) → ok, no warnings', () => {
-  const r = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.0', 'v1.6.1'], strict: false });
+test('in sync (version == changelog, tag + Release present) → ok, no warnings', () => {
+  const r = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.0', 'v1.6.1'], releases: ['v1.6.0', 'v1.6.1'], strict: false });
   assert.ok(r.ok);
   assert.strictEqual(r.errors.length, 0);
   assert.strictEqual(r.warnings.length, 0);
@@ -64,6 +64,35 @@ test('non-semver version → hard error', () => {
   assert.match(r.errors[0], /not semver/);
 });
 
+// --- GitHub Release check ---
+test('tag present but no Release, non-strict → ok with a warning', () => {
+  const r = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'], releases: ['v1.6.0'], strict: false });
+  assert.ok(r.ok);
+  assert.strictEqual(r.errors.length, 0);
+  assert.match(r.warnings[0], /no GitHub Release/);
+  assert.match(r.warnings[0], /gh release create v1\.6\.1/);
+});
+test('tag present but no Release, strict → hard error', () => {
+  const r = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'], releases: [], strict: true });
+  assert.ok(!r.ok);
+  assert.match(r.errors[0], /no GitHub Release/);
+});
+test('gh unavailable (releases null) → never an error; strict gets an unverified note', () => {
+  const lax = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'], releases: null, strict: false });
+  assert.ok(lax.ok);
+  assert.strictEqual(lax.warnings.length, 0);
+  const strict = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'], releases: null, strict: true });
+  assert.ok(strict.ok);
+  assert.match(strict.warnings[0], /could not verify a GitHub Release/);
+});
+test('no tag → single combined hint, no separate Release warning', () => {
+  const r = check({ version: '1.6.1', changelogVersion: '1.6.1', tags: [], releases: [], strict: false });
+  assert.ok(r.ok);
+  assert.strictEqual(r.warnings.length, 1);
+  assert.match(r.warnings[0], /no git tag v1\.6\.1/);
+  assert.match(r.warnings[0], /gh release create v1\.6\.1/);
+});
+
 // --- CLI via --input ---
 function runCli(bundle, args = []) {
   const f = path.join(TMP, `bundle-${Math.random().toString(36).slice(2)}.json`);
@@ -71,8 +100,13 @@ function runCli(bundle, args = []) {
   return spawnSync('node', [SCRIPT, `--input=${f}`, ...args], { encoding: 'utf8' });
 }
 test('CLI exits 0 when in sync', () => {
-  const r = runCli({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'] });
+  const r = runCli({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'], releases: ['v1.6.1'] });
   assert.strictEqual(r.status, 0);
+  assert.match(r.stdout, /GitHub Release/);
+});
+test('CLI --strict exits 1 on a missing GitHub Release', () => {
+  const r = runCli({ version: '1.6.1', changelogVersion: '1.6.1', tags: ['v1.6.1'], releases: [] }, ['--strict']);
+  assert.strictEqual(r.status, 1);
 });
 test('CLI exits 1 on version/changelog drift', () => {
   const r = runCli({ version: '1.6.1', changelogVersion: '1.5.0', tags: ['v1.6.1'] });

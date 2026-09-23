@@ -16,6 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.13.0] - 2026-09-23
+
+### Added
+- **Domain identity (Part 1 of domain-durable-memory rollout).** New zero-dep
+  `scripts/mint-domain-id.js` mints a stable opaque `dom_<26-char Crockford-base32
+  ULID>` into `config.json` at `domain.id`. Idempotent (no-op if already present);
+  preserves all existing `domain` block content and key order; BOM-tolerant. `/discover`
+  now mints an id into every new config immediately after the validate + register step
+  (Phase B2). `validate-config.js` warns (never errors) when `domain.id` is absent or
+  malformed. Co-located `scripts/mint-domain-id.test.js` (9 mint tests + 9 validator
+  tests including EC-3 portable-config carry-through). Design reference:
+  `docs/design/github-memory.md § Domain identity and dependency edges`.
+- **Dependency edges — `external_dependencies[]` (Part 2).** `config.json` may now
+  declare cross-domain edges (target_id/relation/resolution/trust/share_scope). All
+  edges are inert declarations until Part 3 (resolve). `validate-config.js` validates
+  shape warn-only when the array is present (absence is silent per EC-4). `share_scope`
+  deliberately not enforced (enum open until Q3). `/discover` Phase B1 now offers an
+  optional opt-in question capturing known upstreams as dangling `absent` edges; the
+  question is skippable with no penalty. `config.portable.json` carries both fields for
+  free via the existing deep-clone (no code change, verified by test). `/memory-sync`
+  status step now mentions the back-fill command when `domain.id` is absent.
+
 ## [1.12.0] - 2026-09-20
 
 ### Added

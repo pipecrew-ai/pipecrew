@@ -33,10 +33,32 @@ From these answers + Pre-phase 0 name, derive:
 
 **If the user corrects the name in their answer** (e.g., "Actually it's called X, not Y"), treat that as a name-change request: update the scratchpad, rename the workspace directory if the slug changes, and re-confirm before proceeding.
 
+**Optional follow-up: known upstream dependencies (Part 2 — external_dependencies)**
+
+After the three required questions, if this is a non-trivial workspace (more than one repo, or the user mentioned consuming external platforms), offer one optional question:
+
+```
+4. **Known upstreams** (optional — press Enter to skip): Does this workspace
+   depend on any OTHER PipeCrew workspace or external domain? If yes, list
+   them by name and what the dependency is.
+   (e.g., "payments domain — we pull their transaction events",
+   "user-service workspace — SSO / identity provider")
+```
+
+If the user provides upstreams, record each one as an `external_dependencies` edge with:
+- `target_id`: leave as `"dom_TBD"` (the peer's real id is unknown at interview time)
+- `relation`: infer from the description (`upstream` for providers the workspace consumes, `peer` for mutual dependencies, `child` if this workspace owns a sub-domain)
+- `resolution.kind`: `"absent"` (the edge is a declaration; resolve is Part 3)
+- `resolution.expected_name`: the user's string (record it so Phase B2 can note it in config)
+
+If the user skips, record nothing — **absence of the array is completely silent** (EC-4). The question is low-friction opt-in; never block or re-ask.
+
+Store captured upstreams in the scratchpad's `## Domain Answers` section so Phase B2 can write them into `config.json`'s `external_dependencies[]` array when building the config. If none were captured, omit the array entirely from config.
+
 Do NOT ask about:
 - Tech stack — already detected in Phase A
 - Entities — architect discovers from code in B2
 - API design — not the user's job
 - Deployment — discovered from infra repo
 
-**Update scratchpad**: write answers to `## Domain Answers` in `scratchpad.md`. Set Phase B1 status to COMPLETED. Set Current Phase to "B2.0. Per-repo Discovery".
+**Update scratchpad**: write answers to `## Domain Answers` in `scratchpad.md` (including any captured upstreams). Set Phase B1 status to COMPLETED. Set Current Phase to "B2.0. Per-repo Discovery".

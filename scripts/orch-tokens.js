@@ -28,11 +28,24 @@
  *
  * costUSD is null (unmeasured, not zero) when the model id is unknown to the
  * pricing table or the agent's sub-transcript is absent. Consumers must report
- * "unmeasured", never fabricate an estimate.
+ * "unmeasured", never fabricate an estimate. When any model is unpriced, the
+ * output carries `warnings[]` + `totals.unmeasuredModels[]`, and
+ * `totals.measuredCostUSD` still reports the priced portion so a stale rate
+ * card never blanks the whole run.
+ *
+ * Rates come from scripts/pricing.json (data file — update it on price/model
+ * changes, no code edit needed); `--pricing=<json>` overrides it, and the
+ * baked-in DEFAULT_PRICING is the last-resort fallback.
+ *
+ * Cache dynamics: `orchestrator.windowEstimate` is the last assistant turn's
+ * input+cacheRead+cacheCreate (≈ the current context window), and
+ * `rewarmFactor` = cacheCreate / windowEstimate — how many times the window
+ * was re-written into the prompt cache after >TTL idle waits.
  *
  * Usage:
  *   node orch-tokens.js --session=<id|path>   # id resolved under ~/.claude/projects
  *   node orch-tokens.js --run-dir=<dir>       # resolve session from run_start's session_id
+ *   node orch-tokens.js --run-dir=<dir> --window  # minimal {windowTokens, assistantTurns, model} for in-run gates
  *   node orch-tokens.js --input=<lines.json>  # offline test hook (array of transcript lines)
  *   node orch-tokens.js --pricing=<json>      # override rates: {"opus": {"input":5,"output":25,"cacheWrite":6.25,"cacheRead":0.5}, ...}
  *   (--projects-dir overrides ~/.claude/projects; --session defaults to $CLAUDE_CODE_SESSION_ID)
@@ -74,6 +87,7 @@ function resolveSessionJsonl(session, projectsDir) {
 // Also buckets per model id (`byModel`) so cost can be computed at the right rate.
 function orchFromLines(lines) {
   const t = { input: 0, output: 0, cacheCreate: 0, cacheRead: 0, assistantTurns: 0, byModel: {} };
+  let last = null;
   for (const o of Array.isArray(lines) ? lines : []) {
     if (!o || o.type !== 'assistant' || !o.message || !o.message.usage) continue;
     const u = o.message.usage;
@@ -89,18 +103,50 @@ function orchFromLines(lines) {
     const m = o.message.model || 'unknown';
     const b = t.byModel[m] || (t.byModel[m] = { input: 0, output: 0, cacheCreate: 0, cacheRead: 0 });
     b.input += inp; b.output += out; b.cacheCreate += cw; b.cacheRead += cr;
+    last = { inp, cw, cr, model: m };
   }
   t.total = t.input + t.output + t.cacheCreate;
+  // The last turn's prompt side ≈ the current context window (everything the
+  // final request carried, however it was billed).
+  t.windowEstimate = last ? last.inp + last.cw + last.cr : 0;
+  t.lastModel = last ? last.model : null;
+  t.rewarmFactor = t.windowEstimate > 0
+    ? Math.round((t.cacheCreate / t.windowEstimate) * 10) / 10
+    : null;
   return t;
 }
 
 // $ per 1M tokens, keyed by a substring of the model id — first match wins.
-// List rates; override with --pricing=<json path> when models/prices change.
+// Baked-in fallback only: scripts/pricing.json is the editable source of truth
+// (same array shape); --pricing=<json path> overrides both.
 const DEFAULT_PRICING = [
+  ['fable', { input: 10, output: 50, cacheWrite: 12.5, cacheRead: 1 }],
+  ['mythos', { input: 10, output: 50, cacheWrite: 12.5, cacheRead: 1 }],
   ['opus', { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 }],
   ['sonnet', { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 }],
   ['haiku', { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 }],
 ];
+
+// Effective rate card when the caller passes none: pricing.json beside this
+// script (a data change, not a script edit), else DEFAULT_PRICING.
+// Read + parse a pricing JSON file. Strips a UTF-8 BOM first — Windows
+// editors and PowerShell redirects add one, and JSON.parse rejects it.
+function parsePricingFile(file) {
+  const raw = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
+  return Array.isArray(raw) ? raw : Object.entries(raw);
+}
+
+let cachedPricing;
+function loadPricing() {
+  if (cachedPricing !== undefined) return cachedPricing;
+  try {
+    const arr = parsePricingFile(path.join(__dirname, 'pricing.json'));
+    cachedPricing = arr.length ? arr : DEFAULT_PRICING;
+  } catch (_) {
+    cachedPricing = DEFAULT_PRICING;
+  }
+  return cachedPricing;
+}
 
 function rateFor(model, pricing) {
   const m = String(model || '').toLowerCase();
@@ -111,18 +157,18 @@ function rateFor(model, pricing) {
 }
 
 // Dollar cost of a byModel bucket map. cache-read IS included (at its own
-// rate) — it dominates long sessions. Returns { usd, unmeasured } where
-// unmeasured=true means at least one bucket had no pricing match.
+// rate) — it dominates long sessions. Returns { usd, unmeasured, unmatchedModels }
+// where unmeasured=true means at least one bucket had no pricing match.
 function costFromByModel(byModel, pricing) {
   let usd = 0;
-  let unmeasured = false;
+  const unmatchedModels = [];
   for (const model of Object.keys(byModel || {})) {
     const u = byModel[model];
     const r = rateFor(model, pricing);
-    if (!r) { unmeasured = true; continue; }
+    if (!r) { unmatchedModels.push(model); continue; }
     usd += (u.input * r.input + u.output * r.output + u.cacheCreate * r.cacheWrite + u.cacheRead * r.cacheRead) / 1e6;
   }
-  return { usd: Math.round(usd * 10000) / 10000, unmeasured };
+  return { usd: Math.round(usd * 10000) / 10000, unmeasured: unmatchedModels.length > 0, unmatchedModels };
 }
 
 // Per-agent tokens/duration from the session transcript. Each Agent/Task
@@ -176,7 +222,7 @@ function agentsFromLines(lines) {
 // transcript is absent keep `usage` undefined and `costUSD` null — the
 // consumer reports those as unmeasured, never estimated.
 function sessionSummaryFromFile(sessionJsonl, pricing) {
-  const rates = pricing || DEFAULT_PRICING;
+  const rates = pricing || loadPricing();
   let text;
   try { text = fs.readFileSync(sessionJsonl, 'utf8'); } catch (_) { return null; }
   const lines = [];
@@ -184,6 +230,7 @@ function sessionSummaryFromFile(sessionJsonl, pricing) {
   const orch = orchFromLines(lines);
   const agents = agentsFromLines(lines);
   const subDir = path.join(String(sessionJsonl).replace(/\.jsonl$/i, ''), 'subagents');
+  const unmatched = new Set();
   for (const a of agents) {
     a.costUSD = null;
     if (!a.agentId) continue;
@@ -196,27 +243,35 @@ function sessionSummaryFromFile(sessionJsonl, pricing) {
         a.usage = st;
         const c = costFromByModel(st.byModel, rates);
         a.costUSD = c.unmeasured ? null : c.usd;
+        for (const m of c.unmatchedModels) unmatched.add(m);
       }
       if (a.tokens == null && st.total) a.tokens = st.total;
     } catch (_) { /* transcript absent (older/cleaned run) — leave unmeasured */ }
   }
   const oc = costFromByModel(orch.byModel, rates);
   orch.costUSD = oc.unmeasured ? null : oc.usd;
-  // Run totals. Cost sums only the measured portion (orch + agents with usage);
-  // agentsWithUsage/agentsTotal tells the consumer how complete that portion is.
+  for (const m of oc.unmatchedModels) unmatched.add(m);
+  // Run totals. costUSD stays null when ANY orchestrator model is unpriced
+  // (never fabricate a complete-looking figure); measuredCostUSD always
+  // reports the priced portion so a stale rate card can't blank the run.
   const measured = agents.filter((a) => a.usage);
   const agentCost = measured.reduce((s, a) => s + (a.costUSD || 0), 0);
+  const measuredCost = Math.round((oc.usd + agentCost) * 10000) / 10000;
   const totals = {
     newTokens: orch.total + agents.reduce((s, a) => s + (a.usage ? a.usage.total : (a.tokens || 0)), 0),
     cacheReadTokens: orch.cacheRead + measured.reduce((s, a) => s + a.usage.cacheRead, 0),
     costUSD: orch.costUSD == null ? null : Math.round((orch.costUSD + agentCost) * 10000) / 10000,
+    measuredCostUSD: measuredCost,
+    unmeasuredModels: [...unmatched],
     agentsWithUsage: measured.length,
     agentsTotal: agents.length,
   };
   if (totals.costUSD != null && totals.costUSD > 0) {
     totals.orchestratorCostShare = Math.round((orch.costUSD / totals.costUSD) * 1000) / 1000;
   }
-  return { orch, agents, totals };
+  const warnings = [...unmatched].map((m) =>
+    `rate card has no entry for "${m}" — cost unmeasured; update scripts/pricing.json or pass --pricing=<file>`);
+  return { orch, agents, totals, warnings };
 }
 
 // Read the session id a run recorded in its run_start checkpoint (if any).
@@ -256,6 +311,7 @@ module.exports = {
   computeFromFile,
   defaultProjectsDir,
   DEFAULT_PRICING,
+  loadPricing,
   rateFor,
   costFromByModel,
 };
@@ -275,18 +331,28 @@ if (require.main === module) {
     console.error('orch-tokens: could not resolve the session JSONL — pass --session=<id|path>, ensure $CLAUDE_CODE_SESSION_ID is set, or that run_start recorded session_id.');
     process.exit(1);
   }
+  if (process.argv.includes('--window')) {
+    // Minimal mode for in-run phase gates: current-window estimate only, no
+    // pricing, no sub-transcript reads.
+    const t = computeFromFile(jsonl);
+    process.stdout.write(JSON.stringify({
+      windowTokens: t ? t.windowEstimate : 0,
+      assistantTurns: t ? t.assistantTurns : 0,
+      model: t ? t.lastModel : null,
+    }, null, 2));
+    process.exit(0);
+  }
   let pricing = null;
   const pricingPath = arg('pricing');
-  if (pricingPath) {
-    const raw = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
-    pricing = Array.isArray(raw) ? raw : Object.entries(raw);
-  }
+  if (pricingPath) pricing = parsePricingFile(pricingPath);
   const summary = sessionSummaryFromFile(jsonl, pricing);
+  for (const w of summary.warnings) console.error(`orch-tokens: RATE CARD STALE — ${w}`);
   process.stdout.write(JSON.stringify({
     orchestrator: summary.orch,
     agents: summary.agents,
     totals: summary.totals,
-    note: 'costUSD sums input+output+cacheWrite+cacheRead at per-model rates; total excludes cacheRead (new-token count, NOT a cost basis). null costUSD = unmeasured (unknown model or absent sub-transcript) — report as unmeasured, never estimate.',
+    warnings: summary.warnings,
+    note: 'costUSD sums input+output+cacheWrite+cacheRead at per-model rates; total excludes cacheRead (new-token count, NOT a cost basis). null costUSD = unmeasured (unknown model or absent sub-transcript) — report as unmeasured, never estimate; totals.measuredCostUSD is the priced portion. windowEstimate ≈ current context window; rewarmFactor = cacheCreate / windowEstimate (TTL re-warms of unchanged content).',
   }, null, 2));
   process.exit(0);
 }

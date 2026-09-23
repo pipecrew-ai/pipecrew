@@ -5,7 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { orchFromLines, agentsFromLines, resolveSessionJsonl, readSessionIdFromRunDir, sessionSummaryFromFile, rateFor, costFromByModel, DEFAULT_PRICING } = require('./orch-tokens.js');
+const { orchFromLines, agentsFromLines, resolveSessionJsonl, readSessionIdFromRunDir, sessionSummaryFromFile, rateFor, costFromByModel, DEFAULT_PRICING, loadPricing } = require('./orch-tokens.js');
 
 let passed = 0;
 function ok(name, fn) { fn(); passed++; console.log(`  ✓ ${name}`); }
@@ -137,6 +137,70 @@ ok('sessionSummaryFromFile attaches per-agent usage + costUSD from sub-transcrip
   assert.strictEqual(s.totals.agentsWithUsage, 1);
   assert.strictEqual(s.totals.agentsTotal, 2);
   assert.strictEqual(s.totals.orchestratorCostShare, Math.round((6 / 12.1) * 1000) / 1000);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+ok('rateFor knows current-generation models (fable/mythos), incl. via pricing.json', () => {
+  assert.strictEqual(rateFor('claude-fable-5', DEFAULT_PRICING).input, 10);
+  assert.strictEqual(rateFor('claude-mythos-5', DEFAULT_PRICING).cacheWrite, 12.5);
+  const loaded = loadPricing();               // scripts/pricing.json (falls back to DEFAULT_PRICING)
+  assert.strictEqual(rateFor('claude-fable-5', loaded).output, 50);
+  assert.strictEqual(rateFor('claude-opus-4-6', loaded).output, 25);
+});
+
+ok('orchFromLines derives windowEstimate + rewarmFactor from the last turn', () => {
+  const lines = [
+    { type: 'assistant', message: { model: 'm', usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 100, cache_read_input_tokens: 0 } } },
+    { type: 'assistant', message: { model: 'm', usage: { input_tokens: 5, output_tokens: 5, cache_creation_input_tokens: 20, cache_read_input_tokens: 100 } } },
+  ];
+  const t = orchFromLines(lines);
+  assert.strictEqual(t.windowEstimate, 5 + 20 + 100);          // last turn's prompt side
+  assert.strictEqual(t.lastModel, 'm');
+  assert.strictEqual(t.rewarmFactor, Math.round((120 / 125) * 10) / 10);
+  const empty = orchFromLines([]);
+  assert.strictEqual(empty.windowEstimate, 0);
+  assert.strictEqual(empty.rewarmFactor, null);                // no division by zero
+});
+
+ok('sessionSummaryFromFile: unknown model → warnings + measured portion survives', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchwarn-'));
+  const sess = path.join(tmp, 'sess-2.jsonl');
+  const subDir = path.join(tmp, 'sess-2', 'subagents');
+  fs.mkdirSync(subDir, { recursive: true });
+  const sessionLines = [
+    // orchestrator on a model the rate card doesn't know
+    { type: 'assistant', message: { model: 'claude-futuremodel-9', usage: { input_tokens: 1e6, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'x', description: 'priced agent' } }] } },
+    { type: 'user', toolUseResult: { agentId: 'ag1' }, message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] } },
+  ];
+  fs.writeFileSync(sess, sessionLines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  fs.writeFileSync(path.join(subDir, 'agent-ag1.jsonl'),
+    JSON.stringify({ type: 'assistant', message: { model: 'claude-haiku-4-5', usage: { input_tokens: 1e6, output_tokens: 1e6, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } }) + '\n');
+  const s = sessionSummaryFromFile(sess);
+  assert.strictEqual(s.orch.costUSD, null);                    // unmeasured, never guessed
+  assert.strictEqual(s.totals.costUSD, null);                  // full total stays honest
+  assert.strictEqual(s.totals.measuredCostUSD, 6);             // haiku agent: $1 + $5 — not blanked
+  assert.deepStrictEqual(s.totals.unmeasuredModels, ['claude-futuremodel-9']);
+  assert.strictEqual(s.warnings.length, 1);
+  assert.ok(s.warnings[0].includes('claude-futuremodel-9'));
+  assert.ok(s.warnings[0].includes('pricing.json'));
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+ok('sessionSummaryFromFile: fully-priced run has empty warnings and matching totals', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchok-'));
+  const sess = path.join(tmp, 'sess-3.jsonl');
+  fs.writeFileSync(sess, JSON.stringify(
+    { type: 'assistant', message: { model: 'claude-fable-5', usage: { input_tokens: 1e6, output_tokens: 1e6, cache_creation_input_tokens: 1e6, cache_read_input_tokens: 1e6 } } }) + '\n');
+  const s = sessionSummaryFromFile(sess);
+  // fable: 10 + 50 + 12.5 + 1 = 73.5
+  assert.strictEqual(s.orch.costUSD, 73.5);
+  assert.strictEqual(s.totals.costUSD, 73.5);
+  assert.strictEqual(s.totals.measuredCostUSD, 73.5);
+  assert.deepStrictEqual(s.totals.unmeasuredModels, []);
+  assert.deepStrictEqual(s.warnings, []);
+  assert.strictEqual(s.orch.windowEstimate, 3e6);              // in + cacheWrite + cacheRead of the only turn
+  assert.strictEqual(s.orch.rewarmFactor, Math.round((1e6 / 3e6) * 10) / 10);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 

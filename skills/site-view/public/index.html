@@ -1573,6 +1573,10 @@
 
 <div class="token-summary">
   <span title="Main-loop (orchestrator) token overhead — loading skills, reading files/specs, scratchpad updates, approval gates, and reading agent results. Derived from this run's Claude session transcript (input + output + cache-creation; cache-reads excluded). It accrues from pre-flight onward, so it is intentionally non-zero before any sub-agent finishes.">ORCHESTRATOR <b id="orch-tokens">0</b></span>
+  <span title="The orchestrator's current context window — the last turn's prompt size (a live snapshot, unlike the cumulative counters). Every remaining turn re-reads this, and every >5-minute idle wait re-bills it as a cache write. Above 500K the /deliver phase gates offer a session reset (/deliver --resume in a fresh session).">CONTEXT <b id="orch-window">—</b>
+    <span class="bar"><span class="bar-fill" id="window-bar" style="width: 0%"></span></span>
+    <span class="budget-warn" id="window-warn" title="Orchestrator context above 500K — a session reset will be offered at the next phase gate">RESET?</span>
+  </span>
   <span title="Sum of per-sub-agent token cost across every card, derived from each sub-agent's own transcript. Separate from the orchestrator's own usage above.">AGENTS <b id="agent-tokens">0</b></span>
   <span>TOTAL <b id="total-tokens">0</b>
     <span class="bar"><span class="bar-fill" id="token-bar" style="width: 0%"></span></span>
@@ -2552,6 +2556,26 @@ function applyState(state) {
   const overBudget = totalTokens > TOKEN_BUDGET;
   bar.classList.toggle('warning', overBudget);
   if (warn) warn.classList.toggle('active', overBudget);
+  // CONTEXT gauge — the orchestrator's live window (last turn's prompt side),
+  // scaled to a 1M window. Default fill under 500k, amber to 750k, red above;
+  // past 500k the RESET? chip appears (the /deliver gates offer a session
+  // reset there). null = no session transcript (legacy run) → renders "—".
+  const winTokens = state.orchWindowTokens;
+  const winEl = document.getElementById('orch-window');
+  const winBar = document.getElementById('window-bar');
+  const winWarn = document.getElementById('window-warn');
+  if (winEl && winBar) {
+    if (winTokens == null) {
+      winEl.textContent = '—';
+      winBar.style.width = '0%';
+      if (winWarn) winWarn.classList.remove('active');
+    } else {
+      winEl.textContent = formatTokens(winTokens);
+      winBar.style.width = Math.min(100, Math.round((winTokens / TOKEN_BUDGET) * 100)) + '%';
+      winBar.style.background = winTokens > 750_000 ? '#e56060' : (winTokens > 500_000 ? '#e5a960' : '');
+      if (winWarn) winWarn.classList.toggle('active', winTokens > 500_000);
+    }
+  }
 }
 
 // Ask #4 — two-zone layout. BUILDING zone (top): working + queued.

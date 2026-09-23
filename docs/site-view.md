@@ -123,10 +123,13 @@ State shape:
   updatedAt:         "2026-04-16T11:30:00.000Z",
   characters:        [ { id, role, phase, agent, repo, status, tokens, duration, dispatches, retrying }, … ],
   orchestratorTokens: 45230,
+  orchWindowTokens:   183400,   // orchestrator's CURRENT context window (last turn's prompt side) — null on legacy runs with no session transcript
   totalAgentTokens:   980000,
   awaitingInput:      null | { since, phase, gate, question, context_summary }
 }
 ```
+
+`orchWindowTokens` feeds the header **CONTEXT** gauge — a live snapshot of the orchestrator's window (unlike the cumulative ORCHESTRATOR/AGENTS counters). The fill turns amber above 500K (where the /deliver phase gates offer a session reset — a `RESET?` chip appears) and red above 750K.
 
 Empty-state variants:
 

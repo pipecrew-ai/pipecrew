@@ -16,6 +16,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.12.0] - 2026-09-20
+
+### Added
+- **Current-generation rate card as data** (`scripts/pricing.json`). `orch-tokens.js` now
+  loads rates from this file (fable/mythos/opus/sonnet/haiku; first substring match wins)
+  so a price or model change is a data edit, not a script edit. `--pricing=<json>` still
+  overrides; the baked-in `DEFAULT_PRICING` (now incl. fable/mythos) is the last-resort
+  fallback. Motivated by the idml2epub session where a `claude-fable-5` orchestrator
+  (~$301, ~80% of run cost) silently rendered as "unmeasured".
+- **Loud stale-rate-card handling.** Unknown models now produce a stderr warning naming
+  the model and the fix, plus `warnings[]` and `totals.unmeasuredModels[]` in the JSON.
+  `totals.costUSD` stays `null` when incomplete (never fabricate), but the new
+  `totals.measuredCostUSD` always reports the priced portion — a stale rate card no
+  longer blanks the whole run total or the reporter's cost table.
+- **Cache-dynamics visibility.** `orchestrator.windowEstimate` (last turn's
+  input + cache-read + cache-write ≈ current context window) and
+  `orchestrator.rewarmFactor` (cacheCreate ÷ windowEstimate — how many times the window
+  was re-written into the prompt cache after >5-min idle waits). New `--window` CLI mode
+  returns just `{windowTokens, assistantTurns, model}` for cheap in-run checks. The
+  reporter now prints the snapshot-vs-flow distinction (context window vs cumulative
+  billing tokens) and flags re-warm factors above ~2×. +4 tests.
+- **Session-reset suggestion gates (H-1).** /deliver now checks the orchestrator window
+  via `orch-tokens.js --window` at two phase boundaries — after the Phase 4.5 plan
+  approval and after Phase 5 build completes — and above 500k tokens offers a Template B
+  gate suggesting a clean stop + `/deliver --resume` in a fresh session (all state is
+  already scratchpad-backed). The check is advisory and skips silently on error. Both
+  gates also mention `/compact` as the stay-in-session alternative, and are skipped
+  (warning line only) under `--auto-approve` — an unattended run is never auto-stopped.
+- **Mid-Phase-5 window watch (sequential mode).** In monorepo-sequential builds the
+  window check piggybacks on each task's `agent_end` checkpoint emission; on the first
+  crossing of 500k it prints a one-line non-blocking notice, records a
+  `Window watch: EXCEEDED` flag in the scratchpad's Context Budget section, and defers
+  the actual reset offer to the next natural gate — a blocking prompt mid-autonomy
+  would idle past the cache TTL and cause the re-warms it warns about.
+- **Site-view CONTEXT gauge.** The header token bar now shows the orchestrator's live
+  context window (`orchWindowTokens` in the `/state` schema, from the new
+  `windowEstimate`) with a bar scaled to 1M — amber + `RESET?` chip above 500k, red
+  above 750k. Zero orchestrator token cost: the Node server derives it from the session
+  transcript it already watches.
+
+### Fixed
+- Reporter's hardcoded per-model context windows updated (1M for Fable/Opus/Sonnet,
+  200K for Haiku).
+
 ## [1.11.1] - 2026-09-19
 
 ### Added

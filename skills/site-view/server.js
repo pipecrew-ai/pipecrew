@@ -1113,7 +1113,15 @@ function sessionDerived(sessionId) {
       if (!agentsByDesc.has(k)) agentsByDesc.set(k, []);
       agentsByDesc.get(k).push(a);
     }
-    const entry = { mtime, orchTotal: sum.orch ? sum.orch.total : null, agentsByDesc, agents: sum.agents || [] };
+    const entry = {
+      mtime,
+      orchTotal: sum.orch ? sum.orch.total : null,
+      // Last assistant turn's prompt side ≈ the orchestrator's current context
+      // window — feeds the header CONTEXT gauge (reset-suggestion threshold 500k).
+      windowEstimate: sum.orch ? sum.orch.windowEstimate : null,
+      agentsByDesc,
+      agents: sum.agents || [],
+    };
     _sessionCache.set(sessionId, entry);
     return entry;
   } catch (_) { return null; }
@@ -1676,6 +1684,9 @@ function parseScratchpad(content) {
   const derived = sessionDerived(sessionId);
   const sessionOrch = derived ? derived.orchTotal : null;
   const orchestratorTokens = (sessionOrch != null) ? sessionOrch : legacyOrchTokens;
+  // Live window gauge: only derivable from the session transcript (no legacy
+  // fallback — old runs render the gauge as "—").
+  const orchWindowTokens = derived ? derived.windowEstimate : null;
 
   // ─── Checkpoints reconciliation (lifecycle is checkpoint-authoritative) ──
   // checkpoints.jsonl is emitted programmatically at every dispatch boundary,
@@ -1844,6 +1855,7 @@ function parseScratchpad(content) {
     updatedAt: new Date().toISOString(),
     characters,
     orchestratorTokens,
+    orchWindowTokens,
     totalAgentTokens: characters.reduce((s, c) => s + (c.tokens || 0), 0),
     runDurationMs: (firstTs && lastTs) ? Math.max(0, new Date(lastTs).getTime() - new Date(firstTs).getTime()) : 0,
     runEndStatus,

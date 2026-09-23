@@ -112,15 +112,42 @@ pointer).
 3. `external_dependencies` as the single first-class edge type (covers child/peer/upstream).
 4. Referrer-owned one-directional edges; `absent` non-fatal; lazy `resolve`.
 5. Workspace becomes a thin manifest; domain carries everything else.
+6. **Q2a resolved — resolve trigger**: auto-resolve **direct dependencies only** (depth-1,
+   never transitive) at the top of `/deliver` and `/discover` pre-flight, riding
+   `sync-memory.js pull`'s existing warn-only degrade-to-`absent` contract; plus a
+   standalone on-demand `resolve` command. (Analysis:
+   `pipecrew-workspace/context/brainstorms/domain-durable-memory-q2.md`.)
+7. **Q2b resolved — caching**: hybrid — a **gitignored, machine-local resolve cache**
+   keyed by `target_id` + source commit SHA, with optional `resolution.pin` (SHA) as the
+   explicit version knob. Offline + populated cache → warn and use it; offline +
+   never-resolved → `absent`. No vendoring into the referrer's committed history.
+
+## Delivery rollout (agreed order — least change radius first)
+
+Full roadmap: `pipecrew-workspace/context/brainstorms/domain-durable-memory-rollout.md`.
+Ordering principle: mint identity → reference → resolve → restructure; every additive part
+before the one rename, which lands last behind a compat shim.
+
+| Part | Ships | Radius | Blocked by |
+|---|---|---|---|
+| 1 | Mint `domain.id` (`mint-domain-id.js`, warn-only validator, /discover mints) | purely additive | — |
+| 2 | Declare `external_dependencies` edges (dangling; warn-only shape check) | purely additive | — |
+| 3 | Standalone `resolve` + gitignored cache | additive + .gitignore template line | **Q3** |
+| 4 | Auto-resolve at /discover + /deliver pre-flight (depth-1, `edges.length===0` guard) | first hot-path edit | via Part 3 |
+| 5 | Non-PipeCrew dependency stubs | additive resolve branch | **Q4** |
+| 6 | Workspace → domain demotion (thin manifest, compat shim in registry `load()`) | largest — the only rename | — (Q5 tunes) |
+
+Riskiest step is Part 6; it is safe only because Parts 1–5 land first (relabeling, not new
+semantics) and the registry's proven idempotent legacy-migration shim is extended, with a
+plain `config.json` remaining first-class forever. First release slice: **Parts 1 + 2
+together**; answer Q3 next to unlock Part 3.
 
 ## Open questions (resume here — in this order)
 
-- **Q2a — resolve trigger**: purely on-demand, or also automatically at the top of
-  `/deliver`?
-- **Q2b — caching**: are resolved results cached/vendored into the referrer (offline use,
-  pinned GitHub deps) or re-fetched fresh each time?
 - **Q3 — what crosses the boundary**: semantic map only, procedural recipes too, or both
-  (per-edge `share_scope` already reserves the knob)?
+  (per-edge `share_scope` already reserves the knob)? Must define the **concrete
+  file-set** per scope — Part 3's cache population depends on it, and it must not
+  reintroduce vendoring.
 - **Q4 — non-PipeCrew fallback content**: hand-written stub vs auto-generated thin
   profile vs dangling pointer.
 - **Q5 — episodic memory's fate**: drop entirely, or keep as a tier agents never load but

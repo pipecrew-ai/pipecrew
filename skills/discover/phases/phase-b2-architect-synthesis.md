@@ -351,6 +351,12 @@ node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
 ```
 
+Mint a stable domain id into the new config (idempotent — no-op if one already exists):
+
+```bash
+node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json
+```
+
 Registration records the workspace's absolute path in the registry
 (`~/.claude/pipecrew/config.json`). This is what lets a workspace live wherever it
 makes sense (next to its repos) and never get orphaned when another workspace is

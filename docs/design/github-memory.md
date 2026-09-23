@@ -110,6 +110,56 @@ So freshness is **computed live** and surfaced where it's useful, never persiste
 
 Uses the user's existing `git` / `gh` credentials (same as `/deliver` Phase 8 branch pushes). If push fails (no auth, no remote, diverged), the routine logs a warning and leaves the commit local — it never aborts the surrounding skill. Never `git push --force`.
 
+## Domain identity and dependency edges (Parts 1 + 2)
+
+These fields are part of the domain-durable-memory rollout. Both are purely additive — existing configs that omit them behave byte-identically.
+
+### `domain.id` — stable opaque workspace identity
+
+A workspace's `config.json` may carry a `domain.id` field:
+
+```jsonc
+"domain": {
+  "id": "dom_01ARZ3NDEKTSV4RRFFQ69G5FAV",   // dom_<26-char Crockford-base32 ULID>
+  ...
+}
+```
+
+**Format**: `dom_` prefix + 26 Crockford-base32 characters (a ULID, time-ordered, ~122 bits of randomness). Minted once by `scripts/mint-domain-id.js`, idempotent on re-run.
+
+**Purpose**: a stable opaque id that survives workspace rename or path changes — the precondition for cross-domain references. Nothing reads or validates it yet beyond the warn-only `validate-config.js` check.
+
+**Carry-through**: `regeneratePortableConfig()` deep-clones the whole config before stripping only `repos[].path`. `domain.id` therefore flows into `config.portable.json` and to teammates via `/join` with zero code change.
+
+**Back-fill**: run `node scripts/mint-domain-id.js --config=<path>` once per existing workspace. The `/discover` run mints an id automatically into any new config it writes.
+
+### `external_dependencies[]` — cross-domain dependency edges (dangling)
+
+A workspace may declare known upstreams as a top-level array:
+
+```jsonc
+"external_dependencies": [
+  {
+    "target_id":  "dom_OTHER26CHARCROCKFORDULID",   // the peer's domain.id (dom_ prefix required)
+    "relation":   "upstream",                        // child | peer | upstream
+    "resolution": {
+      "kind":          "absent",                     // local | github | absent
+      "expected_name": "payments-workspace",         // optional hint (human-readable)
+      "hint":          "git@github.com:acme/payments-memory.git",  // optional
+      "pin":           "abc123def456..."             // optional git SHA
+    },
+    "trust":       "manual",                         // auto | manual | blocked (default manual)
+    "share_scope": "semantic"                        // any string — enum open until Q3
+  }
+]
+```
+
+**All edges are currently inert.** They are declarations of intent — a human-readable, diffable, shareable dependency map. No resolution machinery exists yet (that is Part 3, blocked on Q3). The `resolution.kind: "absent"` value is the canonical starting state for any edge whose remote config has not yet been fetched.
+
+**Validation**: `validate-config.js` checks shape when the array is present (warn-only on any malformed entry; absence of the array is completely silent). `share_scope` is deliberately not enforced — its enum is open until Q3.
+
+**Carry-through**: like `domain.id`, the array deep-clones into `config.portable.json` for free and flows to teammates.
+
 ## Non-goals
 
 - Not auto-public. `visibility: private` is required; bootstrap refuses `public`.

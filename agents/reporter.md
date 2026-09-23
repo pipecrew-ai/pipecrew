@@ -60,7 +60,7 @@ Run the derivation script and parse its JSON — do NOT compute token sums or do
 node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir}
 ```
 
-The output has `orchestrator` (the run session's own usage: `input`, `output`, `cacheCreate`, `cacheRead`, `total`, `costUSD`), `agents[]` (per dispatch: `subagentType`, `description`, `tokens`, `usage` breakdown + `costUSD` when the sub-transcript was resolvable), and `totals` (`newTokens`, `cacheReadTokens`, `costUSD`, `agentsWithUsage`/`agentsTotal`, `orchestratorCostShare`). Match `agents[]` rows to the run's `agent_end` events by `description` for phase/status context.
+The output has `orchestrator` (the run session's own usage: `input`, `output`, `cacheCreate`, `cacheRead`, `total`, `costUSD`, plus `windowEstimate` and `rewarmFactor`), `agents[]` (per dispatch: `subagentType`, `description`, `tokens`, `usage` breakdown + `costUSD` when the sub-transcript was resolvable), `totals` (`newTokens`, `cacheReadTokens`, `costUSD`, `measuredCostUSD`, `unmeasuredModels`, `agentsWithUsage`/`agentsTotal`, `orchestratorCostShare`), and `warnings[]`. Match `agents[]` rows to the run's `agent_end` events by `description` for phase/status context.
 
 Render the table from those numbers:
 
@@ -71,16 +71,24 @@ Render the table from those numbers:
 | spring-boot-implementer ×{N} | {N} | … | … | … | …% |
 | **Total** | **{N}** | **(totals.newTokens)** | **(totals.cacheReadTokens)** | **(totals.costUSD)** | 100% |
 
-Then state the **two actionable numbers** on their own lines — these are what the operator tunes on:
+Directly under the table, print the **snapshot-vs-flow line** so the two kinds of numbers are never confused:
+
+```
+Context window at end of run: {orchestrator.windowEstimate} (what each turn carries — a snapshot)
+Cumulative new tokens (billing basis): {totals.newTokens} — includes cache re-writes of unchanged content after >5-min idle waits
+```
+
+Then state the **three actionable numbers** on their own lines — these are what the operator tunes on:
 
 - **Orchestrator share of cost**: `totals.orchestratorCostShare` as a percentage. Above ~50% means carried orchestrator context, not agent work, dominates spend — flag it in Narrative Insights with the note that a session reset at a phase boundary (`/deliver --resume` in a fresh session) is the lever.
 - **Cache-read share of tokens**: `cacheReadTokens / (newTokens + cacheReadTokens)` as a percentage. High values are expected on long runs (cache reads are cheap per token) but track their absolute cost — cache reads bill at the cache-read rate and are included in every `costUSD`.
+- **Re-warm factor**: `orchestrator.rewarmFactor` — how many times the orchestrator window was re-written into the prompt cache (cacheCreate ÷ windowEstimate). Above ~2× means long idle waits (gates, background dispatches) re-billed the window repeatedly; flag it in Narrative Insights: fewer/richer gates and a phase-boundary session reset are the levers.
 
-**Never fabricate.** A `null costUSD` means unmeasured (unknown model or missing sub-transcript) — render it as `unmeasured`, exclude it from the % column, and say how much of the run is covered (`agentsWithUsage`/`agentsTotal`). Do not estimate, extrapolate, or present a partial sum as the run total without saying so.
+**Never fabricate.** A `null costUSD` means unmeasured (unknown model or missing sub-transcript) — render it as `unmeasured`, exclude it from the % column, and say how much of the run is covered (`agentsWithUsage`/`agentsTotal`). When `totals.costUSD` is null but `totals.measuredCostUSD` is present, render the total as `≥ ${measuredCostUSD} (excludes {unmeasuredModels} — no rate card entry)` — never a bare blank. Quote any `warnings[]` from the script verbatim in the report so the stale rate card gets fixed.
 
 **Fallback for old logs only:** if `orch-tokens.js` exits 1 (no `session_id` recorded — a pre-upgrade run), fall back to whatever token fields exist on `agent_end` / `orch_checkpoint` events and label the section "legacy checkpoint tokens — output-only, understates true usage; no cost computed".
 
-Context window % per agent = `(usage.input + usage.cacheRead) / model_context_window` (200K for Sonnet, 1M for Opus).
+Context window % per agent = `(usage.input + usage.cacheRead) / model_context_window` (1M for Fable/Opus/Sonnet, 200K for Haiku).
 
 ### 3. Daily Budget Status
 

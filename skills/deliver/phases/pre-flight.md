@@ -86,6 +86,8 @@ The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `{workspac
 - Avg task file: ~{N} tokens | Max: ~{N} tokens
 - Total tasks: {N}
 - Per-dispatch input estimate: ~{N} tokens
+- **Window watch**: OK   <!-- Phase 5 mid-phase watch sets: EXCEEDED at task {N} ({windowTokens} tokens) -->
+
 
 ## Resume Instructions
 To resume: `/deliver --resume --workspace={slug}`

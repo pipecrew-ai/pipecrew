@@ -221,8 +221,45 @@ If the feature touches multiple infra repos of different types (e.g., one CDK st
 
 **On completion**: update the scratchpad. The implementer flips its task file from `status: todo` to `status: done`.
 
+#### Mid-phase window watch (sequential dispatches only)
+
+In monorepo-sequential mode (many dispatches, no user gates between them), watch the orchestrator window at each natural beat — **without ever blocking the run**:
+
+- After each sequential task's `agent_end` checkpoint emission, append the window check to that same Bash call: `... ; node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir} --window`.
+- **On the first crossing of 500000 tokens** (and only the first — this fires once per run):
+  1. Print a one-line notice — no question, no waiting: `ℹ️ Orchestrator context passed ~500k tokens (task {N}/{total}). A session reset will be offered at the next gate; you can also type "stop" anytime and continue with /deliver --resume.`
+  2. Record the flag in the scratchpad's `## Context Budget` section: `- **Window watch**: EXCEEDED at task {N} ({windowTokens} tokens)`.
+  3. Stop running further mid-phase checks — the flag is set, and the post-build gate below re-measures anyway.
+- Do NOT open a gate mid-phase. A blocking prompt while the user is away idles the session past the cache TTL and *causes* the re-warms it warns about.
+- In parallel (non-monorepo) mode, skip this watch — all dispatches return together and the post-build check below covers it.
+- If the `--window` call fails, skip silently — telemetry, never a blocker.
+
 #### After all Phase 5 agents complete
 
 **Phase 5 is complete when every task file shows `status: done` or `status: failed` (none remain `todo` or `in_progress`).** For any task that returned FAILED, capture the reason in the scratchpad but continue — Phase 6 assessor will flag it as a blocker. **Update scratchpad**: Set Current Phase to "Phase 5.5: Code Review".
+
+#### Context-window check (session-reset suggestion)
+
+With Current Phase already set to 5.5, check the orchestrator's own context size:
+
+```bash
+node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir} --window
+```
+
+If `windowTokens > 500000` (fixed threshold for now; may become a config knob later), offer a reset with a Template B warn-and-continue gate. If the scratchpad's `## Context Budget` section carries a `Window watch: EXCEEDED` flag from the mid-phase watch above, mention it ("crossed 500k at task {N}, now ~{windowTokens/1000}k"):
+
+```
+⚠️ Orchestrator context is ~{windowTokens/1000}k tokens after the build phase; the review, assessment, and report phases ahead re-read all of it on every turn.
+Stopping now and running /deliver --resume in a fresh session enters Phase 5.5 directly with a far smaller context.
+(You can also type /compact first to shrink this session in place — lossy summary, but all run state is scratchpad-backed — then answer yes.)
+Continue in this session anyway? (yes / no)
+```
+
+Under `--auto-approve`, skip this gate entirely: print the warning line only and continue — never auto-stop an unattended run.
+
+- **`yes`** → continue to Phase 5.5 normally.
+- **`no`** → follow the standard `stop` path from `rules/interruption-and-resume.md`: set scratchpad `Status: INTERRUPTED`, emit `run_end` with `status: "aborted"` + `duration_ms`, run the auto-approve marker cleanup if applicable, and print the resume hint (`/deliver --resume` re-enters at Phase 5.5 — all task files and worktree commits are already on disk).
+
+If the `--window` call fails (no session_id, script error), skip this check silently and continue — it's an optimization, never a blocker.
 
 ---

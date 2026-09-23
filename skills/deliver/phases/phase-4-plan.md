@@ -117,6 +117,30 @@ If the planner's summary contains zero `D` sub-tasks, collapse the gate to the *
 
   If the planner returns `unparseable adjustment: '{text}'`, surface that exact message to the user and ask them to rephrase. Do not try to interpret the original text yourself — the planner is the only thing allowed to map natural language to skeleton diff ops.
 
+#### Step 4.5 — Context-window check (session-reset suggestion)
+
+After the user approves (and the gate is closed), before dispatching Step 5, check the orchestrator's own context size:
+
+```bash
+node {plugin_dir}/scripts/orch-tokens.js --run-dir={run_dir} --window
+```
+
+If `windowTokens > 500000` (fixed threshold for now; may become a config knob later), offer a reset with a Template B warn-and-continue gate:
+
+```
+⚠️ Orchestrator context is ~{windowTokens/1000}k tokens; every remaining turn re-reads it, and every >5-minute wait (the build phase ahead is mostly long waits) re-bills all of it as a fresh cache write.
+Stopping now and running /deliver --resume in a fresh session continues from the same scratchpad with a far smaller context.
+(You can also type /compact first to shrink this session in place — lossy summary, but all run state is scratchpad-backed — then answer yes.)
+Continue in this session anyway? (yes / no)
+```
+
+Under `--auto-approve`, skip this gate entirely: print the warning line only and continue — never auto-stop an unattended run.
+
+- **`yes`** → proceed to Step 5 normally.
+- **`no`** → follow the standard `stop` path from `rules/interruption-and-resume.md`: set scratchpad `Status: INTERRUPTED`, emit `run_end` with `status: "aborted"` + `duration_ms`, run the auto-approve marker cleanup if applicable, and print the resume hint. Note in the printed hint that Current Phase is still 4.5, so `/deliver --resume` will re-run the persist step (Step 5) with the already-approved `approved_slice` — record `approved_slice` and the accumulated `adjustments` in the scratchpad **before** stopping so resume doesn't re-open the gate.
+
+If the `--window` call fails (no session_id, script error), skip this check silently and continue — it's an optimization, never a blocker.
+
 #### Step 5 — Dispatch task-planner in `persist` mode
 
 Once the user approves (Approve all OR Minimum only):

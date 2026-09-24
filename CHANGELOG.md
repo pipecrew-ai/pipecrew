@@ -16,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [Unreleased]
+
+### Added
+- **Root dispatcher CLAUDE.md** (`templates/root-CLAUDE.md.template` +
+  `scripts/sync-root-claude.js`). The workspace ROOT — the parent directory users
+  launch `claude` from — now gets a CLAUDE.md that routes user asks to PipeCrew
+  skills (`/deliver`, `/patch`, `/troubleshoot`, `/review`, `/learn`, …) AND maps
+  needs to directly-dispatchable agents (`pipecrew:solution-architect`,
+  `<slug>-troubleshooter`, `pipecrew:security-consultant`, …) so a plain session
+  can consult a single agent without a full pipeline. The body is a static
+  template shipped with the plugin (always version-matched to the running
+  plugin); the only dynamic content is the slug index between
+  `<!-- pipecrew:slugs -->` markers, rebuilt from the filesystem on every run —
+  multi-slug roots list every workspace, removed workspaces self-prune, and a
+  hand-authored root CLAUDE.md is preserved verbatim (only the small managed
+  section is appended). Wired into `/discover` Phase C (new Step 5) and `/join`
+  Step 6, so both the workspace owner and every joined teammate get the routing
+  guide automatically. 12 unit tests (`scripts/sync-root-claude.test.js`).
+
 ## [1.12.0] - 2026-09-20
 
 ### Added

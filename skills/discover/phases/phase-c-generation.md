@@ -704,6 +704,22 @@ If zero findings were reported across the whole phase, write no file and add no 
 **Update scratchpad**: add an `Audit findings` row to `## Generation Status`:
 - `{N} findings across {M} repos` if any, path to the file
 - `none reported` if the phase surfaced no issues
-- Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
+
+---
+
+### Step 5: Root dispatcher CLAUDE.md
+
+Ensure the workspace ROOT (the parent directory hosting `{slug}/` — where users launch `claude` from) has the routing CLAUDE.md that tells plain sessions the PipeCrew toolbox exists and how to route user asks to skills/agents:
+
+```bash
+node {plugin_dir}/scripts/sync-root-claude.js --root={workspace_root} --slug={slug}
+```
+
+The script is deterministic and idempotent (safe in incremental mode and on `--resume`): it copies `templates/root-CLAUDE.md.template` if `{workspace_root}/CLAUDE.md` is absent, otherwise regenerates ONLY the slug index between the `<!-- pipecrew:slugs -->` markers — everything outside the markers is user-owned and never touched. If the user already had their own root CLAUDE.md (no markers), the script appends just the small managed section. A multi-slug root lists every workspace; removed workspace dirs self-prune on the next run.
+
+- Exit 0/2 → continue (2 = size warning; surface it to the user).
+- Exit 1 (malformed markers) → surface the error and ask the user to fix the markers by hand; do NOT edit `{workspace_root}/CLAUDE.md` yourself — it may contain the user's own content.
+
+**Update scratchpad**: add a `Root CLAUDE.md` row to `## Generation Status` (`created` / `updated` / `appended` / `unchanged`, from the script's output). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
 
 ---

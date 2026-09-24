@@ -96,19 +96,22 @@ Then record the teammate's root so future `config.portable.json` regens stay sta
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
 node {plugin_dir}/scripts/sync-memory.js status {workspace_root}/{slug}
-node {plugin_dir}/scripts/sync-root-claude.js --root={workspace_root} --slug={slug}
+node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/config.json
 ```
 - The validator confirms every resolved `path` exists on disk (so it catches a clone that
   didn't land or a wrong local path) — fix and re-run Step 5 on any error.
 - `--register … --current` adds the joined workspace to the teammate's registry and makes it
   active, so subsequent `/deliver`, `/memory-sync`, etc. resolve it by slug from anywhere.
 - `status` confirms the memory repo is wired and reports how fresh it is.
-- `sync-root-claude` places (or updates) the root dispatcher `{workspace_root}/CLAUDE.md` —
-  the routing guide that tells any plain Claude Code session launched from the root that
-  the PipeCrew skills/agents exist and when to use them. It ships with the teammate's own
-  plugin (so it always matches their version), only ever rewrites the slug index between
-  its `<!-- pipecrew:slugs -->` markers, and never touches a hand-authored file's content.
-  On exit 1 (malformed markers), surface the error — don't hand-edit the user's file.
+- `sync-root-claude` places (or updates) the PipeCrew routing CLAUDE.md at the parent
+  directory(ies) of the repos just wired up (for clone mode that's `{clone_root}`; for
+  local mode the teammate's own repos root) — the guide that tells any Claude Code
+  session launched in or below those repos that the PipeCrew skills/agents exist and
+  when to use them, with this workspace's context paths and agent names. It ships with
+  the teammate's own plugin (so it always matches their version), only ever rewrites
+  this workspace's block between the `<!-- pipecrew:workspaces -->` markers, and never
+  touches a hand-authored file's content. On exit 1 (malformed markers), surface the
+  error — don't hand-edit the user's file.
 
 Report one concise summary: workspace joined, N repos wired (cloned / local / skipped),
 memory sync mode, and the next step — e.g. `Run /deliver --workspace={slug}`. Note that

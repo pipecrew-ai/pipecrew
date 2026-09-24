@@ -707,19 +707,19 @@ If zero findings were reported across the whole phase, write no file and add no 
 
 ---
 
-### Step 5: Root dispatcher CLAUDE.md
+### Step 5: Routing CLAUDE.md at the repos' parent
 
-Ensure the workspace ROOT (the parent directory hosting `{slug}/` — where users launch `claude` from) has the routing CLAUDE.md that tells plain sessions the PipeCrew toolbox exists and how to route user asks to skills/agents:
+Ensure the parent directory(ies) of this workspace's repos carry the routing CLAUDE.md that tells plain sessions the PipeCrew toolbox exists and how to route user asks to skills/agents. Claude Code loads CLAUDE.md by walking UP from the session's launch directory — sessions run inside repos, so the repos' parent (not the workspace dir) is the placement that actually loads. Same anchor rule as Step 3.5 Part B's settings files.
 
 ```bash
-node {plugin_dir}/scripts/sync-root-claude.js --root={workspace_root} --slug={slug}
+node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/config.json
 ```
 
-The script is deterministic and idempotent (safe in incremental mode and on `--resume`): it copies `templates/root-CLAUDE.md.template` if `{workspace_root}/CLAUDE.md` is absent, otherwise regenerates ONLY the slug index between the `<!-- pipecrew:slugs -->` markers — everything outside the markers is user-owned and never touched. If the user already had their own root CLAUDE.md (no markers), the script appends just the small managed section. A multi-slug root lists every workspace; removed workspace dirs self-prune on the next run.
+The script is deterministic and idempotent (safe in incremental mode and on `--resume`): it reads `config.repos`, computes each distinct repo parent (usually one), and per parent: copies `templates/root-CLAUDE.md.template` if no CLAUDE.md exists, otherwise regenerates ONLY this workspace's block between the `<!-- pipecrew:workspaces -->` markers — the static routing body and everything user-written is never touched. If the user already had their own CLAUDE.md there (no markers), the script appends just the small managed section. Two workspaces sharing a repo parent each own their own block; a workspace whose dir disappears self-prunes on the next run. Parents that are a filesystem root, the home dir, or inside `~/.claude` are skipped with a warning.
 
-- Exit 0/2 → continue (2 = size warning; surface it to the user).
-- Exit 1 (malformed markers) → surface the error and ask the user to fix the markers by hand; do NOT edit `{workspace_root}/CLAUDE.md` yourself — it may contain the user's own content.
+- Exit 0/2 → continue (2 = warnings, e.g. skipped parents or size; surface them to the user).
+- Exit 1 (malformed markers) → surface the error and ask the user to fix the markers by hand; do NOT edit that CLAUDE.md yourself — it may contain the user's own content.
 
-**Update scratchpad**: add a `Root CLAUDE.md` row to `## Generation Status` (`created` / `updated` / `appended` / `unchanged`, from the script's output). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
+**Update scratchpad**: add a `Routing CLAUDE.md` row to `## Generation Status` (per parent: `created` / `updated` / `appended` / `unchanged`, from the script's output). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
 
 ---

@@ -19,21 +19,30 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 ## [Unreleased]
 
 ### Added
-- **Root dispatcher CLAUDE.md** (`templates/root-CLAUDE.md.template` +
-  `scripts/sync-root-claude.js`). The workspace ROOT — the parent directory users
-  launch `claude` from — now gets a CLAUDE.md that routes user asks to PipeCrew
-  skills (`/deliver`, `/patch`, `/troubleshoot`, `/review`, `/learn`, …) AND maps
-  needs to directly-dispatchable agents (`pipecrew:solution-architect`,
-  `<slug>-troubleshooter`, `pipecrew:security-consultant`, …) so a plain session
-  can consult a single agent without a full pipeline. The body is a static
-  template shipped with the plugin (always version-matched to the running
-  plugin); the only dynamic content is the slug index between
-  `<!-- pipecrew:slugs -->` markers, rebuilt from the filesystem on every run —
-  multi-slug roots list every workspace, removed workspaces self-prune, and a
-  hand-authored root CLAUDE.md is preserved verbatim (only the small managed
-  section is appended). Wired into `/discover` Phase C (new Step 5) and `/join`
-  Step 6, so both the workspace owner and every joined teammate get the routing
-  guide automatically. 12 unit tests (`scripts/sync-root-claude.test.js`).
+- **Routing CLAUDE.md at the repos' parent** (`templates/root-CLAUDE.md.template`
+  + `scripts/sync-root-claude.js`). Each workspace now places a CLAUDE.md at the
+  parent directory(ies) of its repos — the placement that actually loads, since
+  Claude Code walks UP from the session's launch dir and sessions run inside
+  repos (same anchor rule as `setup-workspace-permissions.js`). The file routes
+  user asks to PipeCrew skills (`/deliver`, `/patch`, `/troubleshoot`,
+  `/review`, `/learn`, …) AND maps needs to directly-dispatchable agents
+  (`pipecrew:solution-architect`, `<slug>-troubleshooter`,
+  `pipecrew:security-consultant`, …) so a plain session can consult a single
+  agent without a full pipeline. The body is a static template shipped with the
+  plugin (always version-matched to the running plugin); the only dynamic
+  content is the per-workspace block between `<!-- pipecrew:workspaces -->`
+  markers — absolute pointers to that workspace's `context/platform.md` +
+  `config.json` and its concrete agent names. Workspaces don't know about each
+  other: a normal (disjoint-parent) layout gets a clean single-workspace file;
+  only when two workspaces share a repo parent does the file carry one block
+  per workspace, each owning its own. Removed workspaces self-prune; a
+  hand-authored CLAUDE.md is preserved verbatim (only the small managed section
+  is appended); a monorepo parent that sits inside a git repo is hoisted to
+  just above the repo top (the routing file must never land in a committed
+  repo CLAUDE.md); parents at a filesystem root, the home dir, or inside
+  `~/.claude` are skipped. Wired into `/discover` Phase C (new Step 5) and
+  `/join` Step 6, so both the workspace owner and every joined teammate get the
+  routing guide automatically. 12 unit tests (`scripts/sync-root-claude.test.js`).
 
 ## [1.12.0] - 2026-09-20
 

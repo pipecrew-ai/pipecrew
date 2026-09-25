@@ -49,14 +49,34 @@ const os = require('os');
 const path = require('path');
 
 const HOME = os.homedir();
-const PLUGIN_DIR = path.join(HOME, '.claude', 'pipecrew');
+
+// Which harness are we running under? PipeCrew is dual-target (Claude Code +
+// Cursor); runtime state must land in the host harness's home dir, not a
+// hardcoded ~/.claude. The plugin's install path is the signal — a Cursor plugin
+// lives under `.cursor/`, a Claude Code plugin under `.claude/`. `PIPECREW_HARNESS`
+// overrides (tests / edge cases). Unknown → `claude` (preserves legacy behavior
+// byte-for-byte for existing Claude Code users).
+function detectHarness() {
+  const override = (process.env.PIPECREW_HARNESS || '').trim().toLowerCase();
+  if (override === 'cursor' || override === 'claude') return override;
+  const here = __dirname.replace(/\\/g, '/');
+  if (/(^|\/)\.cursor(\/|$)/.test(here)) return 'cursor';
+  if (/(^|\/)\.claude(\/|$)/.test(here)) return 'claude';
+  if (process.env.CURSOR_PROJECT_DIR || process.env.CURSOR_VERSION) return 'cursor';
+  return 'claude';
+}
+
+const HARNESS = detectHarness();
+const HARNESS_HOME = path.join(HOME, HARNESS === 'cursor' ? '.cursor' : '.claude');
+const PLUGIN_DIR = path.join(HARNESS_HOME, 'pipecrew');
 // The plugin config path is overridable via $PIPECREW_CONFIG_FILE (used by tests
-// so they never touch the user's real ~/.claude/pipecrew/config.json).
+// so they never touch the user's real <harness_home>/pipecrew/config.json).
 const CONFIG_FILE = process.env.PIPECREW_CONFIG_FILE
   ? path.resolve(process.env.PIPECREW_CONFIG_FILE)
   : path.join(PLUGIN_DIR, 'config.json');
 const CONFIG_DIR = path.dirname(CONFIG_FILE);
 const DEFAULT_ROOT = path.join(PLUGIN_DIR, 'workspaces');
+const USER_AGENTS_DIR = path.join(HARNESS_HOME, 'agents');
 const ENV_VAR = 'PIPECREW_WORKSPACE_ROOT';
 
 function norm(p) {
@@ -264,6 +284,7 @@ if (require.main === module) {
 
 module.exports = {
   CONFIG_FILE, DEFAULT_ROOT, ENV_VAR,
+  HARNESS, HARNESS_HOME, USER_AGENTS_DIR, detectHarness,
   readConfig, writeConfig, load, loadPersisted, resolve, scanRoot,
   slugForDir, isWorkspaceDir, upsert, norm,
 };

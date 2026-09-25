@@ -1,8 +1,8 @@
 ## Phase C: Generation
 
-Generate all workspace-layer files. This phase creates the config, CLAUDE.md files, domain agents, and optional agent-context docs.
+Generate all workspace-layer files. This phase creates the config, AGENTS.md files, domain agents, and optional agent-context docs.
 
-**Incremental mode** (`discover_mode == incremental`): scope this phase to `new_repos`. Specifically: (1) config.json was already MERGED in B2 — Step 1 just re-validates; (2) Step 2 generates CLAUDE.md + agent-context for the new repos only — existing repos' docs are never touched; (3) **skip domain-agent generation** (Step 3 and the implementer-agent publish) — the workspace `agents/` and published `~/.claude/agents/{slug}-*` already exist and don't change when repos are added; if a new repo's stack has no matching plugin implementer/reviewer, note it for the user instead of generating one; (4) Step 4 appends the new repos' audit findings to the existing `context/audit-findings.md`. Full spec: `{plugin_dir}/rules/incremental-discovery.md` § "Phase C". The steps below otherwise run as written, looping over the new repos.
+**Incremental mode** (`discover_mode == incremental`): scope this phase to `new_repos`. Specifically: (1) config.json was already MERGED in B2 — Step 1 just re-validates; (2) Step 2 generates AGENTS.md + agent-context for the new repos only — existing repos' docs are never touched; (3) **skip domain-agent generation** (Step 3 and the implementer-agent publish) — the workspace `agents/` and published `~/.claude/agents/{slug}-*` already exist and don't change when repos are added; if a new repo's stack has no matching plugin implementer/reviewer, note it for the user instead of generating one; (4) Step 4 appends the new repos' audit findings to the existing `context/audit-findings.md`. Full spec: `{plugin_dir}/rules/incremental-discovery.md` § "Phase C". The steps below otherwise run as written, looping over the new repos.
 
 ---
 
@@ -25,7 +25,7 @@ Every Agent prompt in Steps 2 and 4 MUST include the following trailing instruct
 > 2. **Endpoint / handler that returns a non-success status unconditionally** (e.g., `return 501`, `throw new NotImplementedException()` in the happy path).
 > 3. **Filter / interceptor / listener / bean declared but not registered** (class exists, `@Bean` or `addFilterBefore` missing).
 > 4. **Bean instantiated with `new` bypassing DI** when an injectable exists (e.g., `new ObjectMapper()` instead of the configured bean).
-> 5. **Documented value that contradicts code** (CLAUDE.md / README says X, code shows Y).
+> 5. **Documented value that contradicts code** (AGENTS.md / README says X, code shows Y).
 > 6. **Duplicate side effects** — same persistence/event emitted by two independent code paths (e.g., `@DomainEvents` + explicit service call both inserting into the same audit table).
 > 7. **Exception type that maps to a surprising HTTP status** (e.g., `FooNotFoundException extends IllegalArgumentException` → 400, not 404).
 > 8. **TODO / FIXME / `@deprecated` with a severity word** (`urgent`, `broken`, `do not use`, `replace before`).
@@ -52,36 +52,36 @@ node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 
 ---
 
-### Step 2: Generate CLAUDE.md + agent-context per repo (merged flow)
+### Step 2: Generate AGENTS.md + agent-context per repo (merged flow)
 
-**Replaces the former Step 2 (CLAUDE.md generator) + Step 4 (agent-context generator).** Both artifacts are now produced by a single `context-manager` dispatch per repo — the deep read happens once, agent-context is written first, CLAUDE.md is written as a thin index that references agent-context. See `GENERALIZE-PLAN.md` Section 13 for the full rationale.
+**Replaces the former Step 2 (AGENTS.md generator) + Step 4 (agent-context generator).** Both artifacts are now produced by a single `context-manager` dispatch per repo — the deep read happens once, agent-context is written first, AGENTS.md is written as a thin index that references agent-context. See `GENERALIZE-PLAN.md` Section 13 for the full rationale.
 
-**Resume-safe**: for each repo, check the scratchpad's Generation Status. If a repo's CLAUDE.md row is already COMPLETED, skip it.
+**Resume-safe**: for each repo, check the scratchpad's Generation Status. If a repo's AGENTS.md row is already COMPLETED, skip it.
 
 #### Per-repo gate — ask the user which generation mode to use
 
-For each repo whose CLAUDE.md is missing (or where the user opts to regenerate), present:
+For each repo whose AGENTS.md is missing (or where the user opts to regenerate), present:
 
 ```
 Repo "{repo-name}" ({type}, {role}) — how should agent docs be structured?
 
-  (a) Full — agent-context/ + CLAUDE.md index (recommended)
-      ℹ️ Multi-file deep dive under agent-context/; CLAUDE.md becomes a
+  (a) Full — agent-context/ + AGENTS.md index (recommended)
+      ℹ️ Multi-file deep dive under agent-context/; AGENTS.md becomes a
       thin index. Best for non-trivial repos — one Read gets you the map,
       deeper Reads only when you need the detail.
 
-  (b) CLAUDE.md only — self-contained, no subdirectory
+  (b) AGENTS.md only — self-contained, no subdirectory
       ℹ️ Lighter. Right for small/simple repos that don't warrant
       multiple context files. Can be upgraded to (a) later.
 
   (c) Manual — you run Claude Code's /init yourself
       ℹ️ cd {path} && claude /init in a separate terminal.
-      Type "done" here when finished. CLAUDE.md only — no agent-context.
+      Type "done" here when finished. AGENTS.md only — no agent-context.
 ```
 
 **Default**: (a) Full. Complexity signals (>200 source files, >8 endpoints, component library detected, multiple modules) raise the recommendation but don't skip the prompt. If an existing non-empty `agent-context/` is present, the default stays (a) but context-manager will use refresh semantics to merge rather than overwrite.
 
-**If CLAUDE.md already exists** (but user chose to regenerate): show a diff after generation and confirm before overwriting. Never silently overwrite a hand-curated CLAUDE.md.
+**If AGENTS.md already exists** (but user chose to regenerate): show a diff after generation and confirm before overwriting. Never silently overwrite a hand-curated AGENTS.md.
 
 #### Dispatch — option (a) or (b)
 
@@ -98,21 +98,22 @@ Repo: {repo_path}
 Repo type: {type}
 Repo role: {role}
 
-Read {repo_path}/CLAUDE.md if it exists, and any existing agent-context/ directory (non-empty → use refresh semantics for that directory; do not destroy-and-rewrite). Then follow the `full` mode instructions in your system prompt.
+Read the existing context file if present — prefer {repo_path}/AGENTS.md, else {repo_path}/CLAUDE.md (a legacy workspace) — and any existing agent-context/ directory (non-empty → use refresh semantics for that directory; do not destroy-and-rewrite). If only a legacy CLAUDE.md exists, migrate: write its content to AGENTS.md and (under Claude Code) replace CLAUDE.md with a one-line `@AGENTS.md` shim — show a diff, never silently clobber hand edits. Then follow the `full` mode instructions in your system prompt.
 
 Template dispatch (per your system prompt):
-- role = api-service OR worker → use templates/agent-context-backend/ + templates/repo-CLAUDE-backend.md.template
-- role = frontend             → use templates/agent-context-frontend/ + templates/repo-CLAUDE-frontend.md.template
-- role = infrastructure       → use templates/agent-context-infra/ + templates/repo-CLAUDE-infra.md.template (top-level files only — no domains/ or integrations/ subfolders)
-- role = mock-server / contract / other → downgrade to claude-only mode (use templates/repo-CLAUDE.md.template)
+- role = api-service OR worker → use templates/agent-context-backend/ + templates/repo-AGENTS-backend.md.template
+- role = frontend             → use templates/agent-context-frontend/ + templates/repo-AGENTS-frontend.md.template
+- role = infrastructure       → use templates/agent-context-infra/ + templates/repo-AGENTS-infra.md.template (top-level files only — no domains/ or integrations/ subfolders)
+- role = mock-server / contract / other → downgrade to claude-only mode (use templates/repo-AGENTS.md.template)
 
 Output order:
 1. agent-context/ first — fill every *.md.template in the chosen bundle (AGENT_INDEX, business-context, architecture, conventions, plus role-specific singletons). Strip the <!-- AGENT INSTRUCTIONS --> blocks. Preserve <!-- agent-updatable --> / <!-- human-owned --> markers verbatim.
 2. For each bounded context (backend) or feature module (frontend) that warrants its own file (see triggers in the bundle's domains/_template.md or features/_template.md), copy the template, rename, and fill.
 3. For each external system the repo integrates with (backend) or backend service the repo consumes (frontend), copy the matching _template.md and fill.
-4. CLAUDE.md second, using the role-specific template, referencing agent-context.
+4. AGENTS.md second, using the role-specific template, referencing agent-context.
+5. Context shim: run `node {plugin_dir}/scripts/workspace-root.js --context-shim` — if it prints a filename (`CLAUDE.md` under Claude Code; nothing under Cursor/others), write that file containing exactly one line: `@AGENTS.md`. This keeps Claude Code's native loading pointed at the one canonical AGENTS.md. Never duplicate content into the shim.
 
-Validate CLAUDE.md with: node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/CLAUDE.md
+Validate AGENTS.md with: node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/AGENTS.md
 On exit 1, fix the flagged issues and re-validate. On exit 2, record warnings but continue.
 
 Audit Findings: apply the contract from the top of Phase C. End your response with a `## Audit Findings` section if you observed qualifying issues. Put findings in your REPLY, never in the generated files.
@@ -125,15 +126,15 @@ Repo: {repo_path}
 Repo type: {type}
 Repo role: {role}
 
-Read {repo_path}/CLAUDE.md if it exists. Then follow the `claude-only` mode instructions in your system prompt to produce a self-contained CLAUDE.md at {repo_path}/CLAUDE.md, using the template at {plugin_dir}/templates/repo-CLAUDE.md.template. Include the `<!-- claude-only-mode -->` sentinel at the top so the validator skips the mandatory-bullet check.
+Read the existing context file if present — prefer {repo_path}/AGENTS.md, else {repo_path}/CLAUDE.md (legacy). Then follow the `claude-only` mode instructions in your system prompt to produce a self-contained AGENTS.md at {repo_path}/AGENTS.md, using the template at {plugin_dir}/templates/repo-AGENTS.md.template. Include the `<!-- claude-only-mode -->` sentinel at the top so the validator skips the mandatory-bullet check. Then write the context shim if `node {plugin_dir}/scripts/workspace-root.js --context-shim` prints one (`CLAUDE.md` = one line `@AGENTS.md`, under Claude Code only).
 
-Validate with: node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/CLAUDE.md
+Validate with: node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/AGENTS.md
 On exit 1, fix the flagged issues and re-validate. On exit 2, record warnings but continue.
 
 Audit Findings: apply the contract from the top of Phase C. End your response with a `## Audit Findings` section if you observed qualifying issues. Put findings in your REPLY, never in the generated files.
 ```
 
-After the agent returns: extract any `## Audit Findings` section from its response, keyed by repo name, for later collation in Step 4. Do NOT write findings into CLAUDE.md or agent-context — they belong in the workspace-level audit doc.
+After the agent returns: extract any `## Audit Findings` section from its response, keyed by repo name, for later collation in Step 4. Do NOT write findings into AGENTS.md or agent-context — they belong in the workspace-level audit doc.
 
 **Validator is mandatory**: if the agent did not run the validator, run it from the orchestrator now. If exit code is 1, dispatch a fix-round to the same context-manager with the validator output as `fix_list` and re-validate. Only mark the repo COMPLETED when the validator exits 0 or 2.
 
@@ -148,7 +149,7 @@ Run this in a separate terminal:
 Type "done" here when you've finished.
 ```
 
-Wait for "done". Then verify `{repo_path}/CLAUDE.md` exists and run the validator against it. If the validator fails, surface the errors and ask the user to fix them before continuing — do not auto-fix a human-written CLAUDE.md.
+Wait for "done". Then verify `{repo_path}/AGENTS.md` exists and run the validator against it. If the validator fails, surface the errors and ask the user to fix them before continuing — do not auto-fix a human-written AGENTS.md.
 
 #### Batch behavior (default: all-auto-parallel when ≥2 repos need docs)
 
@@ -157,7 +158,7 @@ If 2+ repos need generation, default to parallel dispatch of (a) for every repo 
 ```
 {N} repos need docs. Dispatching all in (a) Full mode in parallel (default for batches ≥2).
 Reply with `one-by-one` to switch to interactive per-repo gate,
-or `all-b` to use (b) CLAUDE.md-only for all of them.
+or `all-b` to use (b) AGENTS.md-only for all of them.
 Otherwise I'll proceed with the default on the next turn.
 ```
 
@@ -167,7 +168,7 @@ Parallel dispatch: send ALL Agent tool calls in a single orchestrator message (o
 
 **On transient failure** (529/503/429/network timeout): apply the rules at the top of this phase. If the retry also fails, record the repo under "deferred" in the scratchpad and continue — the user can re-run `/discover --resume` later.
 
-**Update scratchpad**: after each repo finishes, set its CLAUDE.md row in `## Generation Status` to COMPLETED (and its agent-context row if mode was (a)).
+**Update scratchpad**: after each repo finishes, set its AGENTS.md row in `## Generation Status` to COMPLETED (and its agent-context row if mode was (a)).
 
 **Seed the context-refresh baseline** (mode (a) Full repos only — those that got an `agent-context/`). The docs were just generated *from* the current code, so they are correct as of the repo's current `HEAD`. Stamp that so the FIRST `/context-refresh` on this workspace is incremental instead of a full re-read (and so the baseline ships to the whole team when the docs are committed):
 
@@ -214,32 +215,33 @@ Write:
 
 #### Publish to user-level agents directory (B1)
 
-The workspace-local agent files above are the canonical copies — they're version-controlled alongside workspace config and can be hand-edited. But Claude Code's `Agent` tool only resolves `subagent_type` against `~/.claude/agents/` (user-level) and `.claude/agents/` (project-level). So `dal-assessor` (referenced by `phase-6-assess.md`) will not resolve unless we also publish a copy there.
-
-After writing the three workspace-local files, also publish them to `~/.claude/agents/` with the slug-prefixed names that downstream phase files already use:
+The workspace-local agent files above are the canonical copies — they're version-controlled alongside workspace config and can be hand-edited. But the `Agent` tool only resolves `subagent_type` against the **user-level agents directory** (and the project-level `.claude/agents/` / `.cursor/agents/`). That user-level directory is harness-specific — `~/.claude/agents/` under Claude Code, `~/.cursor/agents/` under Cursor — so resolve it once instead of hardcoding, or `dal-assessor` (referenced by `phase-6-assess.md`) won't resolve:
 
 ```bash
-mkdir -p ~/.claude/agents
+AGENTS_DIR=$(node {plugin_dir}/scripts/workspace-root.js --agents-dir)
+mkdir -p "$AGENTS_DIR"
 ```
+
+After writing the three workspace-local files, also publish them to `$AGENTS_DIR` with the slug-prefixed names that downstream phase files already use.
 
 For each of (`product-owner`, `assessor`, `troubleshooter`):
 
-1. **Conflict check (B2)**: before copying, check whether `~/.claude/agents/{slug}-{role}.md` already exists.
+1. **Conflict check (B2)**: before copying, check whether `$AGENTS_DIR/{slug}-{role}.md` already exists.
    - If it does **and** the `name:` frontmatter value already matches `{slug}-{role}`, it's our own file from a prior onboarding — overwrite silently.
    - If it exists with a **different** `name:` value, stop and ask the user:
      ```
-     ~/.claude/agents/{slug}-{role}.md already exists with name: '{other-name}'.
+     $AGENTS_DIR/{slug}-{role}.md already exists with name: '{other-name}'.
      Overwrite? (yes / no / rename-existing-to-{slug}-{role}-backup.md)
      ```
      Act on the user's answer. Do NOT silently clobber.
 2. Copy the workspace-local file to the user-level path:
    ```bash
-   cp {workspace_root}/{slug}/agents/{role}.md ~/.claude/agents/{slug}-{role}.md
+   cp {workspace_root}/{slug}/agents/{role}.md "$AGENTS_DIR/{slug}-{role}.md"
    ```
 
-After all three publish, verify Claude Code can see them:
+After all three publish, verify the harness can see them:
 ```bash
-ls ~/.claude/agents/{slug}-{product-owner,assessor,troubleshooter}.md
+ls "$AGENTS_DIR"/{slug}-{product-owner,assessor,troubleshooter}.md
 ```
 
 Print a one-liner to the user: `Workspace agents published: {slug}-product-owner, {slug}-assessor, {slug}-troubleshooter — downstream pipeline phases will dispatch them by name. (UX consultant uses the base pipecrew:ux-consultant.)`
@@ -386,13 +388,13 @@ the {workspace_name} workspace. A workspace repo using this stack exists at:
 (Pick any repo of this type if multiple exist — their conventions should match.)
 
 Read these files to understand the house style — treat them as authoritative:
-1. {example_repo_path}/CLAUDE.md (if it exists) — this is the PRIMARY source for
-   ORIENT / IMPLEMENT / TEST guidance and anti-patterns. If CLAUDE.md exists, derive
-   the placeholders from it first; supplement with observations from the code only
-   where CLAUDE.md is silent. If CLAUDE.md does NOT exist, note this and rely solely
+1. {example_repo_path}/AGENTS.md (or legacy CLAUDE.md if that's all the repo has yet) —
+   this is the PRIMARY source for ORIENT / IMPLEMENT / TEST guidance and anti-patterns.
+   If it exists, derive the placeholders from it first; supplement with observations
+   from the code only where it is silent. If neither exists, note this and rely solely
    on code observations (warn that quality may be lower; recommend the user run
-   /context-refresh after hand-writing a CLAUDE.md).
-2. Files CLAUDE.md points to (e.g., agent-context/*.md, docs/conventions.md, CONTRIBUTING.md)
+   /context-refresh after hand-writing an AGENTS.md).
+2. Files AGENTS.md points to (e.g., agent-context/*.md, docs/conventions.md, CONTRIBUTING.md)
 3. Build config — pyproject.toml / Gemfile / Cargo.toml / go.mod / pom.xml / build.sbt
    / composer.json / package.json / etc. (whichever exists) — to confirm real build
    commands
@@ -407,7 +409,7 @@ Read these files to understand the house style — treat them as authoritative:
 IMPORTANT for non-code repos (role: other, role: contract, markdown-based plugins,
 schema repos, Claude Code plugin repos): do NOT assume a buildable stack. There may
 be no migrations, no ORM, no controllers. Adapt the guidance to what this repo
-actually is — e.g., for a markdown plugin repo: orient = read CLAUDE.md + skills/ +
+actually is — e.g., for a markdown plugin repo: orient = read AGENTS.md + skills/ +
 eval/; implement = edit markdown + scripts; test = node eval/run.js. Never invent
 a language or framework that isn't present.
 
@@ -425,18 +427,18 @@ Fill every placeholder in the template:
   "Laravel/PHP", "Go/Gin", "Claude Code Plugin", "JSON Schema repo") — pick based
   on what you saw in the repo
 - `{{ORIENT_GUIDANCE}}` = a 3-5 bullet list describing what files the implementer
-  should read to orient itself in this specific stack. If CLAUDE.md exists, derive
+  should read to orient itself in this specific stack. If AGENTS.md exists, derive
   these from its ORIENT/context section. Reference REAL file paths observed in this
   repo — not generic placeholders.
 - `{{IMPLEMENT_GUIDANCE}}` = numbered sub-steps describing the implementation order
-  specific to this stack. Name REAL commands and file locations. If CLAUDE.md has
+  specific to this stack. Name REAL commands and file locations. If AGENTS.md has
   an implementation guide, adapt it. For non-buildable repos (plugin, schema),
   describe the edit-validate-test loop specific to this repo.
 - `{{TEST_GUIDANCE}}` = the actual test framework + runner this repo uses. Name the
   real commands. For repos with no test runner, describe the manual validation steps
   (e.g., "run node eval/run.js and confirm exit 0").
 - `{{KNOWN_ANTI_PATTERNS}}` = 4-8 bullets of real anti-patterns. Draw from:
-  (a) anti-patterns listed in CLAUDE.md or repo conventions docs (highest priority),
+  (a) anti-patterns listed in AGENTS.md or repo conventions docs (highest priority),
   (b) patterns you saw consistently in the code (implying the wrong way is an error),
   (c) audit-findings.md entries for this repo,
   (d) common stack-specific traps from training — only for stacks where you have high
@@ -462,7 +464,7 @@ Self-check before returning:
 **On agent return**:
 1. Write the returned content to `{workspace_root}/{slug}/agents/{type}-implementer.md`
 2. Verify zero `{{` remain: `grep -c '{{' {workspace_root}/{slug}/agents/{type}-implementer.md` must print `0`. If not, surface the offending lines and re-dispatch.
-3. Publish to `~/.claude/agents/{workspace_slug}-{type}-implementer.md` (same conflict-check pattern as the workspace product-owner/assessor/troubleshooter publish in Step 3 above — if a file with that name already exists under a different `name:` frontmatter value, stop and ask the user before overwriting).
+3. Publish to the harness user-level agents dir as `{workspace_slug}-{type}-implementer.md` — use `$AGENTS_DIR` from Step 3, or re-resolve it with `node {plugin_dir}/scripts/workspace-root.js --agents-dir` (`~/.claude/agents/` under Claude Code, `~/.cursor/agents/` under Cursor). Same conflict-check pattern as the workspace product-owner/assessor/troubleshooter publish in Step 3 above — if a file with that name already exists under a different `name:` frontmatter value, stop and ask the user before overwriting.
 4. Log one line: `Generated workspace implementer: {workspace_slug}-{type}-implementer (for {repo_list})`.
 
 **EC-4 — no CLAUDE.md warning**: if the example repo has no `CLAUDE.md`, include a warning in the log and in the Phase D summary:

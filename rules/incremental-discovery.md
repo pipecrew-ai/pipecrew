@@ -130,7 +130,7 @@ Phase B2 merge); `yes` proceeds. Do not re-ask from scratch.
 ### Phase B2.0 — per-repo discovery
 Dispatch `repo-discoverer` for **`new_repos` only**. Existing repos are NOT
 re-profiled — their facts already live in `platform.md` and their own
-`CLAUDE.md`. Write the new profiles to `{run_dir}/outputs/repo-profiles/` as
+`AGENTS.md`. Write the new profiles to `{run_dir}/outputs/repo-profiles/` as
 usual.
 
 ### Phase B2 — architect synthesis (incremental sub-mode)
@@ -188,7 +188,7 @@ apply the existing diff/keep gate. If there is no new frontend, skip B3 entirely
 
 ### Phase C — generation
 - `config.json` was merged in B2 — just re-validate (Step 1).
-- Generate CLAUDE.md + agent-context for **`new_repos` only** (the per-repo gate
+- Generate AGENTS.md + agent-context for **`new_repos` only** (the per-repo gate
   and dispatch run exactly as in full mode, but the loop is over the new repos).
   Existing repos' docs are never touched.
 - **Domain agents** (product-owner / assessor / troubleshooter) already exist —
@@ -210,7 +210,7 @@ apply the existing diff/keep gate. If there is no new frontend, skip B3 entirely
   sections.
 
 ### Phase D — verification + memory
-Verify the **new** repos' paths and CLAUDE.md presence; spot-check that the
+Verify the **new** repos' paths and AGENTS.md presence; spot-check that the
 merged `config.json` validates and that platform.md now references the new repos.
 The Phase D summary states the mode and lists what was added
 (`Incremental: +{N} repos onboarded, merged into config.json + platform.md`).

@@ -13,25 +13,64 @@
  * `workspace-registry.js --resolve` (path of the chosen workspace directly) or
  * `--root-for=<slug>` instead.
  *
- * Commands (unchanged surface, plus one optional flag):
+ * Dual-target: PipeCrew installs in both Claude Code and Cursor, so runtime state
+ * (config, workspaces, published agents) lands in the host harness's home dir
+ * (~/.claude or ~/.cursor). Harness detection is shared with the registry; this
+ * shim re-exposes the harness-specific paths (--agents-dir / --harness) so callers
+ * have a single resolver. `PIPECREW_HARNESS=cursor|claude` overrides detection;
+ * an unknown install location falls back to `claude` (legacy behavior preserved
+ * byte-for-byte for existing Claude Code users).
+ *
+ * Commands (unchanged surface, plus harness flags):
  *   --get [--workspace=<slug>]
  *                 parent dir of the given workspace (or the current one). Because
  *                 a workspace lives at <parent>/<slug>, `{that}/{slug}` resolves
  *                 to the workspace regardless of where it sits on disk.
- *   --default     the hardcoded default creation dir
+ *   --default     the default creation dir (<harness_home>/pipecrew/workspaces)
  *   --check       exit 0 if any workspace is registered / a root is set, else 2
  *   --set=<path>  set the default creation dir AND adopt workspaces already under it
- *   --config-path print ~/.claude/pipecrew/config.json
+ *   --config-path print <harness_home>/pipecrew/config.json
+ *   --agents-dir  print the harness user-level agents dir (~/.claude/agents or
+ *                 ~/.cursor/agents) the Agent tool resolves subagent_type against
+ *   --harness     print the detected harness (claude | cursor)
+ *   --context-filename
+ *                 print the canonical per-repo context filename (AGENTS.md — same
+ *                 on every harness)
+ *   --context-shim
+ *                 print the extra shim file to also write (CLAUDE.md under Claude
+ *                 Code, nothing otherwise)
  *
  * Zero dependencies — pure Node stdlib.
  */
 
 const path = require('path');
+const os = require('os');
 const reg = require('./workspace-registry');
+
+const HOME = os.homedir();
+
+// Harness detection is owned by the registry (single source of truth); the
+// harness-home-based paths below are re-derived here so the CLI output for
+// --default / --config-path / --agents-dir / --harness is independent of the
+// $PIPECREW_CONFIG_FILE test override (which only redirects the registry's
+// config file, not the harness home).
+const HARNESS = reg.HARNESS;
+const HARNESS_HOME = path.join(HOME, HARNESS === 'cursor' ? '.cursor' : '.claude');
+const PLUGIN_CONFIG_FILE = path.join(HARNESS_HOME, 'pipecrew', 'config.json');
+const DEFAULT_WORKSPACE_ROOT = path.join(HARNESS_HOME, 'pipecrew', 'workspaces');
+const USER_AGENTS_DIR = path.join(HARNESS_HOME, 'agents');
+
+// The per-repo agent-context file. `AGENTS.md` is the canonical, tool-agnostic
+// standard (read natively by Codex, Cursor, and 30+ agents; Claude Code reads it
+// via import). It is the same on every harness. Under Claude Code we ALSO write a
+// thin `CLAUDE.md` shim (`@AGENTS.md`) to keep Claude's richer native loading with
+// one source of content; other harnesses need no shim. CONTEXT_SHIM is the shim
+// filename to also write, or '' when none is needed for this harness.
+const CONTEXT_FILENAME = 'AGENTS.md';
+const CONTEXT_SHIM = HARNESS === 'claude' ? 'CLAUDE.md' : '';
 
 function expandTilde(p) {
   if (!p) return p;
-  const HOME = require('os').homedir();
   if (p === '~') return HOME;
   if (p.startsWith('~/') || p.startsWith('~\\')) return path.join(HOME, p.slice(2));
   return p;
@@ -68,9 +107,18 @@ if (require.main === module) {
     return eq ? eq.slice('--workspace='.length) : null;
   })();
   if (!arg || arg === '--get') { process.stdout.write(resolveRoot(wsFlag) + '\n'); process.exit(0); }
-  if (arg === '--default')     { process.stdout.write(reg.DEFAULT_ROOT + '\n'); process.exit(0); }
+  if (arg === '--default')     { process.stdout.write(DEFAULT_WORKSPACE_ROOT + '\n'); process.exit(0); }
   if (arg === '--check')       { process.exit(isConfigured() ? 0 : 2); }
-  if (arg === '--config-path') { process.stdout.write(reg.CONFIG_FILE + '\n'); process.exit(0); }
+  if (arg === '--config-path') { process.stdout.write(PLUGIN_CONFIG_FILE + '\n'); process.exit(0); }
+  if (arg === '--agents-dir')  { process.stdout.write(USER_AGENTS_DIR + '\n'); process.exit(0); }
+  if (arg === '--harness')     { process.stdout.write(HARNESS + '\n'); process.exit(0); }
+  if (arg === '--context-filename') { process.stdout.write(CONTEXT_FILENAME + '\n'); process.exit(0); }
+  if (arg === '--context-shim') {
+    // Prints the shim filename to also write (CLAUDE.md under Claude Code),
+    // or nothing when this harness needs no shim.
+    if (CONTEXT_SHIM) process.stdout.write(CONTEXT_SHIM + '\n');
+    process.exit(0);
+  }
   if (arg.startsWith('--set=')) {
     const raw = arg.slice('--set='.length).trim();
     if (!raw) { process.stderr.write('[workspace-root] --set= requires a path\n'); process.exit(1); }
@@ -84,8 +132,18 @@ if (require.main === module) {
     process.exit(0);
   }
   process.stderr.write(`Unknown argument: ${arg}\n`);
-  process.stderr.write('Usage: workspace-root.js [--get|--default|--check|--config-path|--set=<path>]\n');
+  process.stderr.write('Usage: workspace-root.js [--get|--default|--check|--config-path|--agents-dir|--harness|--context-filename|--context-shim|--set=<path>]\n');
   process.exit(1);
 }
 
-module.exports = { resolveRoot, isConfigured, DEFAULT_WORKSPACE_ROOT: reg.DEFAULT_ROOT, PLUGIN_CONFIG_FILE: reg.CONFIG_FILE };
+module.exports = {
+  resolveRoot,
+  isConfigured,
+  detectHarness: reg.detectHarness,
+  HARNESS,
+  DEFAULT_WORKSPACE_ROOT,
+  PLUGIN_CONFIG_FILE,
+  USER_AGENTS_DIR,
+  CONTEXT_FILENAME,
+  CONTEXT_SHIM,
+};

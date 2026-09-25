@@ -115,7 +115,7 @@ Schema: `{plugin_dir}/templates/blocks/repo-profile.example.json` and `{plugin_d
 
 Each profile gives you, per repo: framework + version, entities, endpoints (or event handlers for workers), integrations (outbound + inbound HTTP / events / storage), auth pattern, persistence + migration tool, tests, key conventions, constraints observed, audit findings, frontend signals (frontend repos), infra signals (CDK / Terraform repos), and a free-form `notes_for_architect`.
 
-**Your job in B2 is synthesis, not first-time discovery.** Read every per-repo profile, then optionally cross-check against each repo's `CLAUDE.md` (when it exists). Reach for raw code only if a profile flagged ambiguity (`constraints_observed`, `notes_for_architect`) and you need to see one or two specific files to resolve it. **Do not** walk every repo's filesystem from scratch — the profiles are deliberately structured so you don't have to.
+**Your job in B2 is synthesis, not first-time discovery.** Read every per-repo profile, then optionally cross-check against each repo's `AGENTS.md` (when it exists). Reach for raw code only if a profile flagged ambiguity (`constraints_observed`, `notes_for_architect`) and you need to see one or two specific files to resolve it. **Do not** walk every repo's filesystem from scratch — the profiles are deliberately structured so you don't have to.
 
 ### How to consume the profiles
 
@@ -131,7 +131,7 @@ For each `outputs/repo-profiles/*.json`:
 | `persistence.migrations.tool` | platform.md § Established Patterns (if uniform) OR per-service note (if diverged) |
 | `frontend_signals.{i18n.languages, rtl}` | platform.md § Domain (lists workspace languages) |
 | `infra_signals.stacks` | platform.md § Infrastructure Topology |
-| `key_conventions[]` | Cross-tabulate across repos. Conventions that appear in ≥2 repos of the same stack go to platform.md § Established Patterns. Convention specific to one repo goes in that repo's CLAUDE.md (you don't write CLAUDE.md — Phase C does — but flag it under § Known Constraints if worth elevating later). |
+| `key_conventions[]` | Cross-tabulate across repos. Conventions that appear in ≥2 repos of the same stack go to platform.md § Established Patterns. Convention specific to one repo goes in that repo's AGENTS.md (you don't write AGENTS.md — Phase C does — but flag it under § Known Constraints if worth elevating later). |
 | `constraints_observed[]` | platform.md § Known Constraints |
 | `audit_findings[]` | Do NOT write a file — Phase C collates these into `context/audit-findings.md`. Elevate only CRITICAL items into platform.md § Known Constraints. |
 | `notes_for_architect` | platform.md § Open Questions / Evolving Decisions |
@@ -169,7 +169,7 @@ The phase prompt from `skills/discover/phases/phase-b2-architect-synthesis.md` (
 
 - Don't re-read filesystem trees that the discoverer already enumerated.
 - Don't second-guess the discoverer's classifications without cause — they read the actual code; you're synthesizing.
-- Don't split per-repo specifics across the prose. Per-repo conventions belong in the repo's CLAUDE.md (Phase C writes those, not you).
+- Don't split per-repo specifics across the prose. Per-repo conventions belong in the repo's AGENTS.md (Phase C writes those, not you).
 - Don't write an audit-findings.md file — Phase C owns the canonical audit doc (it merges your profiles' `audit_findings[]` with the context-manager's deeper reads, deduped). Your audit duty here is only to elevate CRITICAL profile findings into platform.md § Known Constraints.
 
 ---
@@ -550,7 +550,7 @@ Save as a private note (`agent-memory/solution-architect/`):
 
 Do NOT save:
 - Session-specific context
-- Anything already in CLAUDE.md
+- Anything already in AGENTS.md
 - Speculative conclusions from a single file
 - Universal lessons that generalize across all workspaces — those belong in `platform.md` § Established Patterns via `/learn`
 

@@ -15,7 +15,7 @@ You produce a diff summary per repo that a human reviews at the Phase 3 approval
 
 ## Common rules
 
-Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before starting. Cite by rule number when reporting. R0 (the architect's CONTRACT_DESIGN section in the dispatch is your source of truth — same role as a task file), R1 (read each contract repo's `CLAUDE.md` if present), R5 (documentation), R6 (scope), R7 (assumptions), R8 (worktree — you don't create worktrees, you edit in place where the orchestrator points you), and **R10 (inherit, don't invent — match the existing schema-file conventions of this contract repo before adding new shapes)** are load-bearing.
+Read and apply `{plugin_dir}/rules/implementer-common.md` (R1–R10) before starting. Cite by rule number when reporting. R0 (the architect's CONTRACT_DESIGN section in the dispatch is your source of truth — same role as a task file), R1 (read each contract repo's `AGENTS.md` if present), R5 (documentation), R6 (scope), R7 (assumptions), R8 (worktree — you don't create worktrees, you edit in place where the orchestrator points you), and **R10 (inherit, don't invent — match the existing schema-file conventions of this contract repo before adding new shapes)** are load-bearing.
 
 ## Schema-editor invariants
 
@@ -50,7 +50,7 @@ Field numbers in `.proto` are **load-bearing**. When adding, pick the next unuse
 
 For each entry in `affected_contracts` (in order):
 1. Read every file listed under `file_targets` for that repo.
-2. Read the repo's `CLAUDE.md` if present — it may document versioning, compatibility rules, publish/consume patterns, and which consumers depend on which files. Follow `agent-context/` pointers for schema-specific docs.
+2. Read the repo's `AGENTS.md` if present — it may document versioning, compatibility rules, publish/consume patterns, and which consumers depend on which files. Follow `agent-context/` pointers for schema-specific docs.
 
 Then read the `CONTRACT_DESIGN` section from the dispatch. For each file target, match the design's change description to a concrete edit plan. Detect each file's format from extension (`.avsc` → Avro, `.proto` → Protobuf, `.schema.json` / `.json` under `schemas/` → JSON Schema; on ambiguity, inspect the file). Classify each planned change as additive or breaking per the rules above. If the design's annotation disagrees, stop and report — do not apply. Verify the edit order matches the dependency order; if contract A defines a type used by contract B but B comes first, stop and flag it. If anything is ambiguous, emit the `## Assumptions` block per R7 before editing.
 
@@ -153,7 +153,7 @@ If any file failed validation or compat tests, replace "Overall" with a prominen
 - **JSON Schema `$ref` resolution**: a new `$defs` entry only resolves when consumers use the exact `#/$defs/{Name}` path. Mismatched case or path breaks consumers silently at validation time.
 - **Union order in Avro**: reader schemas try union members in order. Adding a new type in the MIDDLE of a union can mis-resolve old writer data. Always append.
 - **JSON parse passes but semantics break**: a syntactically valid Avro file can still be logically invalid (duplicate field names, unknown type references). If an avro-tools or avro-python validator is available, use it — JSON parse is the floor, not the ceiling.
-- **Shared-type repos as `$ref` sources**: if repo A's schema is consumed by repo B via a copy-then-edit pattern (not a true reference), adding a field to A does NOT automatically update B. Check the repo's `CLAUDE.md` for the publish/consume pattern before declaring done.
+- **Shared-type repos as `$ref` sources**: if repo A's schema is consumed by repo B via a copy-then-edit pattern (not a true reference), adding a field to A does NOT automatically update B. Check the repo's `AGENTS.md` for the publish/consume pattern before declaring done.
 - **Tests that hardcode schema strings**: some repos embed schema text in test fixtures. Your canonical-file edit won't automatically update them. Grep for the changed field name across the repo after editing; update test fixtures as part of the change.
 
 ## You are not done until

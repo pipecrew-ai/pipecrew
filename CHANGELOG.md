@@ -16,6 +16,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [Unreleased]
+
+### Added
+- **Dual-target: PipeCrew now installs in Cursor as well as Claude Code.** Added
+  `.cursor-plugin/plugin.json` + `marketplace.json` so the *same repo* installs in
+  Cursor (v2.5+), which auto-discovers the shared root-level `skills/` and `agents/`
+  and dispatches the crew through its Task-tool subagents. Skills, agents, rules,
+  templates, and scripts are shared verbatim — no per-target forks. A new eval layer
+  (`eval/tests/07-cursor-manifest.js`) keeps the Cursor and Claude manifest versions
+  in lockstep so a release reaches both ecosystems.
+- Cursor install/updating docs in the README; a "Dual-target" section + updated
+  release ritual in `CLAUDE.md`.
+
+- **Repo-context file converged on `AGENTS.md`** (the Linux-Foundation-governed, tool-agnostic
+  standard read natively by Claude Code, Cursor, Codex, and 30+ agents). `/discover` now generates
+  a per-repo `AGENTS.md`; under Claude Code it also writes a one-line `CLAUDE.md` (`@AGENTS.md`)
+  import shim so Claude keeps its richer native loading pointed at the one canonical file. The crew
+  reads with fallback (`AGENTS.md`, else `CLAUDE.md`), so **existing workspaces keep working with no
+  forced migration** — legacy `CLAUDE.md` is picked up and converted lazily on the next
+  `/discover --resume` or `/context-refresh`. Templates renamed `repo-CLAUDE*` → `repo-AGENTS*`;
+  `scripts/workspace-root.js` gained `--context-filename` / `--context-shim`.
+
+### Not yet ported to Cursor
+- The 4 lifecycle **hooks** (update nudge, `/troubleshoot` read-only guard,
+  `/deliver --auto-approve`, site-view "needs approval" banner) remain Claude-Code-only.
+  Cursor's `hooks.json` + permission-output protocol port is a tracked follow-up.
+
 ## [1.12.0] - 2026-09-20
 
 ### Added
@@ -307,7 +334,6 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   from its tools (keeping `Read` for `platform.md`) to structurally prevent
   code-spelunking. The feature-mode "diverge, don't design" guardrail and the option
   `scope` field now exclude implementation detail explicitly.
-
 ## [1.6.0] - 2026-08-27
 
 ### Added

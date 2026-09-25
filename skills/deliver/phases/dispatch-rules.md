@@ -31,14 +31,14 @@ The `spec_policy` column reflects what each implementer ACCEPTS (and `code-first
 
 When the table above does NOT list a plugin-shipped implementer for a type (e.g., `type: rails`, `type: phoenix`, `type: go`, `type: other`, or any future stack the user declares in their config), resolve the implementer via this chain, in order:
 
-1. **Workspace-local implementer** — check `~/.claude/agents/{workspace_slug}-{type}-implementer.md`. If it exists, dispatch with `subagent_type: {workspace_slug}-{type}-implementer`. These are generated during `/discover` Phase C Step 3.25 (interactive gate, option (a) Generate) by filling `templates/agents/generic-implementer.md.template` with the repo's actual conventions, tailored to the workspace.
+1. **Workspace-local implementer** — check `{agents_dir}/{workspace_slug}-{type}-implementer.md`, where `{agents_dir}` is the harness user-level agents dir (`node {plugin_dir}/scripts/workspace-root.js --agents-dir` → `~/.claude/agents/` under Claude Code, `~/.cursor/agents/` under Cursor). If it exists, dispatch with `subagent_type: {workspace_slug}-{type}-implementer`. These are generated during `/discover` Phase C Step 3.25 (interactive gate, option (a) Generate) by filling `templates/agents/generic-implementer.md.template` with the repo's actual conventions, tailored to the workspace.
 2. **Mapped agent** — if step 1 misses, check `{workspace_root}/{slug}/agents/type-map.json` (written by Phase C Step 3.25 when the user chose option (c) Map). If `type-map.json[{type}]` is set, dispatch with that `subagent_type`. This lets the user redirect an unsupported type to an existing agent without generating a new one.
 3. **Plugin-shipped implementer** — already resolved via the table above. This step exists in the chain only for completeness.
 4. **Hand-write noted** — if the `/discover` Phase C Step 3.25 scratchpad records decision `hand-write` for this type (check `## Custom-Agent Decisions` in the most recent discover scratchpad), emit a prominent warning:
    ```
    Warning: no implementer for type '{type}' — marked hand-write during /discover.
    An agent must be authored before this type can be dispatched.
-   Place it at ~/.claude/agents/{workspace_slug}-{type}-implementer.md and re-run.
+   Place it at {agents_dir}/{workspace_slug}-{type}-implementer.md and re-run.
    ```
    Then fall through to step 5 only if the user explicitly confirms to continue anyway.
 5. **Generic fallback** — dispatch `subagent_type: general-purpose` with a preamble that points the agent at:

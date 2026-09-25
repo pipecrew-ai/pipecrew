@@ -35,7 +35,7 @@ Every profile MUST start with `"schema_version": 1` (or whatever value the canon
 
 Read these in order:
 
-1. `{repo_path}/CLAUDE.md` if it exists. This is the most concentrated source of conventions and pre-existing context.
+1. `{repo_path}/AGENTS.md` if it exists. This is the most concentrated source of conventions and pre-existing context.
 2. `{repo_path}/agent-context/architecture.md` if present.
 3. The repo's dependency manifest: `pom.xml` (Spring Boot) / `package.json` (Node) / `pyproject.toml` or `requirements.txt` (Python) / `cdk.json` (CDK) / `.tf` files at root (Terraform).
 4. The entry-point file (`*Application.java` for Spring Boot, `src/main.ts` for NestJS, `app/main.py` for FastAPI, `src/App.tsx` for React, etc.).
@@ -93,7 +93,7 @@ Populate `integrations`. **This is the single most load-bearing field for synthe
 - `outbound_http[]` — services this repo CALLS. Look for: `@FeignClient` / Feign interfaces (Spring), `RestTemplate` / `WebClient` base URLs, an `api/` or `clients/` dir, named HTTP client classes (`*Client.java`, `*ApiClient.ts`, `axios.create({ baseURL })`). Each: `{ target, base_path, purpose }` — `target` = the sibling repo/service name when you can identify it, else the host.
 - `outbound_events[]` — queues/topics this repo PUBLISHES to. Look for: SQS `sendMessage` / `SqsTemplate`, SNS publish, Kafka producers, EventBridge `putEvents`, `@SendTo`. Each: `{ topic_or_queue, transport, purpose }` (transport = SQS / SNS / Kafka / EventBridge / …).
 - `outbound_storage[]` — object/blob stores this repo WRITES. Look for: S3 SDK calls + bucket names, GCS, Azure Blob. Each: `{ kind, name, purpose }`.
-- `inbound_http[]` — repos/clients that call THIS repo. Derive from what's visible inside your boundary: a sibling reference in CLAUDE.md, or a spec this repo owns that names consumers. Per **R8 you must not read sibling repos** — if inbound callers can't be determined from inside this repo, emit `[]` and add a one-line `notes_for_architect` heads-up so the architect resolves it cross-repo. Array of caller repo/service name strings.
+- `inbound_http[]` — repos/clients that call THIS repo. Derive from what's visible inside your boundary: a sibling reference in AGENTS.md, or a spec this repo owns that names consumers. Per **R8 you must not read sibling repos** — if inbound callers can't be determined from inside this repo, emit `[]` and add a one-line `notes_for_architect` heads-up so the architect resolves it cross-repo. Array of caller repo/service name strings.
 - `inbound_events[]` — queues/topics this repo CONSUMES. Look for: `@SqsListener` / SQS pollers, `@KafkaListener`, SNS subscriptions, EventBridge rules targeting this repo. Each: `{ topic_or_queue, transport, purpose }`.
 
 Emit every sub-array as `[]` (not `null`) when a category doesn't apply — the architect's topology pass relies on all five keys being present.

@@ -104,7 +104,7 @@ feature-pipeline/
 │   ├── agents/                   ← domain-aware agent templates
 │   ├── agent-context/            ← repo-level doc templates
 │   ├── workspace-config.*.json   ← config schema + example
-│   ├── repo-CLAUDE.md.template
+│   ├── repo-AGENTS.md.template
 │   └── platform.md.template
 └── scripts/
     └── validate-config.js        ← workspace config validator

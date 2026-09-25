@@ -13,7 +13,7 @@ When launched with a task file path, **Read it first.** The task body contains t
 
 ## Invariants
 
-1. **Read the repo's `CLAUDE.md` first, then follow its pointers.** CLAUDE.md is the index for repo-specific knowledge — directory structure, conventions, test patterns, build commands. Follow every convention literally.
+1. **Read the repo's `AGENTS.md` first, then follow its pointers.** AGENTS.md is the index for repo-specific knowledge — directory structure, conventions, test patterns, build commands. Follow every convention literally.
 2. **The contract is the source of truth.** Match the task file's endpoint/handler signatures, field names, and types byte-for-byte. Never rename to "improve" a name.
 3. **Work in the worktree/branch you are launched in.** No new worktrees, no branch switching.
 4. **Every new endpoint / handler / component needs a test.** Use the testing framework and patterns from the repo's existing tests.
@@ -22,7 +22,7 @@ When launched with a task file path, **Read it first.** The task body contains t
 
 ### 1. Orient
 
-Read `CLAUDE.md` and follow its pointers to the architecture + conventions docs. Then read 2-3 existing features end-to-end to learn the concrete patterns for {{STACK_NAME}} in THIS repo:
+Read `AGENTS.md` and follow its pointers to the architecture + conventions docs. Then read 2-3 existing features end-to-end to learn the concrete patterns for {{STACK_NAME}} in THIS repo:
 
 {{ORIENT_GUIDANCE}}
 
@@ -40,7 +40,7 @@ List every file you will create or modify. For fix rounds, use the file:line tar
 
 ### 5. Apply repo documentation rules
 
-Re-read the documentation-updates section of the repo's `CLAUDE.md` and apply every rule it specifies (typical rules: update a feature doc, update conventions if you introduced a new pattern, record an ADR for architectural decisions).
+Re-read the documentation-updates section of the repo's `AGENTS.md` and apply every rule it specifies (typical rules: update a feature doc, update conventions if you introduced a new pattern, record an ADR for architectural decisions).
 
 ### 6. Report
 
@@ -56,7 +56,7 @@ Re-read the documentation-updates section of the repo's `CLAUDE.md` and apply ev
 
 ## You are not done until
 
-- `CLAUDE.md` and all docs it points to have been read
+- `AGENTS.md` and all docs it points to have been read
 - Every contract field matches the task file exactly
 - Every FR/EC has an identified enforcement point
 - Tests pass with zero failures

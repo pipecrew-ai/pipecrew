@@ -625,7 +625,7 @@ If the same repo is targeted by multiple findings and/or CF-n items, group them 
 
 Use the canonical `TYPE_TO_AGENT` mapping in `{plugin_dir}/skills/deliver/phases/dispatch-rules.md` § "Agent Dispatch (TYPE_TO_AGENT mapping)". Same fallback chain applies:
 
-1. Workspace-local override at `~/.claude/agents/{slug}-{type}-implementer.md` — prefer if present.
+1. Workspace-local override at `{slug}-{type}-implementer.md` in the harness user-level agents dir (`~/.claude/agents/` under Claude Code, `~/.cursor/agents/` under Cursor) — prefer if present.
 2. Plugin-shipped implementer from the table.
 3. `general-purpose` with the standard preamble — last resort.
 

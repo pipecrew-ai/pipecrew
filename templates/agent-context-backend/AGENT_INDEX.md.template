@@ -1,7 +1,7 @@
 # Agent Index — {{REPO_NAME}}
 
 This file is the router for all agent-facing context. Stable rules and the
-quick start live in the root `CLAUDE.md`. Detail lives in the files below.
+quick start live in the root `AGENTS.md`. Detail lives in the files below.
 
 ---
 

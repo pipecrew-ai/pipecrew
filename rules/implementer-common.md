@@ -1,6 +1,6 @@
 # Implementer common rules — framework-agnostic
 
-> Every `*-implementer.md` agent in this plugin references this document. The rules below are universal — they apply regardless of tech stack (Spring Boot, NestJS, FastAPI, React, CDK, …). Stack-specific conventions live in each repo's `CLAUDE.md` + `agent-context/`; cross-cutting workspace patterns live in `platform.md § Established Patterns`; generic stack anti-patterns are pre-injected into per-task files by the task-planner from `{plugin_dir}/anti-patterns/{type}.md`.
+> Every `*-implementer.md` agent in this plugin references this document. The rules below are universal — they apply regardless of tech stack (Spring Boot, NestJS, FastAPI, React, CDK, …). Stack-specific conventions live in each repo's `AGENTS.md` + `agent-context/`; cross-cutting workspace patterns live in `platform.md § Established Patterns`; generic stack anti-patterns are pre-injected into per-task files by the task-planner from `{plugin_dir}/anti-patterns/{type}.md`.
 
 These rules compose on top of each agent's stack-specific invariants. Where a shared rule conflicts with a repo-specific convention, the repo convention wins — but in practice they should agree.
 
@@ -19,9 +19,11 @@ On completion, update the task file per `{plugin_dir}/skills/deliver/phases/disp
 
 ---
 
-## Rule 1 — Read the repo's CLAUDE.md + agent-context first
+## Rule 1 — Read the repo's AGENTS.md + agent-context first
 
-Before any code change, read `{repo_path}/CLAUDE.md` and the agent-context docs it points to (typically `{repo_path}/agent-context/`). These are the authoritative repo-specific conventions: how this repo handles auth, persistence, tests, config, routing, error mapping, naming. CLAUDE.md is the per-repo source of truth.
+Before any code change, read `{repo_path}/AGENTS.md` and the agent-context docs it points to (typically `{repo_path}/agent-context/`). These are the authoritative repo-specific conventions: how this repo handles auth, persistence, tests, config, routing, error mapping, naming. AGENTS.md is the per-repo source of truth.
+
+> **Context-file resolution (applies wherever this doc says "AGENTS.md"):** `AGENTS.md` is the canonical, tool-agnostic context file. Prefer it. A workspace onboarded before this convention may have only `{repo_path}/CLAUDE.md` — if `AGENTS.md` is absent, read `CLAUDE.md` instead. (Under Claude Code, `CLAUDE.md` may also exist as a one-line `@AGENTS.md` import shim; reading `AGENTS.md` directly is correct in that case.)
 
 For workspace-wide patterns (cross-cutting decisions like "we use JWT auth" or "all services log to CloudWatch"), the architect captured them in `{workspace_root}/{slug}/context/platform.md` § `Established Patterns`. That section is small and worth a read pass once per dispatch.
 
@@ -30,7 +32,7 @@ For stack-conventional traps that apply to any workspace using this stack (e.g.,
 **Pattern discipline** — see Rule 10 (`Inherit, don't invent`). Before writing any new code, find the closest analog in this repo and follow its shape. Inventing a new pattern when an existing one exists is the most common review-flagging issue and is a Critical or Non-critical finding at review time depending on whether the invention is architectural or mechanical.
 
 **Frontend repos — additional UX contract.** A frontend feature has two orthogonal contracts:
-- **Engineering**: `{repo_path}/CLAUDE.md` + agent-context (API client factory, OpenAPI types, data fetching, hooks, routing, state, i18n, tests, file layout).
+- **Engineering**: `{repo_path}/AGENTS.md` + agent-context (API client factory, OpenAPI types, data fetching, hooks, routing, state, i18n, tests, file layout).
 - **UX**: the repo's `DESIGN_SYSTEM.md` (component-tree patterns, tab shells, row actions, modals, tokens, RTL vocabulary).
 
 Resolve the DESIGN_SYSTEM.md path in this order:
@@ -72,7 +74,7 @@ If your change added, modified, or removed an auth guard, role check, permission
 - **Denied role(s)** — at least one test per role that must be rejected (403).
 - **Unauthenticated** — one test confirming 401 when no auth is present.
 
-The test harness is stack-specific. Inspect the existing tests in this repo (per R10, the implementer's first move is to read 1-2 existing tests of the same shape — e.g., `@WebMvcTest + @WithMockUser + spring-security-test` for Spring Boot; framework-equivalent fixtures for NestJS, FastAPI, Next.js, etc.) and follow that pattern. If no security test exists yet in this repo, this feature establishes the harness — pick a shape consistent with the repo's other tests, document it in the repo's CLAUDE.md if it's worth establishing as the convention.
+The test harness is stack-specific. Inspect the existing tests in this repo (per R10, the implementer's first move is to read 1-2 existing tests of the same shape — e.g., `@WebMvcTest + @WithMockUser + spring-security-test` for Spring Boot; framework-equivalent fixtures for NestJS, FastAPI, Next.js, etc.) and follow that pattern. If no security test exists yet in this repo, this feature establishes the harness — pick a shape consistent with the repo's other tests, document it in the repo's AGENTS.md if it's worth establishing as the convention.
 
 Add any necessary test dependency to the project's manifest (`pom.xml`, `package.json`, `pyproject.toml`, …) as part of the change. A missing test dependency is a blocker, not a follow-up.
 
@@ -96,13 +98,13 @@ Your change is not complete until the documentation that describes it is also up
 
 If your change crosses workspace-level patterns (a convention worth all repos of this stack adopting), surface it in your report as a `## Doc-update candidate` so a `/learn` run can promote it to `platform.md § Established Patterns`. For frontend repos with UX-level changes, update `{repo}/agent-context/common/DESIGN_SYSTEM.md` directly.
 
-**Do NOT routinely edit `{repo}/CLAUDE.md`.** It's the stable repo-wide index + agent guidelines + must-knows. Touch it ONLY when you're introducing a new top-level topic that needs a Deep-context table row, or a new must-know rule that applies repo-wide. Routine feature work lands in `agent-context/`, not in `CLAUDE.md`.
+**Do NOT routinely edit `{repo}/AGENTS.md`.** It's the stable repo-wide index + agent guidelines + must-knows. Touch it ONLY when you're introducing a new top-level topic that needs a Deep-context table row, or a new must-know rule that applies repo-wide. Routine feature work lands in `agent-context/`, not in `AGENTS.md`.
 
 **Deferral is allowed only with explicit, written reason.** If conventions are in flux and the doc would be premature, surface it in your report exactly like this so `/context-refresh` can pick it up:
 
 > AGENT-CONTEXT-DEFERRED: {what wasn't updated} ({why}) — `/context-refresh` follow-up needed.
 
-Where the repo's own `CLAUDE.md` rules are stricter than this rule, the repo wins.
+Where the repo's own `AGENTS.md` rules are stricter than this rule, the repo wins.
 
 ---
 
@@ -209,7 +211,7 @@ The implementer's job is faithful continuation of an existing system, not greenf
 
 **How to apply**:
 
-1. Read `{repo_path}/CLAUDE.md` and the agent-context docs it points to (Rule 1).
+1. Read `{repo_path}/AGENTS.md` and the agent-context docs it points to (Rule 1).
 2. Search this repo for the closest analog to what you're about to write:
    - **Adding a controller / route handler / endpoint?** Read 1–2 existing ones in this service. Match imports, exception handling, logging pattern, test layout.
    - **Adding a hook / component?** Read 1–2 existing hooks/components. Match React Query usage, error boundaries, naming style.
@@ -254,9 +256,9 @@ If you find what looks like an anti-pattern in this repo but it is **not** liste
 
 ---
 
-## When the repo CLAUDE.md and broader workspace patterns disagree
+## When the repo AGENTS.md and broader workspace patterns disagree
 
-The repo's `CLAUDE.md` wins for that repo. If the architect's `platform.md § Established Patterns` documents a workspace-wide rule that THIS repo doesn't follow, that's a divergence — the implementer follows the repo's actual pattern, but flags the divergence in the report so it can be either reconciled or explicitly recorded.
+The repo's `AGENTS.md` wins for that repo. If the architect's `platform.md § Established Patterns` documents a workspace-wide rule that THIS repo doesn't follow, that's a divergence — the implementer follows the repo's actual pattern, but flags the divergence in the report so it can be either reconciled or explicitly recorded.
 
 If you genuinely need to deviate from a documented convention, surface it in your `## Assumptions` block with the reason and flag it as a doc-update candidate (under `/learn` or `/context-refresh`).
 

@@ -33,7 +33,16 @@
  * directory itself, or inside ~/.claude (plugin checkouts are not routing turf).
  *
  * Usage:  node sync-root-claude.js --config=<abs-path-to-config.json> [--dry-run]
+ *         node sync-root-claude.js --user [--dry-run]
  * Exit 0 = clean, 1 = hard-fail, 2 = completed with warnings.
+ *
+ * --user mode (OPT-IN — only run after the user explicitly consented, it edits
+ * their personal file): maintains a small machine-level breadcrumb between
+ * pipecrew:machine markers in ~/.claude/CLAUDE.md, which loads into EVERY
+ * session on the machine. Content is deliberately tiny — "PipeCrew runs here,
+ * these workspaces are registered (from workspace-registry.js, both roots),
+ * prefer /pipecrew:* skills" — never the routing tables; those stay in the
+ * repos-parent files. Same marker discipline: user content is never touched.
  *
  * Called from /discover Phase C (Step 5) and /join Step 6. Zero dependencies.
  */
@@ -160,6 +169,62 @@ function ensure(parentDir, slug, workspaceDir, opts = {}) {
   return { action, warnings };
 }
 
+// ── user-level breadcrumb (--user mode) ───────────────────
+const MACHINE_BEGIN = '<!-- pipecrew:machine -->';
+const MACHINE_END = '<!-- /pipecrew:machine -->';
+
+/** Render the machine-level breadcrumb block from registry entries [{slug, path}]. */
+function renderMachineBlock(workspaces) {
+  const alive = workspaces.filter(w => w && w.slug && w.path && workspaceAlive(w.path))
+    .sort((a, b) => a.slug.localeCompare(b.slug));
+  const lines = alive.length
+    ? alive.map(w => `- \`${w.slug}\` — domain context: \`${fwd(w.path)}/context/platform.md\``)
+    : ['- (none registered yet — run /pipecrew:discover or /pipecrew:join)'];
+  return [
+    MACHINE_BEGIN,
+    'This machine runs PipeCrew (a Claude Code plugin for multi-repo feature delivery). Registered workspaces:',
+    ...lines,
+    'For work touching these workspaces\' repos or domains, prefer the `/pipecrew:*` skills; the full routing guide lives in the CLAUDE.md at each workspace\'s repos parent.',
+    MACHINE_END,
+  ].join('\n');
+}
+
+/**
+ * Ensure the user-level CLAUDE.md carries a current machine breadcrumb.
+ * Same contract as ensure(): only the marker block is owned; user content is
+ * preserved verbatim; malformed markers throw without writing.
+ */
+function ensureUserBreadcrumb(claudeMdPath, workspaces, opts = {}) {
+  const block = renderMachineBlock(workspaces);
+  const warnings = [];
+
+  let body, action;
+  if (!fs.existsSync(claudeMdPath)) {
+    body = `${block}\n`;
+    action = 'created';
+  } else {
+    const existing = fs.readFileSync(claudeMdPath, 'utf8');
+    const begins = countOccurrences(existing, MACHINE_BEGIN);
+    const ends = countOccurrences(existing, MACHINE_END);
+    if (begins === 1 && ends === 1 && existing.indexOf(MACHINE_BEGIN) < existing.indexOf(MACHINE_END)) {
+      const start = existing.indexOf(MACHINE_BEGIN);
+      const end = existing.indexOf(MACHINE_END) + MACHINE_END.length;
+      body = existing.slice(0, start) + block + existing.slice(end);
+      action = body === existing ? 'unchanged' : 'updated';
+    } else if (begins === 0 && ends === 0) {
+      body = existing.replace(/\s*$/, '\n') + `\n${block}\n`;
+      action = 'appended';
+    } else {
+      throw new Error(
+        `${claudeMdPath} has malformed pipecrew:machine markers (${begins} begin / ${ends} end, or reversed). ` +
+        `Fix the markers by hand (exactly one ${MACHINE_BEGIN} … ${MACHINE_END} pair), then re-run.`);
+    }
+  }
+
+  if (!opts.dryRun && action !== 'unchanged') fs.writeFileSync(claudeMdPath, body);
+  return { action, warnings };
+}
+
 /** Nearest ancestor of dir (inclusive) containing .git (dir or file — worktrees), or null. */
 function gitTopLevel(dir) {
   let cur = dir;
@@ -209,9 +274,29 @@ if (require.main === module) {
     const m = a.match(/^--([^=]+)(?:=(.*))?$/);
     if (m) args[m[1]] = m[2] === undefined ? true : m[2];
   }
-  if (!args.config) {
+  if (!args.config && !args.user) {
     console.error('Usage: node sync-root-claude.js --config=<abs-path-to-config.json> [--dry-run]');
+    console.error('       node sync-root-claude.js --user [--dry-run]   (opt-in: edits ~/.claude/CLAUDE.md)');
     process.exit(1);
+  }
+
+  if (args.user) {
+    const target = path.join(os.homedir(), '.claude', 'CLAUDE.md');
+    let workspaces;
+    try {
+      workspaces = require('./workspace-registry').load().cfg.workspaces || [];
+    } catch (e) {
+      console.error(`failed to read the workspace registry: ${e.message}`);
+      process.exit(1);
+    }
+    try {
+      const { action } = ensureUserBreadcrumb(target, workspaces, { dryRun: !!args['dry-run'] });
+      console.log(`${args['dry-run'] ? '[dry-run] ' : ''}${target}: ${action} (${workspaces.length} registered workspace(s))`);
+      process.exit(0);
+    } catch (e) {
+      console.error(`ERROR: ${e.message}`);
+      process.exit(1);
+    }
   }
 
   let config;
@@ -253,4 +338,4 @@ if (require.main === module) {
   process.exit(failed ? 1 : warned ? 2 : 0);
 }
 
-module.exports = { ensure, resolveTargets, renderBlock, renderContainer, parseBlocks };
+module.exports = { ensure, resolveTargets, renderBlock, renderContainer, parseBlocks, ensureUserBreadcrumb, renderMachineBlock };

@@ -720,6 +720,30 @@ The script is deterministic and idempotent (safe in incremental mode and on `--r
 - Exit 0/2 → continue (2 = warnings, e.g. skipped parents or size; surface them to the user).
 - Exit 1 (malformed markers) → surface the error and ask the user to fix the markers by hand; do NOT edit that CLAUDE.md yourself — it may contain the user's own content.
 
-**Update scratchpad**: add a `Routing CLAUDE.md` row to `## Generation Status` (per parent: `created` / `updated` / `appended` / `unchanged`, from the script's output). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
+#### Optional: user-level breadcrumb (opt-in — edits the user's personal `~/.claude/CLAUDE.md`)
+
+The repos-parent file only loads for sessions launched in or below a repo parent. A tiny machine-level breadcrumb in `~/.claude/CLAUDE.md` (loads into EVERY session) covers the rest: it says PipeCrew runs on this machine, lists the registered workspaces (from the workspace registry, across all roots) with their `platform.md` paths, and defers to the repos-parent files for actual routing. It is a few lines between `<!-- pipecrew:machine -->` markers — never the routing tables.
+
+This edits the user's most personal Claude Code file, so it is **strictly consent-gated**. Prompt:
+
+```
+Optionally, I can add a small PipeCrew breadcrumb (~8 lines, marker-managed) to your
+user-level ~/.claude/CLAUDE.md so EVERY session on this machine knows your PipeCrew
+workspaces exist — useful for sessions launched outside the repos. Your existing
+content is never touched; only the marked block is managed.
+
+Add it? (yes / no / show-me-first)
+```
+
+On `show-me-first`: run `node {plugin_dir}/scripts/sync-root-claude.js --user --dry-run`, show the user the block that would be written (render it from the registry: one line per workspace, `slug` → `platform.md` path) and whether it would be `created` / `appended` / `updated` in their file, then re-prompt `(yes / no)`.
+
+On `yes`:
+```bash
+node {plugin_dir}/scripts/sync-root-claude.js --user
+```
+
+On `no`: skip silently — do not note it as a deficiency; the repos-parent files are the primary mechanism. Remember the choice for this run only (re-offer on future /discover runs, since the registry will have changed).
+
+**Update scratchpad**: add a `Routing CLAUDE.md` row to `## Generation Status` (per parent: `created` / `updated` / `appended` / `unchanged`, from the script's output; plus `user-level: WRITTEN / SKIPPED`). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
 
 ---

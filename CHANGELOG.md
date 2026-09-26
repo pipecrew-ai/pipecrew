@@ -42,7 +42,16 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   repo CLAUDE.md); parents at a filesystem root, the home dir, or inside
   `~/.claude` are skipped. Wired into `/discover` Phase C (new Step 5) and
   `/join` Step 6, so both the workspace owner and every joined teammate get the
-  routing guide automatically. 12 unit tests (`scripts/sync-root-claude.test.js`).
+  routing guide automatically. 17 unit tests (`scripts/sync-root-claude.test.js`).
+- **Opt-in user-level breadcrumb** (`sync-root-claude.js --user`). Strictly
+  consent-gated (it edits the user's personal `~/.claude/CLAUDE.md`): maintains
+  a tiny `<!-- pipecrew:machine -->` marker block — "PipeCrew runs on this
+  machine" plus the registered workspaces from `workspace-registry.js` (across
+  all roots) with their `platform.md` paths — so sessions launched OUTSIDE any
+  repo parent still learn the toolbox exists. Never carries the routing tables
+  (those stay in the repos-parent files); user content outside the markers is
+  never touched; dead registry entries are excluded on each run. Offered with
+  yes/no/show-me-first prompts in `/discover` Phase C Step 5 and `/join` Step 6.
 
 ## [1.12.0] - 2026-09-20
 

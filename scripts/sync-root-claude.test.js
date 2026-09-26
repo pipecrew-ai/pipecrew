@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ensure, resolveTargets, renderBlock, parseBlocks } = require('./sync-root-claude');
+const { ensure, resolveTargets, renderBlock, parseBlocks, ensureUserBreadcrumb } = require('./sync-root-claude');
 
 let passed = 0, failed = 0;
 
@@ -203,6 +203,61 @@ test('resolveTargets — monorepo parent inside a git repo hoists above the repo
     `expected hoist to ${expected}, got: ${targets.join(', ')}`);
   assert(hoisted.length === 1 && hoisted[0].to === expected, 'hoist not reported');
   assert(skipped.length === 0, `unexpected skips: ${skipped.map(s => s.dir).join(', ')}`);
+});
+
+test('user breadcrumb — created when absent, lists only live workspaces, sorted', () => {
+  const target = path.join(makeDir(), 'CLAUDE.md');
+  const wsB = makeWorkspace('beta');
+  const wsA = makeWorkspace('acme');
+  const dead = path.join(makeDir(), 'dead'); // dir without config.json → not alive
+  fs.mkdirSync(dead, { recursive: true });
+  const r = ensureUserBreadcrumb(target, [
+    { slug: 'beta', path: wsB }, { slug: 'dead', path: dead }, { slug: 'acme', path: wsA },
+  ]);
+  assert(r.action === 'created', `expected created, got ${r.action}`);
+  const body = fs.readFileSync(target, 'utf8');
+  assert(body.includes('<!-- pipecrew:machine -->'), 'machine markers missing');
+  assert(body.includes('- `acme`') && body.includes('- `beta`'), 'live workspaces missing');
+  assert(!body.includes('- `dead`'), 'dead workspace must be excluded');
+  assert(body.indexOf('- `acme`') < body.indexOf('- `beta`'), 'entries must be sorted');
+  assert(!body.includes('Routing user asks'), 'breadcrumb must not carry the routing table');
+});
+
+test('user breadcrumb — appended to an existing personal CLAUDE.md, content intact', () => {
+  const target = path.join(makeDir(), 'CLAUDE.md');
+  fs.writeFileSync(target, '# Personal prefs\n\nBe terse.\n');
+  const ws = makeWorkspace('acme');
+  const r = ensureUserBreadcrumb(target, [{ slug: 'acme', path: ws }]);
+  assert(r.action === 'appended', `expected appended, got ${r.action}`);
+  const body = fs.readFileSync(target, 'utf8');
+  assert(body.startsWith('# Personal prefs'), 'user content must stay first');
+  assert(body.includes('Be terse.'), 'user content lost');
+  assert(body.includes('- `acme`'), 'workspace entry missing');
+});
+
+test('user breadcrumb — idempotent update, block replaced in place', () => {
+  const target = path.join(makeDir(), 'CLAUDE.md');
+  const wsA = makeWorkspace('acme');
+  ensureUserBreadcrumb(target, [{ slug: 'acme', path: wsA }]);
+  const r1 = ensureUserBreadcrumb(target, [{ slug: 'acme', path: wsA }]);
+  assert(r1.action === 'unchanged', `expected unchanged, got ${r1.action}`);
+  const wsB = makeWorkspace('beta');
+  const r2 = ensureUserBreadcrumb(target, [{ slug: 'acme', path: wsA }, { slug: 'beta', path: wsB }]);
+  assert(r2.action === 'updated', `expected updated, got ${r2.action}`);
+  const body = fs.readFileSync(target, 'utf8');
+  assert((body.split('<!-- pipecrew:machine -->').length - 1) === 1, 'block must not duplicate');
+});
+
+test('user breadcrumb — malformed markers throw, file untouched', () => {
+  const target = path.join(makeDir(), 'CLAUDE.md');
+  const ws = makeWorkspace('acme');
+  ensureUserBreadcrumb(target, [{ slug: 'acme', path: ws }]);
+  const corrupted = fs.readFileSync(target, 'utf8') + '\n<!-- pipecrew:machine -->\n';
+  fs.writeFileSync(target, corrupted);
+  let threw = false;
+  try { ensureUserBreadcrumb(target, [{ slug: 'acme', path: ws }]); } catch { threw = true; }
+  assert(threw, 'expected throw on duplicated machine marker');
+  assert(fs.readFileSync(target, 'utf8') === corrupted, 'file must be untouched on marker error');
 });
 
 test('parseBlocks round-trips a rendered block', () => {

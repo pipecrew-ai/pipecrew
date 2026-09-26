@@ -112,6 +112,12 @@ node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/c
   this workspace's block between the `<!-- pipecrew:workspaces -->` markers, and never
   touches a hand-authored file's content. On exit 1 (malformed markers), surface the
   error — don't hand-edit the user's file.
+- **Optional user-level breadcrumb**: after the above, offer (strictly opt-in — it edits
+  the teammate's personal `~/.claude/CLAUDE.md`) to run
+  `node {plugin_dir}/scripts/sync-root-claude.js --user`, which maintains a tiny
+  marker-managed block listing this machine's registered workspaces so every session
+  knows they exist. Same consent prompt as /discover Phase C Step 5. On `no`, skip
+  silently.
 
 Report one concise summary: workspace joined, N repos wired (cloned / local / skipped),
 memory sync mode, and the next step — e.g. `Run /deliver --workspace={slug}`. Note that

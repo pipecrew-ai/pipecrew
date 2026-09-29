@@ -40,7 +40,7 @@ Since this is a new workspace, you will mint a fresh domain id after config is b
 ```
 4. **Domain id prefix** (optional — press Enter to skip): Would you like a short
    human-readable label baked into the workspace's permanent domain id?
-   (e.g., `--prefix=payments` produces `dom_payments_<ULID>` instead of `dom_<ULID>`)
+   (e.g., `--prefix=payments` produces `domain_payments_<ULID>` instead of `domain_<ULID>`)
 
    Rules: 2–16 lowercase chars, alphanumerics + inner dashes only (no underscores).
    (e.g., "payments", "order-mgmt", "auth")
@@ -65,7 +65,7 @@ After the prefix question, if this is a non-trivial workspace (more than one rep
 ```
 
 If the user provides upstreams, record each one as an `external_dependencies` edge with:
-- `target_id`: leave as `"dom_TBD"` (the peer's real id is unknown at interview time)
+- `target_id`: leave as `"domain_TBD"` (the peer's real id is unknown at interview time)
 - `relation`: infer from the description (`upstream` for providers the workspace consumes, `peer` for mutual dependencies, `child` if this workspace owns a sub-domain)
 - `resolution.kind`: `"absent"` (the edge is a declaration; resolve is Part 3)
 - `resolution.expected_name`: the user's string (record it so Phase B2 can note it in config)

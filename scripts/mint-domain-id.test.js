@@ -70,12 +70,12 @@ function readConfig(configPath) {
 // mint-domain-id.js tests
 // ---------------------------------------------------------------------------
 
-ok('mints dom_<26-char> id into a config with no domain block', () => {
+ok('mints domain_<26-char> id into a config with no domain block', () => {
   const { configPath } = makeConfig();
   const r = runMint([`--config=${configPath}`]);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   const id = r.stdout.trim();
-  assert.match(id, /^dom_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad id shape: ${id}`);
+  assert.match(id, /^domain_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad id shape: ${id}`);
   const cfg = readConfig(configPath);
   assert.strictEqual(cfg.domain.id, id, 'id not written to config');
 });
@@ -87,7 +87,7 @@ ok('mints id into a config that already has a domain block with other keys', () 
   const r = runMint([`--config=${configPath}`]);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   const cfg = readConfig(configPath);
-  assert.match(cfg.domain.id, /^dom_/, 'id missing');
+  assert.match(cfg.domain.id, /^domain_/, 'id missing');
   // Existing keys must be preserved.
   assert.strictEqual(cfg.domain.name, 'MyDomain', 'domain.name was lost');
   assert.deepStrictEqual(cfg.domain.user_roles, ['admin'], 'user_roles was lost');
@@ -112,7 +112,7 @@ ok('idempotent: second run returns the same id and does not rewrite the file', (
 });
 
 ok('idempotent: config with pre-existing well-formed id returns that id without writing', () => {
-  const existingId = 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const existingId = 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV';
   const { configPath } = makeConfig({ domain: { id: existingId } });
   const before = fs.readFileSync(configPath, 'utf8');
   const r = runMint([`--config=${configPath}`]);
@@ -126,7 +126,7 @@ ok('--workspace-dir flag resolves to config.json inside the dir', () => {
   const { wsDir } = makeConfig();
   const r = runMint([`--workspace-dir=${wsDir}`]);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
-  assert.match(r.stdout.trim(), /^dom_/);
+  assert.match(r.stdout.trim(), /^domain_/);
 });
 
 ok('missing config exits 1 with a clear message', () => {
@@ -150,7 +150,7 @@ ok('BOM-tolerant: strips leading UTF-8 BOM before parsing', () => {
   fs.writeFileSync(configPath, bom + JSON.stringify(cfg, null, 2) + '\n', 'utf8');
   const r = runMint([`--config=${configPath}`]);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
-  assert.match(r.stdout.trim(), /^dom_/, 'should produce a valid id even on BOM-prefixed input');
+  assert.match(r.stdout.trim(), /^domain_/, 'should produce a valid id even on BOM-prefixed input');
 });
 
 ok('generated ids are unique across multiple invocations', () => {
@@ -195,8 +195,8 @@ ok('validate-config: config with domain block but no id emits WARN suggesting mi
   assert.ok(r.stderr.includes('domain.id') || r.stderr.includes('mint-domain-id'), `should warn about missing domain.id; stderr: ${r.stderr}`);
 });
 
-ok('validate-config: well-formed dom_ id passes silently (no extra warn)', () => {
-  const { configPath } = makeConfig({ domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+ok('validate-config: well-formed domain_ id passes silently (no extra warn)', () => {
+  const { configPath } = makeConfig({ domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
   const r = runValidate(configPath);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   // Should not have a domain.id-specific warning.
@@ -210,12 +210,22 @@ ok('validate-config: malformed domain.id (wrong prefix) emits WARN-only, never e
   assert.ok(r.stderr.includes('WARN'), `expected a WARN; stderr: ${r.stderr}`);
 });
 
+ok('validate-config: old-style dom_<ULID> id (pre-rename) is malformed — warns, never errors (EC-1)', () => {
+  // dom_ was the tag before the domain_ rename. Nothing released ever used it, but the
+  // validator must treat it as malformed (not silently pass) so any leftover is caught.
+  const { configPath } = makeConfig({ domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+  const r = runValidate(configPath);
+  assert.strictEqual(r.status, 0, `should exit 0 (warn-only); stderr: ${r.stderr}`);
+  assert.ok(r.stderr.includes('WARN'), `expected a WARN for old dom_ prefix; stderr: ${r.stderr}`);
+  assert.ok(r.stderr.includes('domain.id'), `warning should mention domain.id; stderr: ${r.stderr}`);
+});
+
 // ---------------------------------------------------------------------------
 // validate-config.js — external_dependencies (FR-5 / EC-4)
 // ---------------------------------------------------------------------------
 
 ok('validate-config: absent external_dependencies is silent (EC-4)', () => {
-  const { configPath } = makeConfig({ domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+  const { configPath } = makeConfig({ domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
   const r = runValidate(configPath);
   assert.strictEqual(r.status, 0);
   // No external_dependencies warning expected.
@@ -224,10 +234,10 @@ ok('validate-config: absent external_dependencies is silent (EC-4)', () => {
 
 ok('validate-config: well-formed external_dependencies entry passes silently', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
       {
-        target_id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+        target_id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV',
         relation: 'upstream',
         resolution: { kind: 'absent' },
         trust: 'manual',
@@ -243,7 +253,7 @@ ok('validate-config: well-formed external_dependencies entry passes silently', (
 
 ok('validate-config: missing target_id emits WARN-only', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
       { relation: 'peer', resolution: { kind: 'absent' } },
     ],
@@ -255,9 +265,9 @@ ok('validate-config: missing target_id emits WARN-only', () => {
 
 ok('validate-config: bad relation value emits WARN-only', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
-      { target_id: 'dom_AAAA', relation: 'supplier', resolution: { kind: 'absent' } },
+      { target_id: 'domain_AAAA', relation: 'supplier', resolution: { kind: 'absent' } },
     ],
   });
   const r = runValidate(configPath);
@@ -267,9 +277,9 @@ ok('validate-config: bad relation value emits WARN-only', () => {
 
 ok('validate-config: missing resolution emits WARN-only', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
-      { target_id: 'dom_AAAA', relation: 'child' },
+      { target_id: 'domain_AAAA', relation: 'child' },
     ],
   });
   const r = runValidate(configPath);
@@ -279,9 +289,9 @@ ok('validate-config: missing resolution emits WARN-only', () => {
 
 ok('validate-config: bad resolution.kind emits WARN-only', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
-      { target_id: 'dom_AAAA', relation: 'peer', resolution: { kind: 'unknown-kind' } },
+      { target_id: 'domain_AAAA', relation: 'peer', resolution: { kind: 'unknown-kind' } },
     ],
   });
   const r = runValidate(configPath);
@@ -291,9 +301,9 @@ ok('validate-config: bad resolution.kind emits WARN-only', () => {
 
 ok('validate-config: bad trust value emits WARN-only', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
-      { target_id: 'dom_AAAA', relation: 'peer', resolution: { kind: 'github' }, trust: 'unknown-trust' },
+      { target_id: 'domain_AAAA', relation: 'peer', resolution: { kind: 'github' }, trust: 'unknown-trust' },
     ],
   });
   const r = runValidate(configPath);
@@ -303,10 +313,10 @@ ok('validate-config: bad trust value emits WARN-only', () => {
 
 ok('validate-config: share_scope is not enforced (open Q3) — any string is accepted silently', () => {
   const { configPath } = makeConfig({
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV' },
     external_dependencies: [
       {
-        target_id: 'dom_AAAA',
+        target_id: 'domain_AAAA',
         relation: 'upstream',
         resolution: { kind: 'local' },
         trust: 'auto',
@@ -323,12 +333,12 @@ ok('validate-config: share_scope is not enforced (open Q3) — any string is acc
 // FR-8 / FR-1: --prefix flag — prefixed mint
 // ---------------------------------------------------------------------------
 
-ok('--prefix=payments mints dom_payments_<26 Crockford chars>', () => {
+ok('--prefix=payments mints domain_payments_<26 Crockford chars>', () => {
   const { configPath } = makeConfig();
   const r = runMint([`--config=${configPath}`, '--prefix=payments']);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   const id = r.stdout.trim();
-  assert.match(id, /^dom_payments_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad prefixed id shape: ${id}`);
+  assert.match(id, /^domain_payments_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad prefixed id shape: ${id}`);
   const cfg = readConfig(configPath);
   assert.strictEqual(cfg.domain.id, id, 'prefixed id not written to config');
 });
@@ -338,15 +348,15 @@ ok('--prefix=order-mgmt (inner dash) is valid and round-trips', () => {
   const r = runMint([`--config=${configPath}`, '--prefix=order-mgmt']);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   const id = r.stdout.trim();
-  assert.match(id, /^dom_order-mgmt_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad id shape: ${id}`);
+  assert.match(id, /^domain_order-mgmt_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad id shape: ${id}`);
 });
 
-ok('--prefix= (empty string) treated as no prefix — mints plain dom_<ULID>', () => {
+ok('--prefix= (empty string) treated as no prefix — mints plain domain_<ULID>', () => {
   const { configPath } = makeConfig();
   const r = runMint([`--config=${configPath}`, '--prefix=']);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   const id = r.stdout.trim();
-  assert.match(id, /^dom_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `expected plain id, got: ${id}`);
+  assert.match(id, /^domain_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `expected plain id, got: ${id}`);
 });
 
 ok('invalid prefix — uppercase — exits 1 without writing', () => {
@@ -392,7 +402,7 @@ ok('invalid prefix — 17 chars (too long) — exits 1 without writing', () => {
 });
 
 ok('EC-1/FR-2: --prefix on config with existing unprefixed id → returns existing id, no write', () => {
-  const existingId = 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const existingId = 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV';
   const { configPath } = makeConfig({ domain: { id: existingId } });
   const before = fs.readFileSync(configPath, 'utf8');
   const r = runMint([`--config=${configPath}`, '--prefix=payments']);
@@ -402,7 +412,7 @@ ok('EC-1/FR-2: --prefix on config with existing unprefixed id → returns existi
   assert.strictEqual(before, after, 'file should be untouched');
 });
 
-ok('EC-2: --prefix=order-mgmt passes validate-config silently (no extra warn)', () => {
+ok('EC-2: --prefix=order-mgmt passes validate-config silently (domain_ form)', () => {
   const { configPath } = makeConfig();
   const r = runMint([`--config=${configPath}`, '--prefix=order-mgmt']);
   assert.strictEqual(r.status, 0);
@@ -413,8 +423,8 @@ ok('EC-2: --prefix=order-mgmt passes validate-config silently (no extra warn)', 
   assert.ok(!rv.stderr.includes('domain.id'), `unexpected domain.id warning for id "${id}"; stderr: ${rv.stderr}`);
 });
 
-ok('validate-config: well-formed prefixed dom_ id passes silently', () => {
-  const { configPath } = makeConfig({ domain: { id: 'dom_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+ok('validate-config: well-formed prefixed domain_ id passes silently', () => {
+  const { configPath } = makeConfig({ domain: { id: 'domain_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
   const r = runValidate(configPath);
   assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
   assert.ok(!r.stderr.includes('domain.id'), `unexpected domain.id warning; stderr: ${r.stderr}`);
@@ -422,19 +432,19 @@ ok('validate-config: well-formed prefixed dom_ id passes silently', () => {
 
 ok('validate-config: prefixed id with uppercase prefix emits WARN-only', () => {
   // Uppercase prefix is malformed — the ULID chars are uppercase by spec but the label must be lowercase
-  const { configPath } = makeConfig({ domain: { id: 'dom_Payments_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+  const { configPath } = makeConfig({ domain: { id: 'domain_Payments_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
   const r = runValidate(configPath);
   assert.strictEqual(r.status, 0, `should exit 0 (warn-only); stderr: ${r.stderr}`);
   assert.ok(r.stderr.includes('WARN'), `expected a WARN; stderr: ${r.stderr}`);
 });
 
 ok('EC-3 with prefixed id: portable config clone carries prefixed domain.id', () => {
-  const prefixedId = 'dom_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const prefixedId = 'domain_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV';
   const srcConfig = {
     workspace: { name: 'Test', slug: 'test' },
     domain: { id: prefixedId, name: 'Payments Domain' },
     external_dependencies: [
-      { target_id: 'dom_order-mgmt_01ARZ3NDEKTSV4RRFFQ69G5FAV', relation: 'upstream', resolution: { kind: 'absent' } },
+      { target_id: 'domain_order-mgmt_01ARZ3NDEKTSV4RRFFQ69G5FAV', relation: 'upstream', resolution: { kind: 'absent' } },
     ],
     repos: {
       'svc-a': { path: '/absolute/local/path', type: 'spring-boot', role: 'api-service' },
@@ -447,7 +457,7 @@ ok('EC-3 with prefixed id: portable config clone carries prefixed domain.id', ()
   }
   assert.strictEqual(portable.domain.id, prefixedId, 'prefixed domain.id lost in portable clone');
   assert.ok(Array.isArray(portable.external_dependencies), 'external_dependencies lost');
-  assert.strictEqual(portable.external_dependencies[0].target_id, 'dom_order-mgmt_01ARZ3NDEKTSV4RRFFQ69G5FAV', 'prefixed target_id lost');
+  assert.strictEqual(portable.external_dependencies[0].target_id, 'domain_order-mgmt_01ARZ3NDEKTSV4RRFFQ69G5FAV', 'prefixed target_id lost');
   assert.strictEqual(portable.repos['svc-a'].path, undefined, 'path should be stripped');
 });
 
@@ -462,9 +472,9 @@ ok('EC-3: portable config clone carries domain.id and external_dependencies (no 
   // along for free because deep-clone is field-agnostic.
   const srcConfig = {
     workspace: { name: 'Test', slug: 'test' },
-    domain: { id: 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV', name: 'Test Domain' },
+    domain: { id: 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV', name: 'Test Domain' },
     external_dependencies: [
-      { target_id: 'dom_OTHER', relation: 'upstream', resolution: { kind: 'absent' } },
+      { target_id: 'domain_OTHER', relation: 'upstream', resolution: { kind: 'absent' } },
     ],
     repos: {
       'svc-a': { path: '/absolute/local/path', type: 'spring-boot', role: 'api-service' },
@@ -479,9 +489,9 @@ ok('EC-3: portable config clone carries domain.id and external_dependencies (no 
   }
 
   // domain.id and external_dependencies must be present in the portable copy.
-  assert.strictEqual(portable.domain.id, 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV', 'domain.id lost in portable clone');
+  assert.strictEqual(portable.domain.id, 'domain_01ARZ3NDEKTSV4RRFFQ69G5FAV', 'domain.id lost in portable clone');
   assert.ok(Array.isArray(portable.external_dependencies), 'external_dependencies lost in portable clone');
-  assert.strictEqual(portable.external_dependencies[0].target_id, 'dom_OTHER', 'edge data lost in clone');
+  assert.strictEqual(portable.external_dependencies[0].target_id, 'domain_OTHER', 'edge data lost in clone');
   // repos.path should be gone.
   assert.strictEqual(portable.repos['svc-a'].path, undefined, 'path should be stripped');
 });

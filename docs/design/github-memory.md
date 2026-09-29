@@ -120,22 +120,22 @@ A workspace's `config.json` may carry a `domain.id` field:
 
 ```jsonc
 "domain": {
-  "id": "dom_01ARZ3NDEKTSV4RRFFQ69G5FAV",          // dom_<26-char Crockford-base32 ULID>
+  "id": "domain_01ARZ3NDEKTSV4RRFFQ69G5FAV",          // domain_<26-char Crockford-base32 ULID>
   // or with an optional team-chosen cosmetic prefix:
-  "id": "dom_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV",  // dom_<label>_<26-char ULID>
+  "id": "domain_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV",  // domain_<label>_<26-char ULID>
   ...
 }
 ```
 
-**Format**: `dom_` prefix + an optional team-chosen label + 26 Crockford-base32 ULID characters.
+**Format**: `domain_` prefix + an optional team-chosen label + 26 Crockford-base32 ULID characters.
 
 Two forms are both valid forever:
-- `dom_<26-char ULID>` — plain form, no prefix.
-- `dom_<label>_<26-char ULID>` — prefixed form; `<label>` matches
+- `domain_<26-char ULID>` — plain form, no prefix.
+- `domain_<label>_<26-char ULID>` — prefixed form; `<label>` matches
   `/^[a-z][a-z0-9-]{0,14}[a-z0-9]$/` (2–16 chars, lowercase alphanumerics + inner
   dashes; no underscores — underscore is the structural separator).
 
-Full id regex: `/^dom_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/`
+Full id regex: `/^domain_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/`
 
 **Frozen cosmetic label semantics**: the prefix is baked in at mint and never changes — even
 if the team or domain is later renamed. Identity is the whole id string; uniqueness comes
@@ -155,7 +155,7 @@ A workspace may declare known upstreams as a top-level array:
 ```jsonc
 "external_dependencies": [
   {
-    "target_id":  "dom_OTHER26CHARCROCKFORDULID",   // the peer's domain.id (dom_ prefix required)
+    "target_id":  "domain_OTHER26CHARCROCKFORDULID",   // the peer's domain.id (domain_ prefix required)
     "relation":   "upstream",                        // child | peer | upstream
     "resolution": {
       "kind":          "absent",                     // local | github | absent

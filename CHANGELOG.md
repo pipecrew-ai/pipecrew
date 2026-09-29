@@ -20,11 +20,11 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 
 ### Added
 - **Domain identity (Part 1 of domain-durable-memory rollout).** New zero-dep
-  `scripts/mint-domain-id.js` mints a stable opaque `dom_<26-char Crockford-base32
+  `scripts/mint-domain-id.js` mints a stable opaque `domain_<26-char Crockford-base32
   ULID>` into `config.json` at `domain.id`. Idempotent (no-op if already present);
   preserves all existing `domain` block content and key order; BOM-tolerant. Optional
   `--prefix=<label>` bakes a short team-chosen cosmetic label into the id (e.g.
-  `dom_payments_<ULID>`); label rules: 2–16 lowercase alphanumeric + inner-dash chars
+  `domain_payments_<ULID>`); label rules: 2–16 lowercase alphanumeric + inner-dash chars
   (no underscores); the label is frozen at mint — a later rename never re-mints, identity
   is the whole string, uniqueness comes from the ULID. `--prefix=` (empty) treated as no
   prefix; existing ids are returned as-is regardless of the flag (idempotency first).
@@ -32,9 +32,11 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   domain id prefix (placed before the upstreams question, new configs only); Phase B2
   passes `--prefix={label}` to the mint call when one was captured. `validate-config.js`
   warns (never errors) when `domain.id` is absent or malformed; regex updated to accept
-  both plain (`dom_<ULID>`) and prefixed (`dom_<label>_<ULID>`) forms. Co-located
-  `scripts/mint-domain-id.test.js` covers prefixed mint, invalid label shapes, prefix +
-  existing id idempotency, validator acceptance of both forms, and all prior cases.
+  both plain (`domain_<ULID>`) and prefixed (`domain_<label>_<ULID>`) forms; old-style
+  `dom_<ULID>` ids are now treated as malformed (warn-only) — no released id used that
+  prefix. Co-located `scripts/mint-domain-id.test.js` covers prefixed mint, invalid label
+  shapes, prefix + existing id idempotency, validator acceptance of both forms, dom_ warn
+  case, and all prior cases.
   Design reference: `docs/design/github-memory.md § Domain identity and dependency edges`.
 - **Dependency edges — `external_dependencies[]` (Part 2).** `config.json` may now
   declare cross-domain edges (target_id/relation/resolution/trust/share_scope). All

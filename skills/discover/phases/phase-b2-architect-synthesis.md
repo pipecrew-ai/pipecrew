@@ -359,7 +359,7 @@ pass `--prefix={label}`; otherwise omit the flag entirely:
 # When Phase B1 captured a prefix label:
 node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json --prefix={domain_id_prefix}
 
-# When no prefix was captured (skip produces plain dom_<ULID>):
+# When no prefix was captured (skip produces plain domain_<ULID>):
 node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json
 ```
 

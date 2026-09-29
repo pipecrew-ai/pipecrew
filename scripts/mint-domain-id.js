@@ -3,8 +3,8 @@
 /**
  * mint-domain-id.js — mint a stable opaque domain id into a workspace config.json.
  *
- * Id format: dom_<26-char Crockford-base32 ULID>
- *   or with prefix: dom_<label>_<26-char ULID>
+ * Id format: domain_<26-char Crockford-base32 ULID>
+ *   or with prefix: domain_<label>_<26-char ULID>
  *
  * Idempotent: if config.json already has domain.id, prints it and exits 0
  * without writing. Creates the `domain` block if absent; preserves any
@@ -14,7 +14,7 @@
  *   node mint-domain-id.js --workspace-dir=<dir>   # dir containing config.json
  *   node mint-domain-id.js --config=<path>         # explicit path to config.json
  *   node mint-domain-id.js --config=<path> --prefix=<label>
- *                                                   # mint dom_<label>_<ULID>
+ *                                                   # mint domain_<label>_<ULID>
  *
  * --prefix=<label>: optional cosmetic team label baked into the id.
  *   Label rules: /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/ (2–16 chars, lowercase
@@ -166,7 +166,7 @@ if (config.domain && config.domain.id) {
 }
 
 // Mint a new id.
-const newId = prefix ? `dom_${prefix}_${generateULID()}` : `dom_${generateULID()}`;
+const newId = prefix ? `domain_${prefix}_${generateULID()}` : `domain_${generateULID()}`;
 
 // Write domain.id into the config — preserve all existing content.
 if (!config.domain || typeof config.domain !== 'object') {

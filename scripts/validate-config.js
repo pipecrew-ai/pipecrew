@@ -145,14 +145,14 @@ if (!config.domain) {
 } else {
   // domain.id — optional but recommended. Warn if absent or malformed; never error.
   // Accepts both forms:
-  //   dom_<26-char ULID>                      (no prefix)
-  //   dom_<label>_<26-char ULID>              (with team-chosen cosmetic prefix)
+  //   domain_<26-char ULID>                      (no prefix)
+  //   domain_<label>_<26-char ULID>              (with team-chosen cosmetic prefix)
   // where <label> matches /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/
-  const DOMAIN_ID_RE = /^dom_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
+  const DOMAIN_ID_RE = /^domain_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
   if (!config.domain.id) {
     warn('domain.id is missing — run `node scripts/mint-domain-id.js --config=<path>` to mint a stable opaque id for this workspace');
   } else if (typeof config.domain.id !== 'string' || !DOMAIN_ID_RE.test(config.domain.id)) {
-    warn(`domain.id "${config.domain.id}" is malformed — expected dom_<26-char Crockford-base32 ULID> or dom_<label>_<26-char ULID>`);
+    warn(`domain.id "${config.domain.id}" is malformed — expected domain_<26-char Crockford-base32 ULID> or domain_<label>_<26-char ULID>`);
   }
 }
 
@@ -168,11 +168,11 @@ if (Array.isArray(config.external_dependencies)) {
       warn(`${prefix} is not an object`);
       return;
     }
-    // target_id: required, must be a string with dom_ prefix
+    // target_id: required, must be a string with domain_ prefix
     if (!entry.target_id) {
-      warn(`${prefix}.target_id is required (dom_<ULID> string)`);
-    } else if (typeof entry.target_id !== 'string' || !entry.target_id.startsWith('dom_')) {
-      warn(`${prefix}.target_id "${entry.target_id}" should be a dom_-prefixed id`);
+      warn(`${prefix}.target_id is required (domain_<ULID> string)`);
+    } else if (typeof entry.target_id !== 'string' || !entry.target_id.startsWith('domain_')) {
+      warn(`${prefix}.target_id "${entry.target_id}" should be a domain_-prefixed id`);
     }
     // relation: required, one of child|peer|upstream
     if (!entry.relation) {

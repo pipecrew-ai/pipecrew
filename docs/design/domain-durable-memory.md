@@ -45,16 +45,16 @@ dependencies alike. This keeps memory-sync exactly as clean as today: one domain
 ```jsonc
 {
   "domain": {
-    "id": "dom_01J9X4...",        // globally unique, opaque, minted once
+    "id": "domain_01J9X4...",     // globally unique, opaque, minted once
     "name": "ordering",           // display only — never used for identity
-    "parent_id": "dom_...|null",
+    "parent_id": "domain_...|null",
     "services": { /* ... */ },
     "repos":    { /* ... */ },
     "memory":   { /* ... as today's workspace.memory ... */ }
   },
   "external_dependencies": [
     {
-      "target_id": "dom_7Z...",
+      "target_id": "domain_7Z...",
       "relation": "child | peer | upstream",
       "expected_name": "payments",              // human hint, not identity
       "resolution": { "kind": "local | github | absent", "hint": "..." },
@@ -122,7 +122,7 @@ pointer).
    explicit version knob. Offline + populated cache → warn and use it; offline +
    never-resolved → `absent`. No vendoring into the referrer's committed history.
 8. **Optional team-chosen id prefix** (2026-09-30, shipped with Parts 1+2): the id may
-   embed a cosmetic label — `dom_<label>_<26-char ULID>`, label
+   embed a cosmetic label — `domain_<label>_<26-char ULID>`, label
    `/^[a-z][a-z0-9-]{0,14}[a-z0-9]$/` — chosen once at mint (`/discover` asks as a
    skippable question; `mint-domain-id.js --prefix=<label>` for back-fill). The label is
    **frozen**: identity remains the whole opaque string, uniqueness still comes from the

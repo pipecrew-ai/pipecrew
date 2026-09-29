@@ -33,12 +33,31 @@ From these answers + Pre-phase 0 name, derive:
 
 **If the user corrects the name in their answer** (e.g., "Actually it's called X, not Y"), treat that as a name-change request: update the scratchpad, rename the workspace directory if the slug changes, and re-confirm before proceeding.
 
-**Optional follow-up: known upstream dependencies (Part 2 — external_dependencies)**
+**Optional follow-up: domain id prefix (for new configs only)**
 
-After the three required questions, if this is a non-trivial workspace (more than one repo, or the user mentioned consuming external platforms), offer one optional question:
+Since this is a new workspace, you will mint a fresh domain id after config is built. Offer one optional question before asking about upstreams:
 
 ```
-4. **Known upstreams** (optional — press Enter to skip): Does this workspace
+4. **Domain id prefix** (optional — press Enter to skip): Would you like a short
+   human-readable label baked into the workspace's permanent domain id?
+   (e.g., `--prefix=payments` produces `dom_payments_<ULID>` instead of `dom_<ULID>`)
+
+   Rules: 2–16 lowercase chars, alphanumerics + inner dashes only (no underscores).
+   (e.g., "payments", "order-mgmt", "auth")
+
+   Important: this label is frozen at mint and never changes — even if the team or
+   domain is later renamed. Identity is the whole id string; the prefix is cosmetic.
+   Skipping is fine; an unprefixed id is equally valid and permanent.
+```
+
+If the user provides a valid label, record it in the scratchpad's `## Domain Answers` section as `domain_id_prefix: <label>` so Phase B2 can pass it to `mint-domain-id.js`. If they skip, record nothing (Phase B2 mints without a prefix).
+
+**Optional follow-up: known upstream dependencies (Part 2 — external_dependencies)**
+
+After the prefix question, if this is a non-trivial workspace (more than one repo, or the user mentioned consuming external platforms), offer one optional question:
+
+```
+5. **Known upstreams** (optional — press Enter to skip): Does this workspace
    depend on any OTHER PipeCrew workspace or external domain? If yes, list
    them by name and what the dependency is.
    (e.g., "payments domain — we pull their transaction events",

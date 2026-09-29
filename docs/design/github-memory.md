@@ -120,18 +120,33 @@ A workspace's `config.json` may carry a `domain.id` field:
 
 ```jsonc
 "domain": {
-  "id": "dom_01ARZ3NDEKTSV4RRFFQ69G5FAV",   // dom_<26-char Crockford-base32 ULID>
+  "id": "dom_01ARZ3NDEKTSV4RRFFQ69G5FAV",          // dom_<26-char Crockford-base32 ULID>
+  // or with an optional team-chosen cosmetic prefix:
+  "id": "dom_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV",  // dom_<label>_<26-char ULID>
   ...
 }
 ```
 
-**Format**: `dom_` prefix + 26 Crockford-base32 characters (a ULID, time-ordered, ~122 bits of randomness). Minted once by `scripts/mint-domain-id.js`, idempotent on re-run.
+**Format**: `dom_` prefix + an optional team-chosen label + 26 Crockford-base32 ULID characters.
+
+Two forms are both valid forever:
+- `dom_<26-char ULID>` — plain form, no prefix.
+- `dom_<label>_<26-char ULID>` — prefixed form; `<label>` matches
+  `/^[a-z][a-z0-9-]{0,14}[a-z0-9]$/` (2–16 chars, lowercase alphanumerics + inner
+  dashes; no underscores — underscore is the structural separator).
+
+Full id regex: `/^dom_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/`
+
+**Frozen cosmetic label semantics**: the prefix is baked in at mint and never changes — even
+if the team or domain is later renamed. Identity is the whole id string; uniqueness comes
+from the ULID (two teams picking the same prefix never collide); renames never re-mint.
+Consumers must treat the entire id as an opaque string.
 
 **Purpose**: a stable opaque id that survives workspace rename or path changes — the precondition for cross-domain references. Nothing reads or validates it yet beyond the warn-only `validate-config.js` check.
 
 **Carry-through**: `regeneratePortableConfig()` deep-clones the whole config before stripping only `repos[].path`. `domain.id` therefore flows into `config.portable.json` and to teammates via `/join` with zero code change.
 
-**Back-fill**: run `node scripts/mint-domain-id.js --config=<path>` once per existing workspace. The `/discover` run mints an id automatically into any new config it writes.
+**Back-fill**: run `node scripts/mint-domain-id.js --config=<path>` once per existing workspace (add `--prefix=<label>` to bake in a cosmetic label). The `/discover` run mints an id automatically into any new config it writes, using the prefix the user supplied in Phase B1 (or plain if skipped).
 
 ### `external_dependencies[]` — cross-domain dependency edges (dangling)
 

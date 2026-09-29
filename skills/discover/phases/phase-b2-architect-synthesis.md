@@ -351,9 +351,15 @@ node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
 ```
 
-Mint a stable domain id into the new config (idempotent — no-op if one already exists):
+Mint a stable domain id into the new config (idempotent — no-op if one already exists).
+If Phase B1 captured a `domain_id_prefix` in the scratchpad's `## Domain Answers` block,
+pass `--prefix={label}`; otherwise omit the flag entirely:
 
 ```bash
+# When Phase B1 captured a prefix label:
+node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json --prefix={domain_id_prefix}
+
+# When no prefix was captured (skip produces plain dom_<ULID>):
 node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json
 ```
 

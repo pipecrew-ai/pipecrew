@@ -144,10 +144,15 @@ if (!config.domain) {
   warn('No "domain" block — /init Phase B2 will generate one');
 } else {
   // domain.id — optional but recommended. Warn if absent or malformed; never error.
+  // Accepts both forms:
+  //   dom_<26-char ULID>                      (no prefix)
+  //   dom_<label>_<26-char ULID>              (with team-chosen cosmetic prefix)
+  // where <label> matches /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/
+  const DOMAIN_ID_RE = /^dom_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
   if (!config.domain.id) {
     warn('domain.id is missing — run `node scripts/mint-domain-id.js --config=<path>` to mint a stable opaque id for this workspace');
-  } else if (typeof config.domain.id !== 'string' || !/^dom_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/.test(config.domain.id)) {
-    warn(`domain.id "${config.domain.id}" is malformed — expected dom_<26-char Crockford-base32 ULID>`);
+  } else if (typeof config.domain.id !== 'string' || !DOMAIN_ID_RE.test(config.domain.id)) {
+    warn(`domain.id "${config.domain.id}" is malformed — expected dom_<26-char Crockford-base32 ULID> or dom_<label>_<26-char ULID>`);
   }
 }
 

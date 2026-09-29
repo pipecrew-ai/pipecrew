@@ -320,6 +320,138 @@ ok('validate-config: share_scope is not enforced (open Q3) — any string is acc
 });
 
 // ---------------------------------------------------------------------------
+// FR-8 / FR-1: --prefix flag — prefixed mint
+// ---------------------------------------------------------------------------
+
+ok('--prefix=payments mints dom_payments_<26 Crockford chars>', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=payments']);
+  assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
+  const id = r.stdout.trim();
+  assert.match(id, /^dom_payments_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad prefixed id shape: ${id}`);
+  const cfg = readConfig(configPath);
+  assert.strictEqual(cfg.domain.id, id, 'prefixed id not written to config');
+});
+
+ok('--prefix=order-mgmt (inner dash) is valid and round-trips', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=order-mgmt']);
+  assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
+  const id = r.stdout.trim();
+  assert.match(id, /^dom_order-mgmt_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `bad id shape: ${id}`);
+});
+
+ok('--prefix= (empty string) treated as no prefix — mints plain dom_<ULID>', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=']);
+  assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
+  const id = r.stdout.trim();
+  assert.match(id, /^dom_[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/, `expected plain id, got: ${id}`);
+});
+
+ok('invalid prefix — uppercase — exits 1 without writing', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=Payments']);
+  assert.strictEqual(r.status, 1, `expected exit 1, got ${r.status}`);
+  const cfg = readConfig(configPath);
+  assert.ok(!cfg.domain || !cfg.domain.id, 'id should not have been written on invalid prefix');
+  assert.ok(r.stderr.includes('prefix') || r.stderr.includes('Payments'), `stderr: ${r.stderr}`);
+});
+
+ok('invalid prefix — underscore — exits 1 without writing', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=pay_ments']);
+  assert.strictEqual(r.status, 1, `expected exit 1, got ${r.status}`);
+  const cfg = readConfig(configPath);
+  assert.ok(!cfg.domain || !cfg.domain.id, 'id should not have been written on invalid prefix');
+});
+
+ok('invalid prefix — leading dash — exits 1 without writing', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=-payments']);
+  assert.strictEqual(r.status, 1, `expected exit 1, got ${r.status}`);
+});
+
+ok('invalid prefix — trailing dash — exits 1 without writing', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=payments-']);
+  assert.strictEqual(r.status, 1, `expected exit 1, got ${r.status}`);
+});
+
+ok('invalid prefix — single char (too short) — exits 1 without writing', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=p']);
+  assert.strictEqual(r.status, 1, `expected exit 1, got ${r.status}`);
+});
+
+ok('invalid prefix — 17 chars (too long) — exits 1 without writing', () => {
+  const { configPath } = makeConfig();
+  // 17 lowercase chars
+  const r = runMint([`--config=${configPath}`, '--prefix=abcdefghijklmnopq']);
+  assert.strictEqual(r.status, 1, `expected exit 1, got ${r.status}`);
+});
+
+ok('EC-1/FR-2: --prefix on config with existing unprefixed id → returns existing id, no write', () => {
+  const existingId = 'dom_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const { configPath } = makeConfig({ domain: { id: existingId } });
+  const before = fs.readFileSync(configPath, 'utf8');
+  const r = runMint([`--config=${configPath}`, '--prefix=payments']);
+  assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
+  assert.strictEqual(r.stdout.trim(), existingId, 'should print the existing id');
+  const after = fs.readFileSync(configPath, 'utf8');
+  assert.strictEqual(before, after, 'file should be untouched');
+});
+
+ok('EC-2: --prefix=order-mgmt passes validate-config silently (no extra warn)', () => {
+  const { configPath } = makeConfig();
+  const r = runMint([`--config=${configPath}`, '--prefix=order-mgmt']);
+  assert.strictEqual(r.status, 0);
+  const id = r.stdout.trim();
+  const rv = runValidate(configPath);
+  assert.strictEqual(rv.status, 0, `validate exit ${rv.status}; stderr: ${rv.stderr}`);
+  // Should not have a domain.id-specific warning for a valid prefixed id
+  assert.ok(!rv.stderr.includes('domain.id'), `unexpected domain.id warning for id "${id}"; stderr: ${rv.stderr}`);
+});
+
+ok('validate-config: well-formed prefixed dom_ id passes silently', () => {
+  const { configPath } = makeConfig({ domain: { id: 'dom_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+  const r = runValidate(configPath);
+  assert.strictEqual(r.status, 0, `exit ${r.status}; stderr: ${r.stderr}`);
+  assert.ok(!r.stderr.includes('domain.id'), `unexpected domain.id warning; stderr: ${r.stderr}`);
+});
+
+ok('validate-config: prefixed id with uppercase prefix emits WARN-only', () => {
+  // Uppercase prefix is malformed — the ULID chars are uppercase by spec but the label must be lowercase
+  const { configPath } = makeConfig({ domain: { id: 'dom_Payments_01ARZ3NDEKTSV4RRFFQ69G5FAV' } });
+  const r = runValidate(configPath);
+  assert.strictEqual(r.status, 0, `should exit 0 (warn-only); stderr: ${r.stderr}`);
+  assert.ok(r.stderr.includes('WARN'), `expected a WARN; stderr: ${r.stderr}`);
+});
+
+ok('EC-3 with prefixed id: portable config clone carries prefixed domain.id', () => {
+  const prefixedId = 'dom_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const srcConfig = {
+    workspace: { name: 'Test', slug: 'test' },
+    domain: { id: prefixedId, name: 'Payments Domain' },
+    external_dependencies: [
+      { target_id: 'dom_order-mgmt_01ARZ3NDEKTSV4RRFFQ69G5FAV', relation: 'upstream', resolution: { kind: 'absent' } },
+    ],
+    repos: {
+      'svc-a': { path: '/absolute/local/path', type: 'spring-boot', role: 'api-service' },
+    },
+    services: {},
+  };
+  const portable = JSON.parse(JSON.stringify(srcConfig));
+  for (const repo of Object.values(portable.repos)) {
+    delete repo.path;
+  }
+  assert.strictEqual(portable.domain.id, prefixedId, 'prefixed domain.id lost in portable clone');
+  assert.ok(Array.isArray(portable.external_dependencies), 'external_dependencies lost');
+  assert.strictEqual(portable.external_dependencies[0].target_id, 'dom_order-mgmt_01ARZ3NDEKTSV4RRFFQ69G5FAV', 'prefixed target_id lost');
+  assert.strictEqual(portable.repos['svc-a'].path, undefined, 'path should be stripped');
+});
+
+// ---------------------------------------------------------------------------
 // EC-3: regeneratePortableConfig carries domain.id + external_dependencies
 // ---------------------------------------------------------------------------
 

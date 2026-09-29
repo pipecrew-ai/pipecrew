@@ -4,6 +4,7 @@
  * mint-domain-id.js — mint a stable opaque domain id into a workspace config.json.
  *
  * Id format: dom_<26-char Crockford-base32 ULID>
+ *   or with prefix: dom_<label>_<26-char ULID>
  *
  * Idempotent: if config.json already has domain.id, prints it and exits 0
  * without writing. Creates the `domain` block if absent; preserves any
@@ -12,8 +13,17 @@
  * Usage:
  *   node mint-domain-id.js --workspace-dir=<dir>   # dir containing config.json
  *   node mint-domain-id.js --config=<path>         # explicit path to config.json
+ *   node mint-domain-id.js --config=<path> --prefix=<label>
+ *                                                   # mint dom_<label>_<ULID>
  *
- * Prints the id to stdout. Exits 0 on success, 1 if no config is found.
+ * --prefix=<label>: optional cosmetic team label baked into the id.
+ *   Label rules: /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/ (2–16 chars, lowercase
+ *   alphanumerics + inner dashes; no underscores — underscore is the structural
+ *   separator). An invalid label exits 1. --prefix= (empty string) is treated
+ *   as no prefix. The prefix is frozen at mint — identity is the whole string,
+ *   uniqueness comes from the ULID, and a later team rename never re-mints.
+ *
+ * Prints the id to stdout. Exits 0 on success, 1 on error.
  *
  * BOM-tolerant: strips a leading UTF-8 BOM before parsing (Windows editors add one).
  *
@@ -38,6 +48,27 @@ function resolveConfigPath() {
   const wsDir = argVal('workspace-dir');
   if (wsDir) return path.join(wsDir, 'config.json');
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Prefix validation
+// ---------------------------------------------------------------------------
+// Label rules: 2–16 chars, lowercase alphanumerics + inner dashes, no underscores.
+const PREFIX_REGEX = /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/;
+
+function resolvePrefix() {
+  const raw = argVal('prefix');
+  if (raw === null) return null;      // flag not provided
+  if (raw === '') return null;        // --prefix= (empty) → no prefix
+  if (!PREFIX_REGEX.test(raw)) {
+    console.error(
+      `mint-domain-id: invalid --prefix="${raw}"\n` +
+      `  Allowed shape: /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/ ` +
+      `(2–16 chars, lowercase alphanumerics + inner dashes; no underscores)`
+    );
+    process.exit(1);
+  }
+  return raw;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +133,7 @@ function generateULID() {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+const prefix = resolvePrefix();   // null | validated label string
 const configPath = resolveConfigPath();
 
 if (!configPath || !fs.existsSync(configPath)) {
@@ -134,7 +166,7 @@ if (config.domain && config.domain.id) {
 }
 
 // Mint a new id.
-const newId = 'dom_' + generateULID();
+const newId = prefix ? `dom_${prefix}_${generateULID()}` : `dom_${generateULID()}`;
 
 // Write domain.id into the config — preserve all existing content.
 if (!config.domain || typeof config.domain !== 'object') {

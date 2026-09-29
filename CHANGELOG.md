@@ -22,12 +22,20 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 - **Domain identity (Part 1 of domain-durable-memory rollout).** New zero-dep
   `scripts/mint-domain-id.js` mints a stable opaque `dom_<26-char Crockford-base32
   ULID>` into `config.json` at `domain.id`. Idempotent (no-op if already present);
-  preserves all existing `domain` block content and key order; BOM-tolerant. `/discover`
-  now mints an id into every new config immediately after the validate + register step
-  (Phase B2). `validate-config.js` warns (never errors) when `domain.id` is absent or
-  malformed. Co-located `scripts/mint-domain-id.test.js` (9 mint tests + 9 validator
-  tests including EC-3 portable-config carry-through). Design reference:
-  `docs/design/github-memory.md § Domain identity and dependency edges`.
+  preserves all existing `domain` block content and key order; BOM-tolerant. Optional
+  `--prefix=<label>` bakes a short team-chosen cosmetic label into the id (e.g.
+  `dom_payments_<ULID>`); label rules: 2–16 lowercase alphanumeric + inner-dash chars
+  (no underscores); the label is frozen at mint — a later rename never re-mints, identity
+  is the whole string, uniqueness comes from the ULID. `--prefix=` (empty) treated as no
+  prefix; existing ids are returned as-is regardless of the flag (idempotency first).
+  `/discover` Phase B1 now offers an optional skippable interview question asking for a
+  domain id prefix (placed before the upstreams question, new configs only); Phase B2
+  passes `--prefix={label}` to the mint call when one was captured. `validate-config.js`
+  warns (never errors) when `domain.id` is absent or malformed; regex updated to accept
+  both plain (`dom_<ULID>`) and prefixed (`dom_<label>_<ULID>`) forms. Co-located
+  `scripts/mint-domain-id.test.js` covers prefixed mint, invalid label shapes, prefix +
+  existing id idempotency, validator acceptance of both forms, and all prior cases.
+  Design reference: `docs/design/github-memory.md § Domain identity and dependency edges`.
 - **Dependency edges — `external_dependencies[]` (Part 2).** `config.json` may now
   declare cross-domain edges (target_id/relation/resolution/trust/share_scope). All
   edges are inert declarations until Part 3 (resolve). `validate-config.js` validates

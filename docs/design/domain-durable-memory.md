@@ -121,6 +121,13 @@ pointer).
    keyed by `target_id` + source commit SHA, with optional `resolution.pin` (SHA) as the
    explicit version knob. Offline + populated cache → warn and use it; offline +
    never-resolved → `absent`. No vendoring into the referrer's committed history.
+8. **Optional team-chosen id prefix** (2026-09-30, shipped with Parts 1+2): the id may
+   embed a cosmetic label — `dom_<label>_<26-char ULID>`, label
+   `/^[a-z][a-z0-9-]{0,14}[a-z0-9]$/` — chosen once at mint (`/discover` asks as a
+   skippable question; `mint-domain-id.js --prefix=<label>` for back-fill). The label is
+   **frozen**: identity remains the whole opaque string, uniqueness still comes from the
+   ULID (duplicate labels across teams are harmless), and a later rename never re-mints.
+   Prefix-less ids remain valid forever; consumers keep treating ids as opaque.
 
 ## Delivery rollout (agreed order — least change radius first)
 

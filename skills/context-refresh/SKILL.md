@@ -280,9 +280,9 @@ Read the agent-context docs at {repo_path}/agent-context/.
 Compare against current code reality. Update any stale references.
 Add coverage for new modules, endpoints, or features that aren't documented.
 
-If any agent-context/common/ topic files were added or removed, update CLAUDE.md's `## Deep context` table to match (this is the only routine touch CLAUDE.md gets — see implementer-common-rules.md Rule 5), then run:
-  node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/CLAUDE.md
-Fix any validator errors before finishing. Do not touch CLAUDE.md's stable sections.
+If any agent-context/common/ topic files were added or removed, update the context file's `## Deep context` table to match (this is the only routine touch it gets — see implementer-common-rules.md Rule 5). The context file is {repo_path}/AGENTS.md; if only a legacy {repo_path}/CLAUDE.md exists, migrate per your system prompt (content → AGENTS.md, CLAUDE.md becomes the one-line `@AGENTS.md` shim). Then run:
+  node {plugin_dir}/scripts/validate-claude-md.js {repo_path}/AGENTS.md
+(against {repo_path}/CLAUDE.md only if the repo is still legacy-unmigrated — never against the shim). Fix any validator errors before finishing. Do not touch the context file's stable sections.
 
 {if role == "frontend":}
 Additionally refresh the design system file at whichever of these exists:

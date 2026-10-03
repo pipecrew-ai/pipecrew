@@ -35,7 +35,7 @@ The caller's prompt embeds everything you need — do not fetch further sources 
 You need the current state of what the proposals would change. Read:
 
 - `{workspace_root}/{slug}/context/platform.md` — architecture, integrations, known constraints, and the workspace's `Established Patterns` section.
-- For each repo implicated by the signal, `{repo.path}/CLAUDE.md` and the agent-context docs it points to. For frontend repos, also `{repo.path}/agent-context*/common/DESIGN_SYSTEM.md`.
+- For each repo implicated by the signal, `{repo.path}/AGENTS.md` and the agent-context docs it points to. For frontend repos, also `{repo.path}/agent-context*/common/DESIGN_SYSTEM.md`.
 
 If a doc doesn't exist, note that in the signal analysis but don't fail — the workspace might not have gone through the full `/discover` flow yet. You can propose to CREATE a section that would document the pattern; the apply step handles additions to missing sections.
 
@@ -70,9 +70,9 @@ For each observation, choose exactly one tier:
 
 - **`run-local`** — the correction applied only to the specific feature the run was building. Example: *"we decided not to emit a CANCELED contract row because product doesn't need it for this release"* (a product decision for this feature, not a reusable rule). These become informational entries in the summary; they do NOT generate proposals.
 
-- **`repo-durable`** — the correction is specific to one repo, not the whole stack. Example: *"in abvi-backoffice-service, the filter pattern always uses Specification"* (if only this one Spring Boot repo uses that pattern while others in the workspace use different approaches — rare; usually conventions are workspace-wide). Or: *"this repo has a custom date helper; use it instead of the framework default"*. Target: `{repo}/CLAUDE.md` or `{repo}/agent-context/*`. For frontend repos with UX-level findings (tab shell / row actions / modals): target `{repo}/DESIGN_SYSTEM.md` at the appropriate §.
+- **`repo-durable`** — the correction is specific to one repo, not the whole stack. Example: *"in abvi-backoffice-service, the filter pattern always uses Specification"* (if only this one Spring Boot repo uses that pattern while others in the workspace use different approaches — rare; usually conventions are workspace-wide). Or: *"this repo has a custom date helper; use it instead of the framework default"*. Target: `{repo}/AGENTS.md` or `{repo}/agent-context/*`. For frontend repos with UX-level findings (tab shell / row actions / modals): target `{repo}/DESIGN_SYSTEM.md` at the appropriate §.
 
-- **`workspace-durable`** — the correction applies to every repo (or every repo of a given type) in the workspace. Example: *"Spring Boot services in this workspace use @PreAuthorize, not manual SecurityContextHolder reads"*. Target: `{workspace_root}/{slug}/context/platform.md` § `Established Patterns` (or a related architecture-level section). If the rule is more naturally per-repo than workspace-wide, downgrade to `repo-durable` and target each repo's CLAUDE.md.
+- **`workspace-durable`** — the correction applies to every repo (or every repo of a given type) in the workspace. Example: *"Spring Boot services in this workspace use @PreAuthorize, not manual SecurityContextHolder reads"*. Target: `{workspace_root}/{slug}/context/platform.md` § `Established Patterns` (or a related architecture-level section). If the rule is more naturally per-repo than workspace-wide, downgrade to `repo-durable` and target each repo's AGENTS.md.
 
 - **`plugin-level`** — the correction is a universal best practice that would apply to any workspace built by PipeCrew, not just this one. Example: *"any agent that edits YAML should parse-validate the file afterward"*. These are FLAGGED only — no workspace file is touched, because plugin-level changes are the maintainer's call.
 
@@ -213,7 +213,7 @@ Low-confidence findings are still valuable — they flag candidates for the user
 - **Paraphrasing evidence**: rewriting a reviewer's comment in your own words loses nuance. Quote verbatim, even if the phrasing is awkward.
 - **Over-generalizing from one incident**: a single PR comment saying *"use X here"* doesn't automatically mean *"always use X everywhere"* — check whether the pattern holds in other parts of the codebase before proposing workspace-level.
 - **Editorializing**: your job is to detect and propose, not to advocate. "This plugin behavior was bad" is editorializing; "observation: plugin did X; correction: should do Y; evidence: quote" is analysis.
-- **Restating what's already in the docs**: if `platform.md § Established Patterns` or the repo's CLAUDE.md already says *"use @PreAuthorize"* and the PR validates that, no finding is needed — the docs are already correct and the plugin should have followed them. (That's a Phase 5.5 reviewer failure, not a feedback-learner finding.)
+- **Restating what's already in the docs**: if `platform.md § Established Patterns` or the repo's AGENTS.md already says *"use @PreAuthorize"* and the PR validates that, no finding is needed — the docs are already correct and the plugin should have followed them. (That's a Phase 5.5 reviewer failure, not a feedback-learner finding.)
 - **Proposing removals without strong signal**: removing content from docs based on weak signal is high-risk. Require `confidence: high` for any finding whose proposed change is a deletion / major rewrite.
 
 ## You are not done until

@@ -109,9 +109,9 @@ Repos with `role` other than `api-service` / `worker` (`frontend`, `mock-server`
 
 Surface the inferred value in the Step 6 table so the user can correct it (e.g., "repo 13 is code-first, not api-first").
 
-### Step 4: Check for existing CLAUDE.md
+### Step 4: Check for existing context file
 
-For each repo, check if `{repo_path}/CLAUDE.md` or `{repo_path}/.claude/CLAUDE.md` exists. Record the result.
+For each repo, check if `{repo_path}/AGENTS.md`, `{repo_path}/CLAUDE.md`, or `{repo_path}/.claude/CLAUDE.md` exists. Record the result (and which name was found — a content-bearing legacy `CLAUDE.md` will be migrated to `AGENTS.md` in Phase C).
 
 ### Step 5: Check for existing agent-context
 

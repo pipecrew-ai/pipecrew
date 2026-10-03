@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 /**
- * CLAUDE.md validator — enforces the 10 guardrails from GENERALIZE-PLAN Section 13.
+ * Repo-context file validator — enforces the 10 guardrails for a generated
+ * per-repo context file (canonically `AGENTS.md`; a legacy `CLAUDE.md` has the
+ * same shape and is validated identically).
  *
- * Usage:  node validate-claude-md.js <claude-md-path>
+ * Usage:  node validate-claude-md.js <context-file-path>   # e.g. {repo}/AGENTS.md
  * Exit 0 = clean, 1 = hard-fail, 2 = warning only.
+ *
+ * A Claude Code `CLAUDE.md` import shim (a file whose only content is
+ * `@AGENTS.md`) is recognized and passes clean — it carries no content of its
+ * own to validate.
  *
  * Zero dependencies — pure Node stdlib. Designed to be called from
  * discover phase-c-generation.md after context-manager writes the file,
@@ -14,8 +20,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Each mandatory bullet accepts EITHER the legacy wording (from
-// templates/repo-CLAUDE.md.template) OR the new wording (from the
-// role-specific templates/repo-CLAUDE-{backend,frontend}.md.template).
+// templates/repo-AGENTS.md.template) OR the new wording (from the
+// role-specific templates/repo-AGENTS-{backend,frontend}.md.template).
 // Union-style — if either pattern matches, the bullet is considered present.
 const MANDATORY_BULLETS = [
   // Bullet 1: read AGENT_INDEX before planning a change.
@@ -35,7 +41,7 @@ const MANDATORY_BULLETS = [
 ];
 
 const COUPLING_PATTERNS = [
-  { pattern: /~\/\.claude\/(?:pipecrew\/)?workspaces\//, label: 'workspace path reference' },
+  { pattern: /~\/\.(?:claude|cursor)\/(?:pipecrew\/)?workspaces\//, label: 'workspace path reference' },
   { pattern: /\bplatform\.md\b/, label: '"platform.md" reference' },
   { pattern: /\baudit-findings\b/, label: '"audit-findings" reference' },
   { pattern: /\bworkspace baseline\b/i, label: '"workspace baseline" phrase' },
@@ -67,10 +73,18 @@ const SECRET_PATTERNS = [
 function validate(body, repoRoot) {
   const errors = [];
   const warnings = [];
+
+  // Claude Code import shim: a CLAUDE.md whose only content is `@AGENTS.md`
+  // (optionally with blank lines/whitespace) points at the canonical AGENTS.md
+  // and carries no content of its own — valid by construction.
+  if (/^\s*@AGENTS\.md\s*$/.test(body)) {
+    return { errors, warnings };
+  }
+
   const lines = body.split(/\r?\n/);
 
   // Claude-only mode: the repo has NO agent-context/ dir and NO AGENT_INDEX.md
-  // (sentinel emitted by context-manager's claude-only template, repo-CLAUDE-claude-only.md.template).
+  // (sentinel emitted by context-manager's claude-only template, repo-AGENTS-claude-only.md.template).
   // In that mode the AGENT_INDEX / agent-context mandatory bullets do not apply, and
   // any reference to those paths is a dead link by construction.
   const claudeOnly = /<!--\s*claude-only-mode\s*-->/.test(lines.slice(0, 5).join('\n'));
@@ -80,7 +94,7 @@ function validate(body, repoRoot) {
     const m = body.match(pattern);
     if (m) {
       const lineNo = lineOf(body, m.index);
-      errors.push(`coupling: ${label} at line ${lineNo} — CLAUDE.md must stay workspace-agnostic`);
+      errors.push(`coupling: ${label} at line ${lineNo} — the repo context file must stay workspace-agnostic`);
     }
   }
 

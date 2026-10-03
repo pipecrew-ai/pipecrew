@@ -14,12 +14,12 @@ node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 
 Must exit 0. If warnings, print them. If errors, fix them before continuing.
 
-### Step 2: Verify CLAUDE.md in every repo
+### Step 2: Verify the context file (AGENTS.md) in every repo
 
-For each repo in the config:
+For each repo in the config (Phase C writes `AGENTS.md` + the `CLAUDE.md` shim; a legacy workspace may have only `CLAUDE.md`):
 
 ```bash
-test -f "{repo.path}/CLAUDE.md" && echo "OK: {repo_name}" || echo "MISSING: {repo_name}"
+{ test -f "{repo.path}/AGENTS.md" || test -f "{repo.path}/CLAUDE.md"; } && echo "OK: {repo_name}" || echo "MISSING: {repo_name}"
 ```
 
 If any are missing, report and ask the user to resolve (re-run Phase C Step 2 for that repo, or accept the gap).

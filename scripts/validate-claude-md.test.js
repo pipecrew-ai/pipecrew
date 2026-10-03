@@ -274,6 +274,19 @@ test('claude-only — still enforces coupling/secret scans', () => {
   assert(hasErr(r, 'AWS access key'), 'claude-only must still run the secret scan');
 });
 
+// ── import shim (Claude Code CLAUDE.md → @AGENTS.md) ───────────────────
+test('shim — a CLAUDE.md that is just `@AGENTS.md` passes clean', () => {
+  const r = validate('@AGENTS.md\n', tmpRepo);
+  assert(r.errors.length === 0, `unexpected errors: ${r.errors.join('; ')}`);
+  assert(r.warnings.length === 0, `unexpected warnings: ${r.warnings.join('; ')}`);
+});
+
+test('shim — extra content beyond the import is validated normally', () => {
+  // Not a pure shim → falls through to the real guardrails (mandatory bullets missing).
+  const r = validate('@AGENTS.md\n\n## Extra\n- stray content\n', tmpRepo);
+  assert(hasErr(r, 'mandatory-bullet'), 'non-shim body must be validated normally');
+});
+
 test('10. idempotency — "Last Updated: YYYY-MM-DD" trailer warns', () => {
   const body = validBody + '\n---\n\n*Last Updated: 2026-04-15*\n';
   const r = validate(body, tmpRepo);

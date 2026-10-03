@@ -32,8 +32,8 @@ PROFILES TO READ (one per repo):
 Schema for each: {plugin_dir}/templates/blocks/repo-profile.example.json
 Field reference: {plugin_dir}/templates/blocks/block-schemas.md § REPO_PROFILE.
 
-Optionally cross-check each profile against `{repo.path}/CLAUDE.md` (when it
-exists). Read raw source code ONLY in these explicitly authorized cases:
+Optionally cross-check each profile against `{repo.path}/AGENTS.md` (else legacy
+`{repo.path}/CLAUDE.md`, when either exists). Read raw source code ONLY in these explicitly authorized cases:
   (a) a profile's `notes_for_architect` or `constraints_observed` flagged an
       ambiguity you need to resolve;
   (b) a profile flagged an entity with a non-trivial lifecycle (4+ states or

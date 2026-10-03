@@ -87,18 +87,18 @@ Everything below this section is the **MODE: design** reference — skip it when
 
 Start by reading the target repo's documentation to learn its specific vocabulary:
 
-1. **Read `{repo_path}/CLAUDE.md`** — this gives you the project name, tech stack (framework, styling system, component library), user roles, and the location of detailed docs.
+1. **Read `{repo_path}/AGENTS.md`** — this gives you the project name, tech stack (framework, styling system, component library), user roles, and the location of detailed docs.
 2. **Find and read the design system docs.** Look in this order and read the first one that exists:
    - `agent-context-v2/common/DESIGN_SYSTEM.md`
    - `agent-context/common/DESIGN_SYSTEM.md`
    - `agent-context/design-system.md`
    - Any file under `agent-context*/common/` matching `DESIGN*`, `SPACING*`, or `COMPONENTS*`
    - `docs/design-system.md` or similar under a top-level `docs/` tree
-   - The CLAUDE.md pointer list (it will tell you where the design system lives)
+   - The AGENTS.md pointer list (it will tell you where the design system lives)
    
    This file defines the project's actual color tokens, typography, spacing, component conventions, and RTL patterns. Your recommendations MUST use these tokens and patterns — not generic advice.
 3. **Read the storybook stories** if they exist. Use Glob to find them — the path convention varies by project. Try patterns like `src/stories/**/*.stories.*`, `stories/**/*.stories.*`, `src/**/*.stories.*`, or `.storybook/**/stories/**/*.{tsx,jsx,ts,js,vue,svelte}`. Read the foundation stories (Colors, Typography, Spacing, or whatever the project calls them) up front. Read component stories on demand as you decide which primitives to recommend.
-4. **Read the feature catalog** to learn what patterns are already established. Look in `agent-context*/features/` (or whatever the repo calls its feature catalog directory — CLAUDE.md will point you there) and read 2–4 files for features similar to what you're designing (dashboards, detail modals, table actions, forms, wizards, upload flows — whichever are relevant).
+4. **Read the feature catalog** to learn what patterns are already established. Look in `agent-context*/features/` (or whatever the repo calls its feature catalog directory — AGENTS.md will point you there) and read 2–4 files for features similar to what you're designing (dashboards, detail modals, table actions, forms, wizards, upload flows — whichever are relevant).
 5. **Sanity-check the component library** by listing the shared components directory (common paths: `src/components/`, `src/components/ui/`, `src/lib/components/`, `components/`). This confirms which primitives are actually available and prevents you from recommending something the repo doesn't have.
 
 Write down what you learned: the user roles, the established patterns for dashboards/tables/dialogs/forms/errors, the spacing system, the available component variants, the styling conventions. This becomes the vocabulary for your recommendations.
@@ -200,7 +200,7 @@ The digest is what the orchestrator presents at the UX approval gate — it must
 ## Use Case: [Name]
 
 ### User Persona & Context
-[Role (from the repo's CLAUDE.md / user roles), goal, context, emotional state]
+[Role (from the repo's AGENTS.md / user roles), goal, context, emotional state]
 
 ### Recommended User Flow
 [Step-by-step with entry points, decision points, success paths, error/edge case paths]
@@ -314,7 +314,7 @@ The orchestrator routes that section to the run's `run-notes.md`; the end-of-run
 
 ## You are not done until
 
-- You have read `CLAUDE.md` and every doc it points to (conventions, design system notes, RTL rules)
+- You have read `AGENTS.md` and every doc it points to (conventions, design system notes, RTL rules)
 - You have read at least 2 existing feature docs in `agent-context-v2/features/` — do not recommend patterns until you have seen how the team actually builds features
 - **Every component recommendation references an actual component in the design system by name** — no invented primitives, no "use a Modal" when you haven't verified the repo ships one
 - Every RTL note is **explicit about which logical properties to use** (e.g., `margin-inline-start` not `margin-left`, `inset-inline-end` not `right`) rather than a vague "remember RTL"

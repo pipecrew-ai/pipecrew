@@ -81,7 +81,7 @@ For each repo in `repo_paths`, run Tiers A → B → C → D in order, then synt
 
 Read whichever of these exist (use `Glob` to detect):
 - `README.md` (first 50 lines only)
-- `CLAUDE.md` (if exists — bonus pre-extracted facts)
+- `AGENTS.md` (if exists — bonus pre-extracted facts)
 - One of: `package.json` / `pom.xml` / `build.gradle*` / `pyproject.toml` / `requirements.txt` / `*.csproj` / `Cargo.toml` / `go.mod`
 
 Extract: repo `name` (from package metadata), `tech_stack` (one of: spring-boot, nestjs, fastapi, django, flask, express, react, nextjs, cdk, terraform, python-worker, node-mock, go, rust, dotnet, unknown), `role_hint` (frontend / backend / worker / infra / contract / unknown — inferred from package contents and README).

@@ -228,17 +228,17 @@ If `Discover mode: incremental`, also restore the `## Incremental` block (mode, 
 
 Before creating any workspace dir, make sure the user's preferred root is known. Run `node {plugin_dir}/scripts/workspace-root.js --check`:
 - Exit 0 — already configured (or `$PIPECREW_WORKSPACE_ROOT` is set). Skip to 0.1.
-- Exit 2 — never configured. Ask the user once:
+- Exit 2 — never configured. First resolve the harness-appropriate default — `node {plugin_dir}/scripts/workspace-root.js --default` (`~/.claude/pipecrew/workspaces` under Claude Code, `~/.cursor/pipecrew/workspaces` under Cursor) — then ask the user once, substituting that value into the prompt (do NOT hardcode `.claude`):
 
   ```
   Where should PipeCrew store workspaces?
-  Default: ~/.claude/pipecrew/workspaces
+  Default: <output of --default>
   (Press Enter to accept the default, or paste an absolute/~-prefixed path.)
   ```
 
-  Then persist the answer (or the default) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes `~/.claude/pipecrew/config.json` so `/deliver` and future `/discover` runs reuse the same root without re-prompting.
+  Then persist the answer (or the default) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes the harness plugin config (`~/.claude/pipecrew/config.json` or `~/.cursor/pipecrew/config.json`) so `/deliver` and future `/discover` runs reuse the same root without re-prompting.
 
-After this step, capture `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get)` and use it everywhere the remaining steps show the literal `~/.claude/pipecrew/workspaces/` path.
+After this step, capture `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get)` and use it everywhere the remaining steps show a literal `pipecrew/workspaces/` path.
 
 **Step 0.1: Ask workspace name.**
 

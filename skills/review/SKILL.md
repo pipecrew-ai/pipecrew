@@ -78,7 +78,7 @@ node {plugin_dir}/scripts/write-review-diff.js --worktree={repo_path} --base={ba
 You are reviewing code in the repo at {repo_path}, branch {branch}.
 Diff base: {base_branch}.
 
-Read {repo_path}/CLAUDE.md first for conventions.
+Read {repo_path}/AGENTS.md first for conventions (else legacy {repo_path}/CLAUDE.md).
 
 Read the diff: it is pre-computed at {diff_out} (DIFF FILE) — Read that file;
 it is the complete set of changes to review. You have no Bash and never run

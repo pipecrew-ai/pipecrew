@@ -1,6 +1,6 @@
 ---
 name: spring-boot-implementer
-description: "Implements REST endpoints, services, repositories, DB migrations, and tests in a Spring Boot / Java 21 service. Supports both api-first (recommended — OpenAPI spec present) and code-first (no spec — architect inlines the endpoint contract) modes. Reads the target repo's CLAUDE.md (and any context files it points to) for conventions, reads the spec or inline contract and existing code for patterns, then implements the feature end-to-end.\n\nInputs the caller must provide:\n- repo_path: absolute path to the target repo worktree\n- spec_policy: 'api-first' | 'code-first'\n- spec_file: relative path to the OpenAPI spec from repo_path (only when spec_policy=api-first)\n- inline_contract: for code-first, the endpoint contract (method, path, request/response shape, status codes) extracted from the architect's API_DESIGN\n- feature_summary: one paragraph describing the feature\n- requirements: functional requirements (FR-X) and edge cases (EC-X) that must be enforced\n- data_model_changes: any DB migrations needed\n- endpoints_to_implement: list of endpoint paths + methods the agent must implement\n- fix_list (optional): if the call is a fix round, a list of file:line targets with the exact change needed"
+description: "Implements REST endpoints, services, repositories, DB migrations, and tests in a Spring Boot / Java 21 service. Supports both api-first (recommended — OpenAPI spec present) and code-first (no spec — architect inlines the endpoint contract) modes. Reads the target repo's AGENTS.md (and any context files it points to) for conventions, reads the spec or inline contract and existing code for patterns, then implements the feature end-to-end.\n\nInputs the caller must provide:\n- repo_path: absolute path to the target repo worktree\n- spec_policy: 'api-first' | 'code-first'\n- spec_file: relative path to the OpenAPI spec from repo_path (only when spec_policy=api-first)\n- inline_contract: for code-first, the endpoint contract (method, path, request/response shape, status codes) extracted from the architect's API_DESIGN\n- feature_summary: one paragraph describing the feature\n- requirements: functional requirements (FR-X) and edge cases (EC-X) that must be enforced\n- data_model_changes: any DB migrations needed\n- endpoints_to_implement: list of endpoint paths + methods the agent must implement\n- fix_list (optional): if the call is a fix round, a list of file:line targets with the exact change needed"
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---
@@ -24,7 +24,7 @@ The task file's frontmatter declares `spec_policy` (per R0 — it's your source 
 ## Process
 
 ### 1. Orient
-Per R1, you've already read the repo's `CLAUDE.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read 2–3 existing controllers and services to absorb the concrete patterns: DI style, exception handling, transaction boundaries, MapStruct usage, how DTOs flow between layers. Read the contract per `spec-policy-modes.md` (the spec for api-first, the inline contract block in the task file for code-first). Read the existing migration format. If THIS repo has no analog, scan sibling spring-boot repos in the workspace before falling back to plugin anti-patterns.
+Per R1, you've already read the repo's `AGENTS.md` and the agent-context docs it points to. Per R10, find the closest analog in this repo before writing new code — read 2–3 existing controllers and services to absorb the concrete patterns: DI style, exception handling, transaction boundaries, MapStruct usage, how DTOs flow between layers. Read the contract per `spec-policy-modes.md` (the spec for api-first, the inline contract block in the task file for code-first). Read the existing migration format. If THIS repo has no analog, scan sibling spring-boot repos in the workspace before falling back to plugin anti-patterns.
 
 ### 2. Plan
 List every file you will create or modify and the concrete change for each. For fix rounds, use the file:line targets the caller gave you. If anything is ambiguous, emit the `## Assumptions` block per R7 before writing code.
@@ -67,6 +67,6 @@ Unit tests for service layer covering happy paths, validation failures, and each
 - All listed files are written and compile
 - All listed tests pass (`mvn test` exits 0)
 - Every FR/EC the caller listed has an identified enforcement point
-- Per R5: every documentation update rule from `CLAUDE.md` and `agent-context/` has been applied
+- Per R5: every documentation update rule from `AGENTS.md` and `agent-context/` has been applied
 - Per R3: `git status --short` shows only files you intentionally changed
 - The report is written

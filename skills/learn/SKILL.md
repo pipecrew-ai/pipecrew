@@ -291,7 +291,7 @@ When in genuine doubt, do NOT propose an update — recommend no change and say 
 
 Read each of these before proposing any update:
 - {workspace_root}/{slug}/context/platform.md (especially the `Established Patterns` section)
-- {for each relevant repo:} {repo.path}/CLAUDE.md and the agent-context docs it points to
+- {for each relevant repo:} {repo.path}/AGENTS.md (else legacy {repo.path}/CLAUDE.md) and the agent-context docs it points to
 - {for each frontend repo:} {repo.path}/agent-context*/common/DESIGN_SYSTEM.md
 
 ## Your job
@@ -625,7 +625,7 @@ If the same repo is targeted by multiple findings and/or CF-n items, group them 
 
 Use the canonical `TYPE_TO_AGENT` mapping in `{plugin_dir}/skills/deliver/phases/dispatch-rules.md` § "Agent Dispatch (TYPE_TO_AGENT mapping)". Same fallback chain applies:
 
-1. Workspace-local override at `~/.claude/agents/{slug}-{type}-implementer.md` — prefer if present.
+1. Workspace-local override at `{slug}-{type}-implementer.md` in the harness user-level agents dir (`~/.claude/agents/` under Claude Code, `~/.cursor/agents/` under Cursor) — prefer if present.
 2. Plugin-shipped implementer from the table.
 3. `general-purpose` with the standard preamble — last resort.
 
@@ -717,7 +717,7 @@ Constraints:
    the expected behavior, update both the test name and the assertion to match the new
    convention.
 3. After all edits, run the repo's test suite and lint (use the commands documented in
-   {repo_path}/CLAUDE.md). Report failures — do not gloss over them.
+   {repo_path}/AGENTS.md, else legacy {repo_path}/CLAUDE.md). Report failures — do not gloss over them.
 4. Do NOT commit. Do NOT push. Leave the working tree dirty for the user to inspect.
 5. If a finding cannot be applied (e.g., the file was deleted on this branch, or the
    correction conflicts with another finding in this bundle), mark it

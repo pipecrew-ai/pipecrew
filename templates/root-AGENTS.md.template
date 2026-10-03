@@ -43,6 +43,7 @@ Skills orchestrate multi-agent pipelines; for a single consultation, analysis, o
 | CLAUDE.md / agent-context generation or refresh for a repo | `pipecrew:context-manager` |
 | Code-grounded architecture diagrams | `pipecrew:architecture-mapper` |
 | Run execution report (timeline, tokens, cost) | `pipecrew:reporter` |
+| Feature-level acceptance test cases drafted or refreshed (baseline mode for existing features) | `pipecrew:test-designer` |
 | Product ideation partner (greenfield or feature) | `pipecrew:product-brainstormer` |
 
 Workspace-local stack agents (`<slug>-<type>-implementer` / `<slug>-<type>-reviewer`) may also exist for stacks the plugin doesn't ship. Prefer the skills for implementation work — they wire in spec edits, worktrees, and paired review rounds that a lone agent dispatch skips.

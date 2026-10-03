@@ -32,6 +32,7 @@ const KNOWN_UNMAPPED = new Set([
   'architecture-mapper',  // code-scan mapping agent; conceptually archie-family but not yet assigned
   'repo-discoverer',      // per-repo Sonnet scout used in /discover Phase B2.0; not yet assigned
   'troubleshooter',       // workspace-template agent; site-view rendering for it is pending product decision
+  'test-designer',        // acceptance test-case author (deliver Phase 8.55 / discover Phase C Step 6); character assignment pending
 ]);
 
 // Templates whose runtime name depends on workspace slug + stack key,

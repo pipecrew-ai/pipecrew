@@ -102,7 +102,7 @@ const syncMode = resolveSyncMode();
 
 // --- 1. redact (MANDATORY) — never commit a credential value ---
 const redactScript = path.join(__dirname, 'redact-secrets.js');
-for (const sub of ['context', 'agents', 'history']) {
+for (const sub of ['context', 'agents', 'history', 'testcases']) {
   const p = path.join(wsDir, sub);
   if (!fs.existsSync(p)) continue;
   const r = spawnSync('node', [redactScript, p, '--quiet'], { encoding: 'utf8' });
@@ -130,8 +130,19 @@ if (DRY) {
 // A deny-list (.gitignore) can't anticipate arbitrary junk a user may drop in the
 // workspace dir (e.g. a "copy of claude code session/" transcript dump), and such
 // content would otherwise be committed UN-redacted (redaction only runs over
-// context/agents/history). Allow-listing guarantees only known docs are published.
-const ALLOW = ['context', 'agents', 'history', 'config.portable.json', '.gitignore'];
+// context/agents/history/testcases). Allow-listing guarantees only known docs are published.
+const ALLOW = ['context', 'agents', 'history', 'testcases', 'config.portable.json', '.gitignore'];
+
+// Memory repos bootstrapped before the testcases/ suite existed carry a
+// .gitignore whose allow-list ("/*" then "!/context/" …) silently blocks
+// `git add testcases` — self-heal by un-ignoring it in place (idempotent).
+const giPath = path.join(wsDir, '.gitignore');
+if (fs.existsSync(giPath)) {
+  const gi = fs.readFileSync(giPath, 'utf8');
+  if (/^\/\*\s*$/m.test(gi) && !gi.includes('!/testcases/')) {
+    fs.writeFileSync(giPath, gi.replace(/^!\/history\/\s*$/m, (m) => `${m}\n!/testcases/`));
+  }
+}
 const toStage = ALLOW.filter((rel) => fs.existsSync(path.join(wsDir, rel)));
 // `-A` scoped to each pathspec so deletions within the durable dirs are captured too.
 if (toStage.length) git(['add', '-A', '--', ...toStage]);

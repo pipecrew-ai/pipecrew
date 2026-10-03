@@ -117,7 +117,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
     | 5.75 (Security) | keyword trigger or `--force-security-review` | `--no-security` skips |
     | 6 (Assess) | **2+ repos modified during Phase 5 AND the architect's `cross_repo_integration` flag is `true`** (or absent — conservative fallback). Skip if only 1 repo changed (the reviewer covers it) OR if 2+ repos changed but `cross_repo_integration=false` (standalone scope — nothing cross-repo to assess; e.g. bundled-independent changes or the same maintenance applied to several services). Note the skip reason. See phase-6-assess.md spin-up decision. | — |
     | 7 (Report) | always | — |
-    | 8 (Publish + Wrap-up) | always (Step 8.6 feedback offering); PR publish steps within Phase 8 only if `--with-pr` AND no Phase 6 blockers | `--with-pr` enables PR publish; `--publish-despite-blockers` overrides blocker gate; `--no-feedback-prompt` skips Step 8.6 |
+    | 8 (Publish + Wrap-up) | always (Step 8.55 test-case gate + Step 8.6 feedback offering); PR publish steps within Phase 8 only if `--with-pr` AND no Phase 6 blockers | `--with-pr` enables PR publish; `--publish-despite-blockers` overrides blocker gate; `--no-feedback-prompt` skips Step 8.6 |
 
     Store the derived phase plan in the scratchpad's Architecture Flags section. Log: "Auto-detected phases: {list}. Skipped: {list with reasons}."
 
@@ -199,6 +199,7 @@ Phase 7: Summary ──┬── Reporter agent (execution report with insights)
                    ├── Context-manager refresh (unless --no-context-update)
                    └── Archive scratchpad
 Phase 8: Publish ──┬── PR publish (if --with-pr): user gate → push → draft PRs → cross-repo linking → append PR URLs to report.md
+                   ├── Acceptance test cases (always, gated): test-designer drafts 3–8 feature-level cases → user gate → persist to {slug}/testcases/
                    └── Run wrap-up + feedback offering (always): /learn --run + disclaimer about /learn --pr later
 ```
 
@@ -241,7 +242,7 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | 5.75. Security Review | `phases/phase-5.75-security-review.md` | 78 |
 | 6. Assessment | `phases/phase-6-assess.md` | 101 |
 | 7. Summary + Archive | `phases/phase-7-report.md` | 216 |
-| 8. PR Publish + Feedback Offering | `phases/phase-8-pr-publish.md` | 220 |
+| 8. PR Publish + Test Cases + Feedback Offering | `phases/phase-8-pr-publish.md` | 260 |
 
 **When entering a phase**: `Read {plugin_dir}/skills/deliver/phases/{phase-file}` — follow the instructions in that file for the phase.
 

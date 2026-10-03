@@ -717,6 +717,8 @@ Ensure the parent directory(ies) of this workspace's repos carry the routing con
 node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/config.json
 ```
 
+**Opt-out**: if the user doesn't want tool-placed files at their repos' parent, set `"root_context": false` under `workspace` in `config.json` — the script then exits 0 without writing, and every future run (/discover, /join, refreshes) honors it. `node {plugin_dir}/scripts/sync-root-claude.js --config=... --remove` uninstalls an already-placed footprint (this workspace's block; a plugin-owned file left empty is deleted along with its shim).
+
 The script is deterministic and idempotent (safe in incremental mode and on `--resume`): it reads `config.repos`, computes each distinct repo parent (usually one), and per parent: copies `templates/root-AGENTS.md.template` + writes the shim if nothing exists, otherwise regenerates ONLY this workspace's block between the `<!-- pipecrew:workspaces -->` markers — the static routing body and everything user-written is never touched. A pre-parity plugin-owned `CLAUDE.md` is migrated lazily (content → `AGENTS.md`, `CLAUDE.md` → shim, blocks carried over); a hand-authored `CLAUDE.md` carrying our managed container is maintained in place (never force-migrate a user's file); a hand-authored `CLAUDE.md` without markers gets only the one-line `@AGENTS.md` import appended. Two workspaces sharing a repo parent each own their own block; a workspace whose dir disappears self-prunes on the next run. Parents that are a filesystem root, the home dir, or inside `~/.claude` are skipped with a warning.
 
 - Exit 0/2 → continue (2 = warnings, e.g. skipped parents or size; surface them to the user).

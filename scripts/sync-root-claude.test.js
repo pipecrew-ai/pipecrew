@@ -7,7 +7,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ensure, resolveTargets, renderBlock, parseBlocks, ensureUserBreadcrumb } = require('./sync-root-claude');
+const { execFileSync } = require('child_process');
+const { ensure, remove, resolveTargets, renderBlock, parseBlocks, ensureUserBreadcrumb } = require('./sync-root-claude');
 
 let passed = 0, failed = 0;
 
@@ -327,6 +328,93 @@ test('user breadcrumb — malformed markers throw, file untouched', () => {
   try { ensureUserBreadcrumb(target, [{ slug: 'acme', path: ws }]); } catch { threw = true; }
   assert(threw, 'expected throw on duplicated machine marker');
   assert(fs.readFileSync(target, 'utf8') === corrupted, 'file must be untouched on marker error');
+});
+
+test('remove — plugin-owned file with only this block → both files deleted', () => {
+  const parent = makeDir();
+  const ws = makeWorkspace('acme');
+  ensure(parent, 'acme', ws);
+  const r = remove(parent, 'acme');
+  assert(r.action === 'removed', `expected removed, got ${r.action}`);
+  assert(!fs.existsSync(path.join(parent, 'AGENTS.md')), 'AGENTS.md must be deleted');
+  assert(!fs.existsSync(path.join(parent, 'CLAUDE.md')), 'one-liner shim must be deleted');
+});
+
+test('remove — other workspace blocks survive, file kept', () => {
+  const parent = makeDir();
+  const wsA = makeWorkspace('acme');
+  const wsB = makeWorkspace('beta');
+  ensure(parent, 'acme', wsA);
+  ensure(parent, 'beta', wsB);
+  const r = remove(parent, 'acme');
+  assert(r.action === 'updated', `expected updated, got ${r.action}`);
+  const body = readAgents(parent);
+  assert(!body.includes('### acme'), 'removed block still present');
+  assert(body.includes('### beta'), 'other workspace block lost');
+  assert(fs.existsSync(path.join(parent, 'CLAUDE.md')), 'shim must survive while file remains');
+});
+
+test('remove — hand-authored legacy CLAUDE.md keeps user content, loses only the block', () => {
+  const parent = makeDir();
+  const ws = makeWorkspace('acme');
+  fs.writeFileSync(path.join(parent, 'CLAUDE.md'), [
+    '# My rules', '', 'Always use tabs.', '',
+    '<!-- pipecrew:workspaces -->',
+    renderBlock('acme', ws),
+    '<!-- /pipecrew:workspaces -->', '',
+  ].join('\n'));
+  const r = remove(parent, 'acme');
+  assert(r.action === 'updated', `expected updated, got ${r.action}`);
+  assert(r.warnings.some(w => w.includes('hand-authored')), 'hand-authored warning expected');
+  const body = readClaude(parent);
+  assert(body.startsWith('# My rules') && body.includes('Always use tabs.'), 'user content lost');
+  assert(!body.includes('### acme'), 'block not removed');
+  assert(!fs.existsSync(path.join(parent, 'AGENTS.md')), 'remove must not create AGENTS.md');
+});
+
+test('remove — nothing there → absent, nothing created', () => {
+  const parent = makeDir();
+  const r = remove(parent, 'acme');
+  assert(r.action === 'absent', `expected absent, got ${r.action}`);
+  assert(!fs.existsSync(path.join(parent, 'AGENTS.md')), 'remove must not create files');
+});
+
+test('CLI — root_context:false skips generation, exit 0, nothing written', () => {
+  const base = makeDir();
+  const parent = path.join(base, 'repos');
+  fs.mkdirSync(path.join(parent, 'repo1'), { recursive: true });
+  const wsDir = path.join(base, 'acme');
+  fs.mkdirSync(wsDir, { recursive: true });
+  fs.writeFileSync(path.join(wsDir, 'config.json'), JSON.stringify({
+    workspace: { slug: 'acme', root_context: false },
+    repos: { repo1: { path: path.join(parent, 'repo1') } },
+  }));
+  const out = execFileSync(process.execPath, [path.join(__dirname, 'sync-root-claude.js'), `--config=${path.join(wsDir, 'config.json')}`], { encoding: 'utf8' });
+  assert(out.includes('root_context is disabled'), `skip note expected, got: ${out}`);
+  assert(!fs.existsSync(path.join(parent, 'AGENTS.md')), 'disabled workspace must write nothing');
+});
+
+test('CLI — --remove works even when root_context is false', () => {
+  const base = makeDir();
+  const parent = path.join(base, 'repos');
+  fs.mkdirSync(path.join(parent, 'repo1'), { recursive: true });
+  const wsDir = path.join(base, 'acme');
+  fs.mkdirSync(wsDir, { recursive: true });
+  const configPath = path.join(wsDir, 'config.json');
+  fs.writeFileSync(configPath, JSON.stringify({
+    workspace: { slug: 'acme' },
+    repos: { repo1: { path: path.join(parent, 'repo1') } },
+  }));
+  execFileSync(process.execPath, [path.join(__dirname, 'sync-root-claude.js'), `--config=${configPath}`], { encoding: 'utf8' });
+  assert(fs.existsSync(path.join(parent, 'AGENTS.md')), 'precondition: file generated');
+  // Flip the flag off, then clean up via --remove.
+  fs.writeFileSync(configPath, JSON.stringify({
+    workspace: { slug: 'acme', root_context: false },
+    repos: { repo1: { path: path.join(parent, 'repo1') } },
+  }));
+  const out = execFileSync(process.execPath, [path.join(__dirname, 'sync-root-claude.js'), `--config=${configPath}`, '--remove'], { encoding: 'utf8' });
+  assert(out.includes('removed'), `removed expected, got: ${out}`);
+  assert(!fs.existsSync(path.join(parent, 'AGENTS.md')), 'file must be gone after --remove');
 });
 
 test('parseBlocks round-trips a rendered block', () => {

@@ -45,8 +45,19 @@
  * directory itself, or inside ~/.claude (plugin checkouts are not routing turf).
  *
  * Usage:  node sync-root-claude.js --config=<abs-path-to-config.json> [--dry-run]
+ *         node sync-root-claude.js --config=<abs-path-to-config.json> --remove [--dry-run]
  *         node sync-root-claude.js --user [--dry-run]
  * Exit 0 = clean, 1 = hard-fail, 2 = completed with warnings.
+ *
+ * Opt-out: `config.workspace.root_context: false` disables generation for that
+ * workspace — the CLI exits 0 with a note and writes nothing (persisted in
+ * config.json, so /discover re-runs, /join, and refreshes all honor it).
+ * --remove uninstalls this workspace's footprint at each target parent: its
+ * block is dropped from the container; a plugin-owned file whose container is
+ * then empty is deleted (plus the shim, if it is exactly the one-liner); a
+ * hand-authored file keeps everything else and just loses the block. --remove
+ * works even when root_context is false — that's how you clean up after
+ * disabling.
  *
  * --user mode (OPT-IN — only run after the user explicitly consented, it edits
  * their personal file): maintains a small machine-level breadcrumb between
@@ -110,12 +121,19 @@ function workspaceAlive(dir) {
          fs.existsSync(path.join(dir, 'config.portable.json'));
 }
 
+/** Render a container from a final block list (no upsert). Empty → placeholder line. */
+function renderContainerBare(blocks) {
+  const sorted = [...blocks].sort((a, b) => a.slug.localeCompare(b.slug));
+  const inner = sorted.length
+    ? sorted.map(b => b.raw).join('\n')
+    : '- (no workspaces served from this directory — run /pipecrew:discover or /pipecrew:join)';
+  return `${CONTAINER_BEGIN}\n${inner}\n${CONTAINER_END}`;
+}
+
 /** Rebuild the full container: upsert this workspace, keep other live ones, prune dead ones, sort. */
 function renderContainer(existingBlocks, slug, workspaceDir) {
   const kept = existingBlocks.filter(b => b.slug !== slug && workspaceAlive(b.dir));
-  const all = [...kept, { slug, dir: fwd(workspaceDir), raw: renderBlock(slug, workspaceDir) }]
-    .sort((a, b) => a.slug.localeCompare(b.slug));
-  return `${CONTAINER_BEGIN}\n${all.map(b => b.raw).join('\n')}\n${CONTAINER_END}`;
+  return renderContainerBare([...kept, { slug, dir: fwd(workspaceDir), raw: renderBlock(slug, workspaceDir) }]);
 }
 
 function countOccurrences(haystack, needle) {
@@ -248,6 +266,47 @@ function ensure(parentDir, slug, workspaceDir, opts = {}) {
   }
 
   return { action, target: agentsPath, migrated: migrateLegacy, legacy: false, warnings };
+}
+
+/**
+ * Remove this workspace's footprint at parentDir (the inverse of ensure()).
+ * Drops the slug's block from whichever file carries the container (AGENTS.md,
+ * or a legacy CLAUDE.md). A plugin-owned file whose container is then empty is
+ * deleted outright — plus the shim when it is exactly the one-liner. A
+ * hand-authored file keeps all other content and just loses the block.
+ * Returns { action: 'removed'|'updated'|'absent', target, warnings }.
+ */
+function remove(parentDir, slug, opts = {}) {
+  const agentsPath = path.join(parentDir, CONTEXT_FILENAME);
+  const shimPath = path.join(parentDir, CONTEXT_SHIM);
+  const warnings = [];
+
+  // Find the file that carries the container: canonical AGENTS.md, else legacy CLAUDE.md.
+  const carrier = [agentsPath, shimPath].find(p =>
+    fs.existsSync(p) && containerState(fs.readFileSync(p, 'utf8'), p) === 'ok');
+  if (!carrier) return { action: 'absent', target: agentsPath, warnings };
+
+  const body = fs.readFileSync(carrier, 'utf8');
+  const remaining = blocksOf(body).filter(b => b.slug !== slug);
+
+  if (remaining.length === 0 && body.includes(DISPATCHER_SENTINEL)) {
+    // Fully plugin-owned and now empty — delete the file, and the shim if it's ours.
+    if (!opts.dryRun) {
+      fs.unlinkSync(carrier);
+      if (carrier !== shimPath && fs.existsSync(shimPath)) {
+        if (fs.readFileSync(shimPath, 'utf8').trim() === SHIM_LINE) fs.unlinkSync(shimPath);
+        else warnings.push(`${shimPath} has content beyond the ${SHIM_LINE} import — left in place; remove the import line by hand if unwanted`);
+      }
+    }
+    return { action: 'removed', target: carrier, warnings };
+  }
+
+  const next = spliceContainer(body, renderContainerBare(remaining));
+  if (!opts.dryRun && next !== body) fs.writeFileSync(carrier, next);
+  if (remaining.length === 0) {
+    warnings.push(`${carrier} is hand-authored — only the ${slug} block was removed; delete the PipeCrew section by hand if unwanted`);
+  }
+  return { action: next === body ? 'absent' : 'updated', target: carrier, warnings };
 }
 
 function sizeWarn(body, filePath, parentDir, warnings) {
@@ -402,6 +461,13 @@ if (require.main === module) {
   }
   const workspaceDir = path.dirname(path.resolve(args.config));
 
+  // Opt-out: persisted per-workspace in config.json. --remove still works when
+  // disabled — that's the cleanup path after flipping the flag.
+  if (!args.remove && config.workspace && config.workspace.root_context === false) {
+    console.log(`root_context is disabled for workspace "${slug}" (config.workspace.root_context: false) — skipping routing context generation.`);
+    process.exit(0);
+  }
+
   const { targets, skipped, hoisted } = resolveTargets(config);
   let warned = skipped.length > 0;
   for (const h of hoisted) console.log(`note: ${h.from} is inside a git repo — placing the routing context above it at ${h.to}`);
@@ -414,6 +480,13 @@ if (require.main === module) {
   let failed = false;
   for (const parent of targets) {
     try {
+      if (args.remove) {
+        const { action, target, warnings } = remove(parent, slug, { dryRun: !!args['dry-run'] });
+        for (const w of warnings) console.warn(`WARN:  ${w}`);
+        if (warnings.length > 0) warned = true;
+        console.log(`${args['dry-run'] ? '[dry-run] ' : ''}${target}: ${action} (workspace: ${slug})`);
+        continue;
+      }
       const { action, target, migrated, legacy, warnings } = ensure(parent, slug, workspaceDir, { dryRun: !!args['dry-run'] });
       for (const w of warnings) console.warn(`WARN:  ${w}`);
       if (warnings.length > 0) warned = true;
@@ -430,4 +503,4 @@ if (require.main === module) {
   process.exit(failed ? 1 : warned ? 2 : 0);
 }
 
-module.exports = { ensure, resolveTargets, renderBlock, renderContainer, parseBlocks, ensureUserBreadcrumb, renderMachineBlock };
+module.exports = { ensure, remove, resolveTargets, renderBlock, renderContainer, parseBlocks, ensureUserBreadcrumb, renderMachineBlock };

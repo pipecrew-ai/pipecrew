@@ -114,7 +114,9 @@ node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/c
   ever rewrites this workspace's block between the `<!-- pipecrew:workspaces -->`
   markers, migrates a pre-parity plugin-owned CLAUDE.md lazily, and never touches a
   hand-authored file's content. On exit 1 (malformed markers), surface the error —
-  don't hand-edit the user's file.
+  don't hand-edit the user's file. Opt-out: `"root_context": false` under `workspace`
+  in config.json makes the script a no-op (the flag arrives via config.portable.json
+  if the owner set it); `--remove` uninstalls an existing footprint.
 - **Optional user-level breadcrumb**: after the above, offer (strictly opt-in — it edits
   the teammate's personal `~/.claude/CLAUDE.md`) to run
   `node {plugin_dir}/scripts/sync-root-claude.js --user`, which maintains a tiny

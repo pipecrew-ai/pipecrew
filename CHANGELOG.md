@@ -67,7 +67,16 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   `AGENTS.md`, blocks carried over, `CLAUDE.md` becomes the shim; a
   hand-authored `CLAUDE.md` holding our managed container keeps being
   maintained in place; a hand-authored `CLAUDE.md` without markers gets only
-  the one-line `@AGENTS.md` import appended. 20 unit tests.
+  the one-line `@AGENTS.md` import appended.
+- **Routing-file opt-out + uninstall.** `"root_context": false` under
+  `workspace` in `config.json` disables generation for that workspace —
+  persisted, so /discover re-runs, /join, and refreshes all honor it (the
+  routing file costs ~1k static cached tokens per session; the opt-out exists
+  for zero-footprint preference, not economics). `sync-root-claude.js --remove`
+  uninstalls an existing footprint: the workspace's block is dropped; a
+  plugin-owned file left empty is deleted along with its one-liner shim; a
+  hand-authored file keeps everything else. `--remove` works while the flag is
+  off — that's the cleanup path. 26 unit tests.
 
 ## [1.13.0] - 2026-10-02
 

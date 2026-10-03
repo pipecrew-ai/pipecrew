@@ -1,34 +1,46 @@
 #!/usr/bin/env node
 /**
- * sync-root-claude.js — maintains the PipeCrew routing CLAUDE.md at the parent
- * directory(ies) of a workspace's repos.
+ * sync-root-claude.js — maintains the PipeCrew routing context file at the
+ * parent directory(ies) of a workspace's repos.
  *
- * Claude Code loads CLAUDE.md by walking UP from the directory a session is
- * launched in — and sessions run inside repos, not at the workspace dir. So the
- * routing guide ("the PipeCrew toolbox exists; route user asks to these skills
- * and agents") is anchored at each distinct repo parent from config.repos, the
- * same placement rule setup-workspace-permissions.js uses for settings files.
+ * Agent harnesses load context files by walking UP from the directory a
+ * session is launched in — and sessions run inside repos, not at the workspace
+ * dir. So the routing guide ("the PipeCrew toolbox exists; route user asks to
+ * these skills and agents") is anchored at each distinct repo parent from
+ * config.repos, the same placement rule setup-workspace-permissions.js uses.
  * Usually all repos share one parent → exactly one file.
  *
- * The file body is static (templates/root-CLAUDE.md.template) and slug-agnostic.
- * The only dynamic content is the per-workspace block between the
- * pipecrew:workspaces container markers — one block per workspace whose repos
- * live under that parent, keyed by slug, carrying that workspace's absolute
- * context paths and concrete agent names. Everything outside the container
- * belongs to the user and is never touched. Absolute paths are fine here: the
- * file is machine-local at a non-repo directory and is never committed.
+ * Context-file convention (same as per-repo docs since v1.13.0): content lives
+ * in AGENTS.md (the tool-agnostic standard read natively by Cursor, Codex, and
+ * 30+ agents); a one-line CLAUDE.md shim (`@AGENTS.md`) beside it imports it
+ * into Claude Code. Both are written on every harness. A pre-parity CLAUDE.md
+ * that is fully plugin-owned (carries the pipecrew:root-dispatcher sentinel)
+ * is migrated lazily: content moves to AGENTS.md, CLAUDE.md becomes the shim.
+ * A hand-authored CLAUDE.md that carries our managed container (pre-parity
+ * append mode) is maintained in place — never force-migrate a user's file.
+ *
+ * The file body is static (templates/root-AGENTS.md.template) and
+ * slug-agnostic. The only dynamic content is the per-workspace block between
+ * the pipecrew:workspaces container markers — one block per workspace whose
+ * repos live under that parent, keyed by slug, carrying that workspace's
+ * absolute context paths and concrete agent names. Everything outside the
+ * container belongs to the user and is never touched. Absolute paths are fine
+ * here: the file is machine-local at a non-repo directory, never committed.
  *
  * Behavior per target parent:
- *  - no CLAUDE.md                 → copy the template, insert this workspace's block
- *  - CLAUDE.md with container     → upsert this workspace's block; prune blocks
+ *  - nothing there                → AGENTS.md from template + CLAUDE.md shim
+ *  - AGENTS.md with container     → upsert this workspace's block; prune blocks
  *                                   whose workspace dir no longer exists
- *  - CLAUDE.md without container  → append a small managed section (the user's
- *                                   file is preserved verbatim)
+ *  - AGENTS.md without container  → append a small managed section
+ *  - plugin-owned CLAUDE.md       → migrate: content → AGENTS.md, CLAUDE.md → shim
+ *  - hand-authored CLAUDE.md with our container → legacy: maintain in place
+ *  - hand-authored CLAUDE.md, no container → AGENTS.md created; a one-line
+ *                                   `@AGENTS.md` import is appended to CLAUDE.md
  *  - malformed container markers  → exit 1, touch nothing
  *
  * A parent that sits INSIDE a git repo (monorepo layout: config "repos" are
  * subdirectories of one checkout) is hoisted to just above that repo's top
- * level, so the routing file never lands in a committed repo CLAUDE.md.
+ * level, so the routing file never lands in a committed repo context file.
  * Skipped (with a warning): parents that are a filesystem root, the user's home
  * directory itself, or inside ~/.claude (plugin checkouts are not routing turf).
  *
@@ -39,10 +51,10 @@
  * --user mode (OPT-IN — only run after the user explicitly consented, it edits
  * their personal file): maintains a small machine-level breadcrumb between
  * pipecrew:machine markers in ~/.claude/CLAUDE.md, which loads into EVERY
- * session on the machine. Content is deliberately tiny — "PipeCrew runs here,
- * these workspaces are registered (from workspace-registry.js, both roots),
- * prefer /pipecrew:* skills" — never the routing tables; those stay in the
- * repos-parent files. Same marker discipline: user content is never touched.
+ * Claude Code session on the machine. Content is deliberately tiny — "PipeCrew
+ * runs here, these workspaces are registered (from workspace-registry.js, both
+ * roots), prefer /pipecrew:* skills" — never the routing tables; those stay in
+ * the repos-parent files. Same marker discipline: user content is never touched.
  *
  * Called from /discover Phase C (Step 5) and /join Step 6. Zero dependencies.
  */
@@ -53,8 +65,13 @@ const path = require('path');
 
 const CONTAINER_BEGIN = '<!-- pipecrew:workspaces -->';
 const CONTAINER_END = '<!-- /pipecrew:workspaces -->';
-const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'root-CLAUDE.md.template');
-const SOFT_LINE_CEILING = 150; // warn only — content outside the container is user-owned
+const DISPATCHER_SENTINEL = 'pipecrew:root-dispatcher';
+// Canonical context filename + shim — single source of truth is workspace-root.js
+// (same values on every harness: AGENTS.md carries content, CLAUDE.md imports it).
+const { CONTEXT_FILENAME, CONTEXT_SHIM } = require('./workspace-root');
+const SHIM_LINE = `@${CONTEXT_FILENAME}`;
+const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'root-AGENTS.md.template');
+const SOFT_LINE_CEILING = 150; // warn only — content outside the markers is user-owned
 
 const fwd = (p) => p.replace(/\\/g, '/');
 
@@ -114,59 +131,130 @@ function spliceContainer(body, container) {
   return body.slice(0, start) + container + body.slice(end);
 }
 
-/**
- * Ensure {parentDir}/CLAUDE.md exists and this workspace's block is current.
- * Returns { action: 'created'|'updated'|'appended'|'unchanged', warnings }.
- * Throws on malformed markers or unreadable template — nothing is written then.
- */
-function ensure(parentDir, slug, workspaceDir, opts = {}) {
-  const target = path.join(parentDir, 'CLAUDE.md');
-  const warnings = [];
+/** The appended managed section for a hand-authored file (no template body). */
+function appendedSection(container) {
+  return [
+    '',
+    '## PipeCrew workspaces served from this directory',
+    '',
+    'Repos under this directory belong to the PipeCrew workspace(s) below. Prefer the `/pipecrew:*` skills for work on them — each workspace carries its domain context at the `context/platform.md` path listed here.',
+    '',
+    container,
+    '',
+  ].join('\n');
+}
 
-  let body, action;
-  if (!fs.existsSync(target)) {
+/**
+ * Container state of a file body: 'ok' (exactly one well-ordered pair),
+ * 'none', or throws on malformed markers.
+ */
+function containerState(body, filePath) {
+  const begins = countOccurrences(body, CONTAINER_BEGIN);
+  const ends = countOccurrences(body, CONTAINER_END);
+  if (begins === 1 && ends === 1 && body.indexOf(CONTAINER_BEGIN) < body.indexOf(CONTAINER_END)) return 'ok';
+  if (begins === 0 && ends === 0) return 'none';
+  throw new Error(
+    `${filePath} has malformed pipecrew:workspaces markers (${begins} begin / ${ends} end, or reversed). ` +
+    `Fix the markers by hand (exactly one ${CONTAINER_BEGIN} … ${CONTAINER_END} pair), then re-run.`);
+}
+
+function blocksOf(body) {
+  const start = body.indexOf(CONTAINER_BEGIN) + CONTAINER_BEGIN.length;
+  const end = body.indexOf(CONTAINER_END);
+  return parseBlocks(body.slice(start, end));
+}
+
+/**
+ * Compute the new body for a routing file (filePath may not exist).
+ * `seedBlocks` are carried over from a migrating legacy file (deduped by slug;
+ * blocks already in the target win). Returns { action, body }.
+ */
+function upsertRoutingBody(filePath, seedBlocks, slug, workspaceDir) {
+  if (!fs.existsSync(filePath)) {
     const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
     if (countOccurrences(template, CONTAINER_BEGIN) !== 1 || countOccurrences(template, CONTAINER_END) !== 1) {
       throw new Error(`template at ${TEMPLATE_PATH} must contain exactly one ${CONTAINER_BEGIN} … ${CONTAINER_END} pair`);
     }
-    body = spliceContainer(template, renderContainer([], slug, workspaceDir));
-    action = 'created';
-  } else {
-    const existing = fs.readFileSync(target, 'utf8');
-    const begins = countOccurrences(existing, CONTAINER_BEGIN);
-    const ends = countOccurrences(existing, CONTAINER_END);
-    if (begins === 1 && ends === 1 && existing.indexOf(CONTAINER_BEGIN) < existing.indexOf(CONTAINER_END)) {
-      const start = existing.indexOf(CONTAINER_BEGIN) + CONTAINER_BEGIN.length;
-      const end = existing.indexOf(CONTAINER_END);
-      const blocks = parseBlocks(existing.slice(start, end));
-      body = spliceContainer(existing, renderContainer(blocks, slug, workspaceDir));
-      action = body === existing ? 'unchanged' : 'updated';
-    } else if (begins === 0 && ends === 0) {
-      // A hand-authored CLAUDE.md — preserve it verbatim, add only the managed section.
-      body = existing.replace(/\s*$/, '\n') + [
-        '',
-        '## PipeCrew workspaces served from this directory',
-        '',
-        'Repos under this directory belong to the PipeCrew workspace(s) below. Prefer the `/pipecrew:*` skills for work on them — each workspace carries its domain context at the `context/platform.md` path listed here.',
-        '',
-        renderContainer([], slug, workspaceDir),
-        '',
-      ].join('\n');
-      action = 'appended';
-    } else {
-      throw new Error(
-        `${target} has malformed pipecrew:workspaces markers (${begins} begin / ${ends} end, or reversed). ` +
-        `Fix the markers by hand (exactly one ${CONTAINER_BEGIN} … ${CONTAINER_END} pair), then re-run.`);
+    return { action: 'created', body: spliceContainer(template, renderContainer(seedBlocks, slug, workspaceDir)) };
+  }
+  const existing = fs.readFileSync(filePath, 'utf8');
+  if (containerState(existing, filePath) === 'ok') {
+    const own = blocksOf(existing);
+    const ownSlugs = new Set(own.map(b => b.slug));
+    const merged = [...own, ...seedBlocks.filter(b => !ownSlugs.has(b.slug))];
+    const body = spliceContainer(existing, renderContainer(merged, slug, workspaceDir));
+    return { action: body === existing ? 'unchanged' : 'updated', body };
+  }
+  // Hand-authored file — preserve verbatim, add only the managed section.
+  const body = existing.replace(/\s*$/, '\n') + appendedSection(renderContainer(seedBlocks, slug, workspaceDir));
+  return { action: 'appended', body };
+}
+
+/**
+ * Ensure the routing context at parentDir is current: AGENTS.md carries the
+ * content, CLAUDE.md is the one-line import shim, legacy files migrate lazily.
+ * Returns { action, target, migrated, legacy, warnings }.
+ * Throws on malformed markers or unreadable template — nothing is written then.
+ */
+function ensure(parentDir, slug, workspaceDir, opts = {}) {
+  const agentsPath = path.join(parentDir, CONTEXT_FILENAME);
+  const shimPath = path.join(parentDir, CONTEXT_SHIM);
+  const warnings = [];
+
+  // Inspect a pre-existing CLAUDE.md for migration / legacy handling.
+  let migrateLegacy = false, legacyInPlace = false, seedBlocks = [];
+  if (fs.existsSync(shimPath)) {
+    const claude = fs.readFileSync(shimPath, 'utf8');
+    if (containerState(claude, shimPath) === 'ok') {
+      if (claude.includes(DISPATCHER_SENTINEL)) {
+        migrateLegacy = true;               // fully plugin-owned pre-parity file
+        seedBlocks = blocksOf(claude);
+      } else if (!fs.existsSync(agentsPath)) {
+        legacyInPlace = true;               // user's own file carrying our container
+      } else {
+        warnings.push(`${shimPath} still carries a pipecrew:workspaces container alongside ${CONTEXT_FILENAME} — consider removing the stale section by hand`);
+      }
     }
   }
 
-  const lineCount = body.split(/\r?\n/).length;
-  if (lineCount > SOFT_LINE_CEILING) {
-    warnings.push(`size: ${target} is ${lineCount} lines, above the soft ceiling of ${SOFT_LINE_CEILING} — a fat CLAUDE.md taxes every session launched under ${parentDir}`);
+  // Legacy mode: a hand-authored CLAUDE.md with our container and no AGENTS.md —
+  // never force-migrate a user's file; keep maintaining the block where it is.
+  if (legacyInPlace) {
+    const { action, body } = upsertRoutingBody(shimPath, [], slug, workspaceDir);
+    sizeWarn(body, shimPath, parentDir, warnings);
+    if (!opts.dryRun && action !== 'unchanged') fs.writeFileSync(shimPath, body);
+    return { action, target: shimPath, migrated: false, legacy: true, warnings };
   }
 
-  if (!opts.dryRun && action !== 'unchanged') fs.writeFileSync(target, body);
-  return { action, warnings };
+  // Canonical path: maintain AGENTS.md (seeded with any migrating blocks).
+  const { action, body } = upsertRoutingBody(agentsPath, seedBlocks, slug, workspaceDir);
+  sizeWarn(body, agentsPath, parentDir, warnings);
+  if (!opts.dryRun && action !== 'unchanged') fs.writeFileSync(agentsPath, body);
+
+  // Shim handling.
+  if (!opts.dryRun) {
+    if (migrateLegacy) {
+      fs.writeFileSync(shimPath, `${SHIM_LINE}\n`);                 // content moved — shim replaces it
+    } else if (!fs.existsSync(shimPath)) {
+      fs.writeFileSync(shimPath, `${SHIM_LINE}\n`);
+    } else {
+      const claude = fs.readFileSync(shimPath, 'utf8');
+      if (!claude.split(/\r?\n/).some(l => l.trim() === SHIM_LINE)) {
+        // Hand-authored CLAUDE.md without the import — append the one-liner so
+        // Claude Code loads AGENTS.md too. Smallest possible touch.
+        fs.writeFileSync(shimPath, claude.replace(/\s*$/, '\n') + `\n${SHIM_LINE}\n`);
+      }
+    }
+  }
+
+  return { action, target: agentsPath, migrated: migrateLegacy, legacy: false, warnings };
+}
+
+function sizeWarn(body, filePath, parentDir, warnings) {
+  const lineCount = body.split(/\r?\n/).length;
+  if (lineCount > SOFT_LINE_CEILING) {
+    warnings.push(`size: ${filePath} is ${lineCount} lines, above the soft ceiling of ${SOFT_LINE_CEILING} — a fat context file taxes every session launched under ${parentDir}`);
+  }
 }
 
 // ── user-level breadcrumb (--user mode) ───────────────────
@@ -184,7 +272,7 @@ function renderMachineBlock(workspaces) {
     MACHINE_BEGIN,
     'This machine runs PipeCrew (a Claude Code plugin for multi-repo feature delivery). Registered workspaces:',
     ...lines,
-    'For work touching these workspaces\' repos or domains, prefer the `/pipecrew:*` skills; the full routing guide lives in the CLAUDE.md at each workspace\'s repos parent.',
+    'For work touching these workspaces\' repos or domains, prefer the `/pipecrew:*` skills; the full routing guide lives in the AGENTS.md at each workspace\'s repos parent.',
     MACHINE_END,
   ].join('\n');
 }
@@ -241,7 +329,7 @@ function gitTopLevel(dir) {
  * [{dir, reason}], and hoisted [{from, to}]. A parent that sits INSIDE a git
  * repo (monorepo: config "repos" are subdirectories of one checkout) is hoisted
  * to just above that repo's top level — still an ancestor of every session, but
- * the file stays machine-local instead of landing in a committed repo CLAUDE.md.
+ * the file stays machine-local instead of landing in a committed repo context file.
  */
 function resolveTargets(config) {
   const parents = new Set();
@@ -316,7 +404,7 @@ if (require.main === module) {
 
   const { targets, skipped, hoisted } = resolveTargets(config);
   let warned = skipped.length > 0;
-  for (const h of hoisted) console.log(`note: ${h.from} is inside a git repo — placing the routing CLAUDE.md above it at ${h.to}`);
+  for (const h of hoisted) console.log(`note: ${h.from} is inside a git repo — placing the routing context above it at ${h.to}`);
   for (const s of skipped) console.warn(`WARN:  skipping ${s.dir} — ${s.reason}`);
   if (targets.length === 0) {
     console.error('no eligible repo parent directories resolved from config — nothing to write.');
@@ -326,10 +414,14 @@ if (require.main === module) {
   let failed = false;
   for (const parent of targets) {
     try {
-      const { action, warnings } = ensure(parent, slug, workspaceDir, { dryRun: !!args['dry-run'] });
+      const { action, target, migrated, legacy, warnings } = ensure(parent, slug, workspaceDir, { dryRun: !!args['dry-run'] });
       for (const w of warnings) console.warn(`WARN:  ${w}`);
       if (warnings.length > 0) warned = true;
-      console.log(`${args['dry-run'] ? '[dry-run] ' : ''}${path.join(parent, 'CLAUDE.md')}: ${action} (workspace: ${slug})`);
+      const extras = [
+        migrated && `migrated legacy ${CONTEXT_SHIM} → ${CONTEXT_FILENAME} + shim`,
+        legacy && `legacy mode: container maintained in hand-authored ${CONTEXT_SHIM}`,
+      ].filter(Boolean);
+      console.log(`${args['dry-run'] ? '[dry-run] ' : ''}${target}: ${action} (workspace: ${slug})${extras.length ? ' — ' + extras.join('; ') : ''}`);
     } catch (e) {
       console.error(`ERROR: ${e.message}`);
       failed = true;

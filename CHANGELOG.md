@@ -53,6 +53,22 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   never touched; dead registry entries are excluded on each run. Offered with
   yes/no/show-me-first prompts in `/discover` Phase C Step 5 and `/join` Step 6.
 
+### Changed
+- **Routing file converged on `AGENTS.md`** (parity with the v1.13.0 per-repo
+  convention). `sync-root-claude.js` now writes the routing content to
+  `AGENTS.md` at the repos' parent (read natively by Cursor, Codex, and other
+  agents) plus a one-line `CLAUDE.md` shim (`@AGENTS.md`) for Claude Code —
+  both on every harness, so the routing guide loads in Cursor sessions too.
+  Template renamed `root-CLAUDE.md.template` → `root-AGENTS.md.template`;
+  filenames come from `workspace-root.js` (`CONTEXT_FILENAME`/`CONTEXT_SHIM`),
+  the same source of truth the per-repo generation uses. Lazy migration, no
+  forced rewrite: a pre-parity plugin-owned `CLAUDE.md` (carries the
+  `pipecrew:root-dispatcher` sentinel) migrates on the next run — content →
+  `AGENTS.md`, blocks carried over, `CLAUDE.md` becomes the shim; a
+  hand-authored `CLAUDE.md` holding our managed container keeps being
+  maintained in place; a hand-authored `CLAUDE.md` without markers gets only
+  the one-line `@AGENTS.md` import appended. 20 unit tests.
+
 ## [1.13.0] - 2026-10-02
 
 ### Added

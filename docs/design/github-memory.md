@@ -110,6 +110,71 @@ So freshness is **computed live** and surfaced where it's useful, never persiste
 
 Uses the user's existing `git` / `gh` credentials (same as `/deliver` Phase 8 branch pushes). If push fails (no auth, no remote, diverged), the routine logs a warning and leaves the commit local — it never aborts the surrounding skill. Never `git push --force`.
 
+## Domain identity and dependency edges (Parts 1 + 2)
+
+These fields are part of the domain-durable-memory rollout. Both are purely additive — existing configs that omit them behave byte-identically.
+
+### `domain.id` — stable opaque workspace identity
+
+A workspace's `config.json` may carry a `domain.id` field:
+
+```jsonc
+"domain": {
+  "id": "domain_01ARZ3NDEKTSV4RRFFQ69G5FAV",          // domain_<26-char Crockford-base32 ULID>
+  // or with an optional team-chosen cosmetic prefix:
+  "id": "domain_payments_01ARZ3NDEKTSV4RRFFQ69G5FAV",  // domain_<label>_<26-char ULID>
+  ...
+}
+```
+
+**Format**: `domain_` prefix + an optional team-chosen label + 26 Crockford-base32 ULID characters.
+
+Two forms are both valid forever:
+- `domain_<26-char ULID>` — plain form, no prefix.
+- `domain_<label>_<26-char ULID>` — prefixed form; `<label>` matches
+  `/^[a-z][a-z0-9-]{0,14}[a-z0-9]$/` (2–16 chars, lowercase alphanumerics + inner
+  dashes; no underscores — underscore is the structural separator).
+
+Full id regex: `/^domain_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/`
+
+**Frozen cosmetic label semantics**: the prefix is baked in at mint and never changes — even
+if the team or domain is later renamed. Identity is the whole id string; uniqueness comes
+from the ULID (two teams picking the same prefix never collide); renames never re-mint.
+Consumers must treat the entire id as an opaque string.
+
+**Purpose**: a stable opaque id that survives workspace rename or path changes — the precondition for cross-domain references. Nothing reads or validates it yet beyond the warn-only `validate-config.js` check.
+
+**Carry-through**: `regeneratePortableConfig()` deep-clones the whole config before stripping only `repos[].path`. `domain.id` therefore flows into `config.portable.json` and to teammates via `/join` with zero code change.
+
+**Back-fill**: run `node scripts/mint-domain-id.js --config=<path>` once per existing workspace (add `--prefix=<label>` to bake in a cosmetic label). The `/discover` run mints an id automatically into any new config it writes, using the prefix the user supplied in Phase B1 (or plain if skipped).
+
+### `external_dependencies[]` — cross-domain dependency edges (dangling)
+
+A workspace may declare known upstreams as a top-level array:
+
+```jsonc
+"external_dependencies": [
+  {
+    "target_id":  "domain_OTHER26CHARCROCKFORDULID",   // the peer's domain.id (domain_ prefix required)
+    "relation":   "upstream",                        // child | peer | upstream
+    "resolution": {
+      "kind":          "absent",                     // local | github | absent
+      "expected_name": "payments-workspace",         // optional hint (human-readable)
+      "hint":          "git@github.com:acme/payments-memory.git",  // optional
+      "pin":           "abc123def456..."             // optional git SHA
+    },
+    "trust":       "manual",                         // auto | manual | blocked (default manual)
+    "share_scope": "semantic"                        // any string — enum open until Q3
+  }
+]
+```
+
+**All edges are currently inert.** They are declarations of intent — a human-readable, diffable, shareable dependency map. No resolution machinery exists yet (that is Part 3, blocked on Q3). The `resolution.kind: "absent"` value is the canonical starting state for any edge whose remote config has not yet been fetched.
+
+**Validation**: `validate-config.js` checks shape when the array is present (warn-only on any malformed entry; absence of the array is completely silent). `share_scope` is deliberately not enforced — its enum is open until Q3.
+
+**Carry-through**: like `domain.id`, the array deep-clones into `config.portable.json` for free and flows to teammates.
+
 ## Non-goals
 
 - Not auto-public. `visibility: private` is required; bootstrap refuses `public`.

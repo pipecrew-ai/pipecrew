@@ -33,10 +33,51 @@ From these answers + Pre-phase 0 name, derive:
 
 **If the user corrects the name in their answer** (e.g., "Actually it's called X, not Y"), treat that as a name-change request: update the scratchpad, rename the workspace directory if the slug changes, and re-confirm before proceeding.
 
+**Optional follow-up: domain id prefix (for new configs only)**
+
+Since this is a new workspace, you will mint a fresh domain id after config is built. Offer one optional question before asking about upstreams:
+
+```
+4. **Domain id prefix** (optional — press Enter to skip): Would you like a short
+   human-readable label baked into the workspace's permanent domain id?
+   (e.g., `--prefix=payments` produces `domain_payments_<ULID>` instead of `domain_<ULID>`)
+
+   Rules: 2–16 lowercase chars, alphanumerics + inner dashes only (no underscores).
+   (e.g., "payments", "order-mgmt", "auth")
+
+   Important: this label is frozen at mint and never changes — even if the team or
+   domain is later renamed. Identity is the whole id string; the prefix is cosmetic.
+   Skipping is fine; an unprefixed id is equally valid and permanent.
+```
+
+If the user provides a valid label, record it in the scratchpad's `## Domain Answers` section as `domain_id_prefix: <label>` so Phase B2 can pass it to `mint-domain-id.js`. If they skip, record nothing (Phase B2 mints without a prefix).
+
+**Optional follow-up: known upstream dependencies (Part 2 — external_dependencies)**
+
+After the prefix question, if this is a non-trivial workspace (more than one repo, or the user mentioned consuming external platforms), offer one optional question:
+
+```
+5. **Known upstreams** (optional — press Enter to skip): Does this workspace
+   depend on any OTHER PipeCrew workspace or external domain? If yes, list
+   them by name and what the dependency is.
+   (e.g., "payments domain — we pull their transaction events",
+   "user-service workspace — SSO / identity provider")
+```
+
+If the user provides upstreams, record each one as an `external_dependencies` edge with:
+- `target_id`: leave as `"domain_TBD"` (the peer's real id is unknown at interview time)
+- `relation`: infer from the description (`upstream` for providers the workspace consumes, `peer` for mutual dependencies, `child` if this workspace owns a sub-domain)
+- `resolution.kind`: `"absent"` (the edge is a declaration; resolve is Part 3)
+- `resolution.expected_name`: the user's string (record it so Phase B2 can note it in config)
+
+If the user skips, record nothing — **absence of the array is completely silent** (EC-4). The question is low-friction opt-in; never block or re-ask.
+
+Store captured upstreams in the scratchpad's `## Domain Answers` section so Phase B2 can write them into `config.json`'s `external_dependencies[]` array when building the config. If none were captured, omit the array entirely from config.
+
 Do NOT ask about:
 - Tech stack — already detected in Phase A
 - Entities — architect discovers from code in B2
 - API design — not the user's job
 - Deployment — discovered from infra repo
 
-**Update scratchpad**: write answers to `## Domain Answers` in `scratchpad.md`. Set Phase B1 status to COMPLETED. Set Current Phase to "B2.0. Per-repo Discovery".
+**Update scratchpad**: write answers to `## Domain Answers` in `scratchpad.md` (including any captured upstreams). Set Phase B1 status to COMPLETED. Set Current Phase to "B2.0. Per-repo Discovery".

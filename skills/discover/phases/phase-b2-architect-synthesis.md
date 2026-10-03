@@ -228,7 +228,7 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
 
 ### Build workspace config (config.json)
 
-**Incremental mode**: do NOT rebuild from scratch — **merge** the new repos into the existing `config.json` (deep-copy it, preserve every existing `repos.*` / `services.*` / `domain.*` / `workspace.*` entry and hand-edits, add one entry per new repo + new service, and re-run the `spec_copies` probe across `all_repos` in BOTH directions). Then validate. Full procedure: `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2 → Build workspace config". The "config already exists" warning (CRITICAL RULE 2) does NOT fire here — incremental merges by design. The from-scratch build below is full mode only.
+**Incremental mode**: do NOT rebuild from scratch — **merge** the new repos into the existing `config.json` (deep-copy it, preserve every existing `repos.*` / `services.*` / `domain.*` / `workspace.*` / top-level `external_dependencies` entry and hand-edits, add one entry per new repo + new service, and re-run the `spec_copies` probe across `all_repos` in BOTH directions). Then validate. Full procedure: `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2 → Build workspace config". The "config already exists" warning (CRITICAL RULE 2) does NOT fire here — incremental merges by design. The from-scratch build below is full mode only.
 
 Now that the architect has returned the service map, entity list, and auth discovery, build `{workspace_root}/{slug}/config.json`. **This MUST happen here, at the end of B2 — not in Phase C — because Phase B2.6's observability extractor reads this file** (`extract-observability.js` needs `repos` paths/roles, `services`, and `workspace.envs`). Everything below is available by now: discovered repos (Phase A), domain answers (Phase B1), and the architect's service map / entities / auth (this phase).
 
@@ -271,7 +271,21 @@ Build it from the discovered repos + domain answers:
     "i18n_languages": [/* from B1 */],
     "rtl_support": /* from B1 */,
     "domain_notes": "{from B1}"
-  }
+    // domain.id is NOT written here — it is minted by mint-domain-id.js right
+    // after this file is written (see the mint step below).
+  },
+  "external_dependencies": [
+    // ONLY when Phase B1 captured known upstreams in the scratchpad's
+    // ## Domain Answers — when none were captured, OMIT the array entirely
+    // (absence is silent; an empty array is never written). One entry per
+    // captured upstream, exactly as recorded in B1:
+    {
+      "target_id": "domain_TBD",      // the peer's real id is unknown at interview time
+      "relation": "{upstream | peer | child — as inferred in B1}",
+      "resolution": { "kind": "absent", "expected_name": "{the user's string from B1}" },
+      "trust": "manual"
+    }
+  ]
 }
 ```
 
@@ -343,8 +357,25 @@ If a match is found, record the path (relative to the consuming repo's root) und
 
 Also probe with any alternate filenames (e.g., a typo'd spec — ABVI has `user-managment-api-specs.yaml` with a missing `e`). Match by basename as declared in the api-service, not by a cleaned-up name.
 
-Write the file. Run the validator, then register the workspace so it's resolvable
-by slug from anywhere (and set as current):
+Write the file, then **mint the domain id BEFORE validating** — the validator warns
+when `domain.id` is absent, and the "expect 0 warnings" rule at the end of this step
+assumes the id is already in place. The mint is idempotent (no-op if an id exists),
+so this same step safely back-fills an older config in incremental mode; since the
+Phase B1 prefix question only runs for new workspaces, when back-filling ask the user
+once whether they want a `--prefix=<label>` before minting. If Phase B1 captured a
+`domain_id_prefix` in the scratchpad's `## Domain Answers` block, pass
+`--prefix={label}`; otherwise omit the flag entirely:
+
+```bash
+# When Phase B1 captured a prefix label:
+node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json --prefix={domain_id_prefix}
+
+# When no prefix was captured (skip produces plain domain_<ULID>):
+node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json
+```
+
+Now run the validator, then register the workspace so it's resolvable by slug from
+anywhere (and set as current):
 
 ```bash
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json

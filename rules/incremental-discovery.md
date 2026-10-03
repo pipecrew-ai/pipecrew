@@ -157,8 +157,9 @@ Dispatch `solution-architect` with `MODE: discovery-incremental` (instead of
 **Build workspace config — MERGE, never overwrite.** This is the critical
 difference from full mode:
 - Start from the existing `config.json` (deep copy). Preserve every existing
-  `repos.*`, `services.*`, `domain.*`, and `workspace.*` entry and any
-  hand-edits.
+  `repos.*`, `services.*`, `domain.*`, `workspace.*`, and top-level
+  `external_dependencies` entry and any hand-edits — the deep copy is the
+  authority; this list is illustrative, never a filter.
 - Add one `repos.{name}` entry per new repo, and one `services.{name}` entry per
   new repo that is a service (api-service / worker), with `spec_policy` from
   Phase A Step 3.5.

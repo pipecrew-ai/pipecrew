@@ -47,6 +47,7 @@ Relay the one-line result. If `--json` was passed, add `--json` and surface the 
 - `behind origin` → suggest `/pipecrew:memory-sync pull`.
 - `unpushed local commits` → suggest `/pipecrew:memory-sync sync` (a prior push likely failed).
 - `not bootstrapped` → suggest `/pipecrew:memory-sync enable`.
+- If `status` or `sync` shows no `domain.id` in `config.json`, mention the back-fill command: `node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/config.json` (add `--prefix=<label>` if the team wants a short cosmetic label baked into the id, e.g. `--prefix=payments` → `domain_payments_<ULID>`; omit for a plain `domain_<ULID>`; the label is frozen at mint and never changes).
 
 ### Step 3 — `pull` (get the team's latest)
 

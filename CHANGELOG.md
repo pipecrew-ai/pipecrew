@@ -16,6 +16,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.14.0] - 2026-10-02
+
+### Added
+- **Domain identity (Part 1 of domain-durable-memory rollout).** New zero-dep
+  `scripts/mint-domain-id.js` mints a stable opaque `domain_<26-char Crockford-base32
+  ULID>` into `config.json` at `domain.id`. Idempotent (no-op if already present);
+  preserves all existing `domain` block content and key order; BOM-tolerant. Optional
+  `--prefix=<label>` bakes a short team-chosen cosmetic label into the id (e.g.
+  `domain_payments_<ULID>`); label rules: 2–16 lowercase alphanumeric + inner-dash chars
+  (no underscores); the label is frozen at mint — a later rename never re-mints, identity
+  is the whole string, uniqueness comes from the ULID. `--prefix=` (empty) treated as no
+  prefix; existing ids are returned as-is regardless of the flag (idempotency first).
+  `/discover` Phase B1 now offers an optional skippable interview question asking for a
+  domain id prefix (placed before the upstreams question, new configs only); Phase B2
+  passes `--prefix={label}` to the mint call when one was captured. `validate-config.js`
+  warns (never errors) when `domain.id` is absent or malformed; regex updated to accept
+  both plain (`domain_<ULID>`) and prefixed (`domain_<label>_<ULID>`) forms; old-style
+  `dom_<ULID>` ids are now treated as malformed (warn-only) — no released id used that
+  prefix. Co-located `scripts/mint-domain-id.test.js` covers prefixed mint, invalid label
+  shapes, prefix + existing id idempotency, validator acceptance of both forms, dom_ warn
+  case, and all prior cases.
+  Design reference: `docs/design/github-memory.md § Domain identity and dependency edges`.
+- **Dependency edges — `external_dependencies[]` (Part 2).** `config.json` may now
+  declare cross-domain edges (target_id/relation/resolution/trust/share_scope). All
+  edges are inert declarations until Part 3 (resolve). `validate-config.js` validates
+  shape warn-only when the array is present (absence is silent per EC-4). `share_scope`
+  deliberately not enforced (enum open until Q3). `/discover` Phase B1 now offers an
+  optional opt-in question capturing known upstreams as dangling `absent` edges; the
+  question is skippable with no penalty. `config.portable.json` carries both fields for
+  free via the existing deep-clone (no code change, verified by test). `/memory-sync`
+  status step now mentions the back-fill command when `domain.id` is absent.
+
 ## [1.13.0] - 2026-10-02
 
 ### Added

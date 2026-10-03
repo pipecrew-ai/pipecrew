@@ -142,6 +142,58 @@ if (!config.services || typeof config.services !== 'object') {
 // ── domain block (optional but warn if missing) ───────────
 if (!config.domain) {
   warn('No "domain" block — /init Phase B2 will generate one');
+} else {
+  // domain.id — optional but recommended. Warn if absent or malformed; never error.
+  // Accepts both forms:
+  //   domain_<26-char ULID>                      (no prefix)
+  //   domain_<label>_<26-char ULID>              (with team-chosen cosmetic prefix)
+  // where <label> matches /^[a-z][a-z0-9-]{0,14}[a-z0-9]$/
+  const DOMAIN_ID_RE = /^domain_(?:[a-z][a-z0-9-]{0,14}[a-z0-9]_)?[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
+  if (!config.domain.id) {
+    warn('domain.id is missing — run `node scripts/mint-domain-id.js --config=<path>` to mint a stable opaque id for this workspace');
+  } else if (typeof config.domain.id !== 'string' || !DOMAIN_ID_RE.test(config.domain.id)) {
+    warn(`domain.id "${config.domain.id}" is malformed — expected domain_<26-char Crockford-base32 ULID> or domain_<label>_<26-char ULID>`);
+  }
+}
+
+// ── external_dependencies block (optional; absence is silent) ────────────
+if (Array.isArray(config.external_dependencies)) {
+  const VALID_RELATIONS = ['child', 'peer', 'upstream'];
+  const VALID_RESOLUTION_KINDS = ['local', 'github', 'absent'];
+  const VALID_TRUST = ['auto', 'manual', 'blocked'];
+
+  config.external_dependencies.forEach((entry, i) => {
+    const prefix = `external_dependencies[${i}]`;
+    if (!entry || typeof entry !== 'object') {
+      warn(`${prefix} is not an object`);
+      return;
+    }
+    // target_id: required, must be a string with domain_ prefix
+    if (!entry.target_id) {
+      warn(`${prefix}.target_id is required (domain_<ULID> string)`);
+    } else if (typeof entry.target_id !== 'string' || !entry.target_id.startsWith('domain_')) {
+      warn(`${prefix}.target_id "${entry.target_id}" should be a domain_-prefixed id`);
+    }
+    // relation: required, one of child|peer|upstream
+    if (!entry.relation) {
+      warn(`${prefix}.relation is required — one of: ${VALID_RELATIONS.join(', ')}`);
+    } else if (!VALID_RELATIONS.includes(entry.relation)) {
+      warn(`${prefix}.relation "${entry.relation}" is not valid — expected one of: ${VALID_RELATIONS.join(', ')}`);
+    }
+    // resolution: required object with kind ∈ local|github|absent
+    if (!entry.resolution || typeof entry.resolution !== 'object') {
+      warn(`${prefix}.resolution is required (object with kind: local|github|absent)`);
+    } else if (!entry.resolution.kind) {
+      warn(`${prefix}.resolution.kind is required — one of: ${VALID_RESOLUTION_KINDS.join(', ')}`);
+    } else if (!VALID_RESOLUTION_KINDS.includes(entry.resolution.kind)) {
+      warn(`${prefix}.resolution.kind "${entry.resolution.kind}" is not valid — expected one of: ${VALID_RESOLUTION_KINDS.join(', ')}`);
+    }
+    // trust: optional, one of auto|manual|blocked when present
+    if (entry.trust !== undefined && !VALID_TRUST.includes(entry.trust)) {
+      warn(`${prefix}.trust "${entry.trust}" is not valid — expected one of: ${VALID_TRUST.join(', ')} (or omit to use default "manual")`);
+    }
+    // share_scope: deliberately NOT enforced (open until Q3); any string is accepted
+  });
 }
 
 // ── Report ────────────────────────────────────────────────

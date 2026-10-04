@@ -167,7 +167,10 @@ Any failed verify → record against the item, attempt one fix re-dispatch (per
   - (Recipes are workspace-actionable and safe to write. Plugin-level lessons are NOT written by
     `/patch` — that is `/learn`'s job, human-gated.)
 - If `--commit`: commit each touched repo (`git add -u` to skip build artifacts) with a message
-  citing the recipe/finding IDs and ending with the standard Co-Authored-By line. `/patch` never
+  citing the recipe/finding IDs, ending with the standard Co-Authored-By line plus the PipeCrew
+  provenance trailers (`PipeCrew-Run-Id: {run_id}` and `PipeCrew-Version:` from
+  `node -p "require('{plugin_dir}/.claude-plugin/plugin.json').version"` — same convention as
+  /deliver Phase 5). `/patch` never
   pushes or opens PRs — hand to the user or `/deliver --with-pr` for that.
 
 ---

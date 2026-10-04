@@ -148,8 +148,8 @@ gh api repos/{org}/{repo}/pulls/{pr-number}/commits
 From this, compute:
 
 - **Plugin commits vs human commits**: partition the commits by heuristics in order:
-  1. `Co-Authored-By: Claude` trailer in commit message (strongest signal).
-  2. Optional `PipeCrew-Run-Id: {run_id}` trailer (if the workspace adopts the trailer — see observability additions).
+  1. `PipeCrew-Run-Id:` trailer in the commit message (definitive — stamped on every pipeline-created commit since v1.15, alongside `PipeCrew-Version:` which tells you which plugin build made it). A commit WITHOUT the trailer in a PR that HAS trailered commits is presumptively human.
+  2. `Co-Authored-By: Claude` trailer (weak fallback for pre-trailer history only — ANY Claude-Code-assisted commit carries it, including the user's own hand fixes, so it cannot distinguish pipeline from human-with-Claude).
   3. Timestamp overlap with a `/deliver` run in `{workspace_root}/{slug}/runs/feature/*/checkpoints.jsonl` — commits made within the run's start–end window are presumptively plugin commits.
   4. Ask the user to confirm the partition before proceeding if heuristics are ambiguous.
 

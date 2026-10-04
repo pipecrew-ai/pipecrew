@@ -355,7 +355,8 @@ Per common-rules R6 (scope discipline): touch ONLY the lines the fix list cites.
    **Commit the fix round** (only if it changed files): the fix modifies files already captured by the Phase-5 task commit(s), so give it its own follow-up commit rather than leaving the worktree dirty for Phase 8. This keeps the review-fix visible as a distinct, honest step in the PR:
    ```bash
    git -C {worktree_path} add -A
-   git -C {worktree_path} commit -q -m "fix({repo-short}): address review [round-{N}]"
+   git -C {worktree_path} commit -q -m "fix({repo-short}): address review [round-{N}]" -m "PipeCrew-Run-Id: {run_id}
+   PipeCrew-Version: {plugin_version}"
    ```
    If the fix round made no file changes (all items skipped/failed), skip the commit. Record the SHA in the scratchpad's Phase 5.5 row.
 

@@ -138,7 +138,17 @@ if (toStage.length) git(['add', '-A', '--', ...toStage]);
 const staged = git(['diff', '--cached', '--name-only']).stdout.trim();
 if (!staged) { console.log('sync-memory: nothing changed — no commit'); process.exit(0); }
 
-const c = git(['commit', '-m', message]);
+// Provenance trailer: which plugin build produced this memory commit (same
+// PipeCrew-Version convention as /deliver's code commits). BOM-safe read —
+// Windows editors may re-save plugin.json with a BOM, which require() rejects.
+let pluginVersion = 'unknown';
+try {
+  pluginVersion = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8').replace(/^\uFEFF/, '')
+  ).version || 'unknown';
+} catch { /* never block a sync on a manifest read */ }
+
+const c = git(['commit', '-m', message, '-m', `PipeCrew-Version: ${pluginVersion}`]);
 if (c.status !== 0) { warn(`commit failed: ${c.stderr.trim()}`); process.exit(0); }
 console.log(`sync-memory: committed — ${message}`);
 

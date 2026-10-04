@@ -60,7 +60,8 @@ Capture the user's choice. If `no`, jump to Step 8.6.
 - For each repo, run `git status --short`. The worktree should be clean (Phases 5 + 5.5 commit as they go). If a stray uncommitted change remains — e.g. from an inline role that edited files, or a task that reported COMPLETED without committing — do **not** refuse the publish and do **not** silently drop it: commit the remainder as a final catch-all so nothing is lost, then continue.
   ```bash
   git -C {worktree_path} add -A
-  git -C {worktree_path} commit -q -m "chore({repo-short}): finalize {feature-slug}"
+  git -C {worktree_path} commit -q -m "chore({repo-short}): finalize {feature-slug}" -m "PipeCrew-Run-Id: {run_id}
+  PipeCrew-Version: {plugin_version}"
   ```
   Note in the scratchpad: `Phase 8: committed N residual file(s) for {repo} before publish`.
 - Verify no branch is `main` / `master` / `dev` (whatever the workspace's protected branches are per `config.json`). If a feature branch happens to be named one of those, refuse and abort.

@@ -172,6 +172,7 @@ Extract key references from the config into short aliases used throughout the re
 - `{repos.*}` = `config.repos` — iterate for path validation
 - `{services.*}` = `config.services` — iterate for service→repo→spec lookups
 - `{domain}` = `config.domain` — passed to the product-owner and architect
+- `{plugin_version}` = the running plugin's version — resolve once via `node -p "require('{plugin_dir}/.claude-plugin/plugin.json').version"`; stamped (with `{run_id}`) as provenance trailers on every commit this run creates (Phases 5 / 5.5 / 8)
 
 **Step 1.5: Verify discovery artifacts — hard stop if platform.md missing.**
 

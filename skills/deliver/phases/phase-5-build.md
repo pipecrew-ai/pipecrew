@@ -23,12 +23,14 @@ All implementer work is dispatched **via the `Agent` tool in the current session
 ```bash
 # working dir = the task's worktree (or the repo's current branch under --no-worktrees)
 git -C {working_dir} add -A
-git -C {working_dir} commit -q -m "feat({repo-short}): {task-title} [{task-id}]"
+git -C {working_dir} commit -q -m "feat({repo-short}): {task-title} [{task-id}]" -m "PipeCrew-Run-Id: {run_id}
+PipeCrew-Version: {plugin_version}"
 ```
 
 - **One commit per task.** A repo with a single task → one commit; a monorepo with N sequential tasks → N commits on that repo's branch, in task order.
 - **Nothing to commit** (agent made no file changes, or FAILED) → skip the commit; note it in the scratchpad. Never commit an empty or partial/failed task.
 - **`{repo-short}`** is the repo's short tag from `config.json` (same token Phase 8 uses in PR titles); **`{task-id}`** is the task file id so the commit traces back to the plan.
+- **Provenance trailers (the second `-m`).** Every pipeline-created commit carries `PipeCrew-Run-Id:` + `PipeCrew-Version:` (`{plugin_version}` resolved in pre-flight). They land as a trailer paragraph, so `git log --format=%(trailers:key=PipeCrew-Run-Id)` and `/learn`'s plugin-vs-human partition read them deterministically — unlike the generic `Co-Authored-By: Claude` line, which any Claude-assisted commit (including the user's own fixes) carries. The same two trailers go on every commit this pipeline makes: Phase 5.5 fix rounds and the Phase 8 catch-all.
 - Record the commit SHA in the scratchpad's Implementation Tasks row alongside files-changed.
 
 #### Step 0: Create worktrees

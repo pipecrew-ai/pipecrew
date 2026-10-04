@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
-## [1.14.0] - 2026-10-02
+## [1.16.0] - 2026-10-05
 
 ### Added
 - **Domain identity (Part 1 of domain-durable-memory rollout).** New zero-dep
@@ -47,6 +47,127 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   question is skippable with no penalty. `config.portable.json` carries both fields for
   free via the existing deep-clone (no code change, verified by test). `/memory-sync`
   status step now mentions the back-fill command when `domain.id` is absent.
+
+## [1.15.0] - 2026-10-04
+
+### Added
+- **Acceptance test cases: `/pipecrew:design-tests` skill + `pipecrew:test-designer`
+  agent + durable per-workspace suite** (`skills/design-tests/SKILL.md`,
+  `agents/test-designer.md`, `docs/design/test-cases.md`). **Standalone —
+  deliberately NOT wired into /deliver or /discover yet** (pipeline integration is
+  a recorded follow-up). The skill resolves the workspace, runs the draft → user
+  gate (yes / adjust / no) → persist protocol, and offers a memory sync;
+  `/design-tests status` renders the suite index. The agent authors feature-level Given/When/Then cases — 3–8 per feature (one per FR +
+  load-bearing ECs), written at the feature's outermost surface (UI journey / API
+  / event / CLI), each tagged `prod_safe` — and maintains them under
+  `{workspace_root}/{slug}/testcases/` (one file per feature slug + regenerated
+  `INDEX.md`; superseded cases are retired in place, never deleted). Two modes:
+  `deliver` (cases derive from a /deliver run's FR/EC + technical design, zero
+  code reads) and `baseline` (characterization cases for an existing workspace's
+  features from platform.md + REPO_PROFILEs + specs). Draft → caller's user gate
+  → persist, mirroring the task-planner.
+- **Team-shared, context-isolated storage**: `testcases` added to the
+  `sync-memory.js` ALLOW list + redaction loop and to the memory-repo `.gitignore`
+  allow-list (with an in-place self-heal for memory repos bootstrapped before this
+  existed). Deliberately NOT referenced from platform.md / AGENTS.md / routing
+  files — the suite is read only by the test-designer and the future regression
+  runner, so it never rides in ambient session context.
+- **Regression execution: `/pipecrew:run-regression` skill +
+  `pipecrew:regression-runner` agent** (`skills/run-regression/SKILL.md`,
+  `agents/regression-runner.md`) — standalone, same author/run split as
+  implementer/reviewer. Runs the suite against a named environment from the new
+  optional `workspace.environments` config block (`--env=uat|staging|production`,
+  `--scope=all|feature:<slug>`): full-suite release gate in staging/UAT, UAT
+  first-pass whose report doubles as the human sign-off sheet, and a confirm-first
+  production smoke restricted to `prod_safe` (read-only) cases. UI-surface cases
+  are driven through the chrome-devtools MCP when installed (ensure-mcp detection,
+  offer-not-silent install — same contract as /assess); no environment configured →
+  code-grounded verification. Honest verdicts: `pass` (runtime evidence only) |
+  `fail` (evidence or file:line contradiction) | `consistent` (code agrees, nothing
+  executed) | `unverifiable` (with reason). Hard runner rules: no runtime evidence →
+  never pass; never execute a mutating step against a production target, even when
+  a case is mistagged. Only bookkeeping writes: `last_verified` + the run report.
+- Deferred by design (recorded in `docs/design/test-cases.md`): wiring either
+  skill into /deliver and /discover, and synthetic-tenant support for mutating
+  cases in production.
+- **Provenance trailers on every pipeline-created commit.** `/deliver` commits
+  (Phase 5 task commits, Phase 5.5 fix rounds, the Phase 8 catch-all) and
+  `/patch --commit` commits now end with a trailer paragraph:
+  `PipeCrew-Run-Id: {run_id}` + `PipeCrew-Version: {plugin_version}` (resolved
+  once in pre-flight from `.claude-plugin/plugin.json`). Memory-repo commits via
+  `sync-memory.js` are stamped with `PipeCrew-Version:` automatically (BOM-safe
+  manifest read; a failed read never blocks a sync). Any commit in any repo now
+  answers "which run produced this, on which plugin version" with one
+  `git log --format=%(trailers)`.
+
+### Changed
+- **/learn's plugin-vs-human commit partition now leads with the
+  `PipeCrew-Run-Id:` trailer** (definitive) and demotes `Co-Authored-By: Claude`
+  to a pre-trailer-history fallback — that generic trailer rides on ANY
+  Claude-Code-assisted commit, including the user's own post-merge fixes, so it
+  could misclassify exactly the human-fix signal /learn mines for learnings.
+
+## [1.14.0] - 2026-10-03
+
+### Added
+- **Routing CLAUDE.md at the repos' parent** (`templates/root-CLAUDE.md.template`
+  + `scripts/sync-root-claude.js`). Each workspace now places a CLAUDE.md at the
+  parent directory(ies) of its repos — the placement that actually loads, since
+  Claude Code walks UP from the session's launch dir and sessions run inside
+  repos (same anchor rule as `setup-workspace-permissions.js`). The file routes
+  user asks to PipeCrew skills (`/deliver`, `/patch`, `/troubleshoot`,
+  `/review`, `/learn`, …) AND maps needs to directly-dispatchable agents
+  (`pipecrew:solution-architect`, `<slug>-troubleshooter`,
+  `pipecrew:security-consultant`, …) so a plain session can consult a single
+  agent without a full pipeline. The body is a static template shipped with the
+  plugin (always version-matched to the running plugin); the only dynamic
+  content is the per-workspace block between `<!-- pipecrew:workspaces -->`
+  markers — absolute pointers to that workspace's `context/platform.md` +
+  `config.json` and its concrete agent names. Workspaces don't know about each
+  other: a normal (disjoint-parent) layout gets a clean single-workspace file;
+  only when two workspaces share a repo parent does the file carry one block
+  per workspace, each owning its own. Removed workspaces self-prune; a
+  hand-authored CLAUDE.md is preserved verbatim (only the small managed section
+  is appended); a monorepo parent that sits inside a git repo is hoisted to
+  just above the repo top (the routing file must never land in a committed
+  repo CLAUDE.md); parents at a filesystem root, the home dir, or inside
+  `~/.claude` are skipped. Wired into `/discover` Phase C (new Step 5) and
+  `/join` Step 6, so both the workspace owner and every joined teammate get the
+  routing guide automatically. 17 unit tests (`scripts/sync-root-claude.test.js`).
+- **Opt-in user-level breadcrumb** (`sync-root-claude.js --user`). Strictly
+  consent-gated (it edits the user's personal `~/.claude/CLAUDE.md`): maintains
+  a tiny `<!-- pipecrew:machine -->` marker block — "PipeCrew runs on this
+  machine" plus the registered workspaces from `workspace-registry.js` (across
+  all roots) with their `platform.md` paths — so sessions launched OUTSIDE any
+  repo parent still learn the toolbox exists. Never carries the routing tables
+  (those stay in the repos-parent files); user content outside the markers is
+  never touched; dead registry entries are excluded on each run. Offered with
+  yes/no/show-me-first prompts in `/discover` Phase C Step 5 and `/join` Step 6.
+
+### Changed
+- **Routing file converged on `AGENTS.md`** (parity with the v1.13.0 per-repo
+  convention). `sync-root-claude.js` now writes the routing content to
+  `AGENTS.md` at the repos' parent (read natively by Cursor, Codex, and other
+  agents) plus a one-line `CLAUDE.md` shim (`@AGENTS.md`) for Claude Code —
+  both on every harness, so the routing guide loads in Cursor sessions too.
+  Template renamed `root-CLAUDE.md.template` → `root-AGENTS.md.template`;
+  filenames come from `workspace-root.js` (`CONTEXT_FILENAME`/`CONTEXT_SHIM`),
+  the same source of truth the per-repo generation uses. Lazy migration, no
+  forced rewrite: a pre-parity plugin-owned `CLAUDE.md` (carries the
+  `pipecrew:root-dispatcher` sentinel) migrates on the next run — content →
+  `AGENTS.md`, blocks carried over, `CLAUDE.md` becomes the shim; a
+  hand-authored `CLAUDE.md` holding our managed container keeps being
+  maintained in place; a hand-authored `CLAUDE.md` without markers gets only
+  the one-line `@AGENTS.md` import appended.
+- **Routing-file opt-out + uninstall.** `"root_context": false` under
+  `workspace` in `config.json` disables generation for that workspace —
+  persisted, so /discover re-runs, /join, and refreshes all honor it (the
+  routing file costs ~1k static cached tokens per session; the opt-out exists
+  for zero-footprint preference, not economics). `sync-root-claude.js --remove`
+  uninstalls an existing footprint: the workspace's block is dropped; a
+  plugin-owned file left empty is deleted along with its one-liner shim; a
+  hand-authored file keeps everything else. `--remove` works while the flag is
+  off — that's the cleanup path. 26 unit tests.
 
 ## [1.13.0] - 2026-10-02
 

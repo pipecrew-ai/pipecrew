@@ -96,12 +96,33 @@ Then record the teammate's root so future `config.portable.json` regens stay sta
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
 node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
 node {plugin_dir}/scripts/sync-memory.js status {workspace_root}/{slug}
+node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/config.json
 ```
 - The validator confirms every resolved `path` exists on disk (so it catches a clone that
   didn't land or a wrong local path) — fix and re-run Step 5 on any error.
 - `--register … --current` adds the joined workspace to the teammate's registry and makes it
   active, so subsequent `/deliver`, `/memory-sync`, etc. resolve it by slug from anywhere.
 - `status` confirms the memory repo is wired and reports how fresh it is.
+- `sync-root-claude` places (or updates) the PipeCrew routing context at the parent
+  directory(ies) of the repos just wired up (for clone mode that's `{clone_root}`; for
+  local mode the teammate's own repos root) — the guide that tells any agent session
+  launched in or below those repos that the PipeCrew skills/agents exist and when to
+  use them, with this workspace's context paths and agent names. Content lands in
+  `AGENTS.md` (read natively by Cursor and other agents) with a one-line `CLAUDE.md`
+  shim (`@AGENTS.md`) beside it for Claude Code — same convention as per-repo docs.
+  It ships with the teammate's own plugin (so it always matches their version), only
+  ever rewrites this workspace's block between the `<!-- pipecrew:workspaces -->`
+  markers, migrates a pre-parity plugin-owned CLAUDE.md lazily, and never touches a
+  hand-authored file's content. On exit 1 (malformed markers), surface the error —
+  don't hand-edit the user's file. Opt-out: `"root_context": false` under `workspace`
+  in config.json makes the script a no-op (the flag arrives via config.portable.json
+  if the owner set it); `--remove` uninstalls an existing footprint.
+- **Optional user-level breadcrumb**: after the above, offer (strictly opt-in — it edits
+  the teammate's personal `~/.claude/CLAUDE.md`) to run
+  `node {plugin_dir}/scripts/sync-root-claude.js --user`, which maintains a tiny
+  marker-managed block listing this machine's registered workspaces so every session
+  knows they exist. Same consent prompt as /discover Phase C Step 5. On `no`, skip
+  silently.
 
 Report one concise summary: workspace joined, N repos wired (cloned / local / skipped),
 memory sync mode, and the next step — e.g. `Run /deliver --workspace={slug}`. Note that

@@ -706,6 +706,48 @@ If zero findings were reported across the whole phase, write no file and add no 
 **Update scratchpad**: add an `Audit findings` row to `## Generation Status`:
 - `{N} findings across {M} repos` if any, path to the file
 - `none reported` if the phase surfaced no issues
-- Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
+
+---
+
+### Step 5: Routing AGENTS.md at the repos' parent
+
+Ensure the parent directory(ies) of this workspace's repos carry the routing context file that tells plain sessions the PipeCrew toolbox exists and how to route user asks to skills/agents. Harnesses load context files by walking UP from the session's launch directory — sessions run inside repos, so the repos' parent (not the workspace dir) is the placement that actually loads. Same anchor rule as Step 3.5 Part B's settings files. Same AGENTS.md convention as per-repo docs: content lives in `AGENTS.md` (read natively by Cursor and other agents), a one-line `CLAUDE.md` shim (`@AGENTS.md`) beside it imports it into Claude Code — both written on every harness.
+
+```bash
+node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/config.json
+```
+
+**Opt-out**: if the user doesn't want tool-placed files at their repos' parent, set `"root_context": false` under `workspace` in `config.json` — the script then exits 0 without writing, and every future run (/discover, /join, refreshes) honors it. `node {plugin_dir}/scripts/sync-root-claude.js --config=... --remove` uninstalls an already-placed footprint (this workspace's block; a plugin-owned file left empty is deleted along with its shim).
+
+The script is deterministic and idempotent (safe in incremental mode and on `--resume`): it reads `config.repos`, computes each distinct repo parent (usually one), and per parent: copies `templates/root-AGENTS.md.template` + writes the shim if nothing exists, otherwise regenerates ONLY this workspace's block between the `<!-- pipecrew:workspaces -->` markers — the static routing body and everything user-written is never touched. A pre-parity plugin-owned `CLAUDE.md` is migrated lazily (content → `AGENTS.md`, `CLAUDE.md` → shim, blocks carried over); a hand-authored `CLAUDE.md` carrying our managed container is maintained in place (never force-migrate a user's file); a hand-authored `CLAUDE.md` without markers gets only the one-line `@AGENTS.md` import appended. Two workspaces sharing a repo parent each own their own block; a workspace whose dir disappears self-prunes on the next run. Parents that are a filesystem root, the home dir, or inside `~/.claude` are skipped with a warning.
+
+- Exit 0/2 → continue (2 = warnings, e.g. skipped parents or size; surface them to the user).
+- Exit 1 (malformed markers) → surface the error and ask the user to fix the markers by hand; do NOT edit that context file yourself — it may contain the user's own content.
+
+#### Optional: user-level breadcrumb (opt-in — edits the user's personal `~/.claude/CLAUDE.md`)
+
+The repos-parent file only loads for sessions launched in or below a repo parent. A tiny machine-level breadcrumb in `~/.claude/CLAUDE.md` (loads into EVERY session) covers the rest: it says PipeCrew runs on this machine, lists the registered workspaces (from the workspace registry, across all roots) with their `platform.md` paths, and defers to the repos-parent files for actual routing. It is a few lines between `<!-- pipecrew:machine -->` markers — never the routing tables.
+
+This edits the user's most personal Claude Code file, so it is **strictly consent-gated**. Prompt:
+
+```
+Optionally, I can add a small PipeCrew breadcrumb (~8 lines, marker-managed) to your
+user-level ~/.claude/CLAUDE.md so EVERY session on this machine knows your PipeCrew
+workspaces exist — useful for sessions launched outside the repos. Your existing
+content is never touched; only the marked block is managed.
+
+Add it? (yes / no / show-me-first)
+```
+
+On `show-me-first`: run `node {plugin_dir}/scripts/sync-root-claude.js --user --dry-run`, show the user the block that would be written (render it from the registry: one line per workspace, `slug` → `platform.md` path) and whether it would be `created` / `appended` / `updated` in their file, then re-prompt `(yes / no)`.
+
+On `yes`:
+```bash
+node {plugin_dir}/scripts/sync-root-claude.js --user
+```
+
+On `no`: skip silently — do not note it as a deficiency; the repos-parent files are the primary mechanism. Remember the choice for this run only (re-offer on future /discover runs, since the registry will have changed).
+
+**Update scratchpad**: add a `Routing AGENTS.md` row to `## Generation Status` (per parent: `created` / `updated` / `appended` / `unchanged` / `migrated` / `legacy`, from the script's output; plus `user-level: WRITTEN / SKIPPED`). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
 
 ---

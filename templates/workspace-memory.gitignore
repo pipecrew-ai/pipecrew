@@ -1,6 +1,6 @@
 # pipecrew workspace memory repo — .gitignore
 # ALLOW-LIST by design: ignore everything, then un-ignore ONLY the durable
-# workspace memory (context/, agents/, history/, config.portable.json).
+# workspace memory (context/, agents/, history/, testcases/, config.portable.json).
 # This is defense-in-depth alongside sync-memory.js's allow-listed `git add`:
 # anything a user drops into the workspace dir (e.g. a "copy of claude code
 # session/" transcript dump, scratch files, exports) is ignored by default and
@@ -15,6 +15,7 @@
 !/context/
 !/agents/
 !/history/
+!/testcases/
 !/config.portable.json
 
 # 3. Within the un-ignored durable dirs, still exclude transient/in-flight noise.

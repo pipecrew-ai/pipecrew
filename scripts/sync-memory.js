@@ -102,7 +102,7 @@ const syncMode = resolveSyncMode();
 
 // --- 1. redact (MANDATORY) — never commit a credential value ---
 const redactScript = path.join(__dirname, 'redact-secrets.js');
-for (const sub of ['context', 'agents', 'history']) {
+for (const sub of ['context', 'agents', 'history', 'testcases']) {
   const p = path.join(wsDir, sub);
   if (!fs.existsSync(p)) continue;
   const r = spawnSync('node', [redactScript, p, '--quiet'], { encoding: 'utf8' });
@@ -130,15 +130,36 @@ if (DRY) {
 // A deny-list (.gitignore) can't anticipate arbitrary junk a user may drop in the
 // workspace dir (e.g. a "copy of claude code session/" transcript dump), and such
 // content would otherwise be committed UN-redacted (redaction only runs over
-// context/agents/history). Allow-listing guarantees only known docs are published.
-const ALLOW = ['context', 'agents', 'history', 'config.portable.json', '.gitignore'];
+// context/agents/history/testcases). Allow-listing guarantees only known docs are published.
+const ALLOW = ['context', 'agents', 'history', 'testcases', 'config.portable.json', '.gitignore'];
+
+// Memory repos bootstrapped before the testcases/ suite existed carry a
+// .gitignore whose allow-list ("/*" then "!/context/" …) silently blocks
+// `git add testcases` — self-heal by un-ignoring it in place (idempotent).
+const giPath = path.join(wsDir, '.gitignore');
+if (fs.existsSync(giPath)) {
+  const gi = fs.readFileSync(giPath, 'utf8');
+  if (/^\/\*\s*$/m.test(gi) && !gi.includes('!/testcases/')) {
+    fs.writeFileSync(giPath, gi.replace(/^!\/history\/\s*$/m, (m) => `${m}\n!/testcases/`));
+  }
+}
 const toStage = ALLOW.filter((rel) => fs.existsSync(path.join(wsDir, rel)));
 // `-A` scoped to each pathspec so deletions within the durable dirs are captured too.
 if (toStage.length) git(['add', '-A', '--', ...toStage]);
 const staged = git(['diff', '--cached', '--name-only']).stdout.trim();
 if (!staged) { console.log('sync-memory: nothing changed — no commit'); process.exit(0); }
 
-const c = git(['commit', '-m', message]);
+// Provenance trailer: which plugin build produced this memory commit (same
+// PipeCrew-Version convention as /deliver's code commits). BOM-safe read —
+// Windows editors may re-save plugin.json with a BOM, which require() rejects.
+let pluginVersion = 'unknown';
+try {
+  pluginVersion = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8').replace(/^\uFEFF/, '')
+  ).version || 'unknown';
+} catch { /* never block a sync on a manifest read */ }
+
+const c = git(['commit', '-m', message, '-m', `PipeCrew-Version: ${pluginVersion}`]);
 if (c.status !== 0) { warn(`commit failed: ${c.stderr.trim()}`); process.exit(0); }
 console.log(`sync-memory: committed — ${message}`);
 

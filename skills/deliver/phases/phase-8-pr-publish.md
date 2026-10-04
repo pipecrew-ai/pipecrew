@@ -1,6 +1,6 @@
 ### Phase 8: PR Publish + Run Wrap-up
 
-Phase 8 always runs. Within it, **Steps 8.1–8.5 (PR publish)** are conditional on `--with-pr`; **Step 8.55 (acceptance test cases)** and **Step 8.6 (feedback offering)** always run. Phase 8 is the final phase — `run_end` is emitted at its end, not in Phase 7.
+Phase 8 always runs. Within it, **Steps 8.1–8.5 (PR publish)** are conditional on `--with-pr`; **Step 8.6 (feedback offering)** always runs. Phase 8 is the final phase — `run_end` is emitted at its end, not in Phase 7.
 
 ---
 
@@ -190,38 +190,6 @@ Both files MUST be written even if some repos failed. The JSON file's `failed[]`
 
 ---
 
-#### Step 8.55: Draft acceptance test cases (gated — always offered)
-
-Every shipped feature should leave behind a durable, re-runnable acceptance suite under `{workspace_root}/{slug}/testcases/` — that's what regression / UAT first-passes / release smoke runs consume later. This step runs BEFORE the feedback offering (Step 8.6 may hand the conversation to `/learn`) and before memory sync (Step 8.65 publishes the new cases in the same push).
-
-Skip silently (log `Phase 8 test cases: skipped (no implementation)`) only when the run produced no implementation — every Phase 5 task SKIPPED/FAILED.
-
-1. **Dispatch the draft** — `pipecrew:test-designer` with:
-   - `mode: deliver`, `phase: draft`
-   - `workspace_root`, `slug`, `run_dir`, `feature_slug`, `feature_summary`
-   The agent reads ONLY `outputs/phase-1-requirements.md` + `outputs/phase-2-architecture.md` (no code) and writes `{run_dir}/outputs/phase-8-testcases-draft.md` — 3–8 feature-level Given/When/Then cases at the feature's outermost surface, each tagged `prod_safe`. If a suite for this `feature_slug` already exists it plans a supersede (kept / retired / added) rather than a duplicate.
-
-2. **Gate** — show the agent's DRAFT SUMMARY block (case count, prod-safe count, supersede plan, assumptions needing confirmation) plus the draft cases themselves:
-
-   ```
-   Phase 8 — Acceptance test cases ({N} drafted, {M} prod-safe)
-   {DRAFT SUMMARY + cases}
-
-   Persist to {slug}/testcases/{feature-slug}.md? (yes / adjust / no)
-     yes    → write the durable suite (+ INDEX.md); syncs with workspace memory at Step 8.65
-     adjust → tell me what to change; the designer re-drafts, then I re-ask
-     no     → skip — no durable test cases for this feature (you can re-run later
-              via the test-designer in baseline mode)
-   ```
-
-   On `adjust`: collect the user's pushback verbatim, re-dispatch `phase: draft` with the accumulated adjustments appended, re-gate. On `no`: log `Phase 8 test cases: declined at gate`, continue to Step 8.6 — no pestering.
-
-3. **Persist** — on `yes`, dispatch `pipecrew:test-designer` with `mode: deliver`, `phase: persist`, `draft_path: {run_dir}/outputs/phase-8-testcases-draft.md`, `adjustments: {accumulated pushback or empty}`. It writes/supersedes `{workspace_root}/{slug}/testcases/{feature-slug}.md` and regenerates `testcases/INDEX.md`. Log to scratchpad: `Phase 8 test cases: persisted ({K} kept / {R} retired / {A} added)` and add both dispatches to the `## Agent Dispatch Log`.
-
-**Read-isolation rule**: never add pointers to `testcases/` in platform.md, AGENTS.md, or any context doc, and never load the suite into this or other agents' ambient context — only the test-designer and the regression runner read it. (It still syncs to the team memory repo like `context/` does.)
-
----
-
 #### Step 8.6: Feedback offering (always runs)
 
 **First, read `{run_dir}/run-notes.md`** if it exists. It holds the durable observations the product-owner / solution-architect flagged during this run (appended by the `## Notes for /learn` capture rule in `dispatch-rules.md`). If it has any bullets, include them verbatim in the offering below under a `Pending learning notes from this run:` header — the agents already surfaced candidate learnings, so lean the recommendation toward `yes`. An empty or absent file just means nothing was flagged — show the normal offering. Either way, `/learn --run={run_id}` reads this file as part of the run signal, so a `yes` curates these notes (plus the run's corrections) into the workspace docs.
@@ -322,13 +290,13 @@ Choice?
 
 #### Step 8.65: Sync workspace memory to GitHub (only if `config.workspace.memory.enabled` AND this run changed workspace-level context)
 
-If the workspace opted into GitHub-backed memory and this `/deliver` run wrote any **workspace-level** durable doc under `{workspace_root}/{slug}/context/` — most commonly a new ADR from the Phase 2 ADR gate (`context/adrs/`), or an audit-findings update — **or persisted acceptance test cases under `{workspace_root}/{slug}/testcases/` (Step 8.55)** — persist it:
+If the workspace opted into GitHub-backed memory and this `/deliver` run wrote any **workspace-level** durable doc under `{workspace_root}/{slug}/context/` — most commonly a new ADR from the Phase 2 ADR gate (`context/adrs/`), or an audit-findings update — persist it:
 
 ```bash
 node {plugin_dir}/scripts/sync-memory.js {workspace_root}/{slug} --message "deliver: {feature-slug} (context updates)" --checkpoint=deliver
 ```
 
-Skip when `memory.enabled` is absent/false, or when this run touched no `context/` or `testcases/` doc (a pure code-change feature with no ADR and declined test cases). The script rebases onto the team's latest then publishes per `config.workspace.memory.sync_mode` — note a **new ADR is structural**, so under `hybrid`/`pr` this sync opens a `memory/*` PR (the durable decision gets a reviewer) rather than committing to `main`; an audit-findings-only update commits directly. **Do not double-sync:** if Step 8.6 dispatched `/learn` and it already synced (its Step 7.4), and no further `context/` change happened after, this is a no-op — `sync-memory.js` commits nothing when the tree is clean, so it's safe to call regardless. Feature *code* changes live in the code repos' own git (Steps 8.1–8.5), not the memory repo. See `docs/design/github-memory.md`.
+Skip when `memory.enabled` is absent/false, or when this run touched no `context/` doc (a pure code-change feature with no ADR). The script rebases onto the team's latest then publishes per `config.workspace.memory.sync_mode` — note a **new ADR is structural**, so under `hybrid`/`pr` this sync opens a `memory/*` PR (the durable decision gets a reviewer) rather than committing to `main`; an audit-findings-only update commits directly. **Do not double-sync:** if Step 8.6 dispatched `/learn` and it already synced (its Step 7.4), and no further `context/` change happened after, this is a no-op — `sync-memory.js` commits nothing when the tree is clean, so it's safe to call regardless. Feature *code* changes live in the code repos' own git (Steps 8.1–8.5), not the memory repo. See `docs/design/github-memory.md`.
 
 #### Step 8.7: Final run_end emission + status
 

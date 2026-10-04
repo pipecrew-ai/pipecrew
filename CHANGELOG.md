@@ -20,20 +20,18 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 
 ### Added
 - **Acceptance test cases: `pipecrew:test-designer` agent + durable per-workspace
-  suite** (`agents/test-designer.md`, `docs/design/test-cases.md`). Authors
-  feature-level Given/When/Then cases — 3–8 per feature (one per FR + load-bearing
-  ECs), written at the feature's outermost surface (UI journey / API / event / CLI),
-  each tagged `prod_safe` — and maintains them under
+  suite** (`agents/test-designer.md`, `docs/design/test-cases.md`). **Standalone
+  agent — dispatched directly via the Agent tool; deliberately NOT wired into
+  /deliver or /discover yet** (pipeline integration is a recorded follow-up).
+  Authors feature-level Given/When/Then cases — 3–8 per feature (one per FR +
+  load-bearing ECs), written at the feature's outermost surface (UI journey / API
+  / event / CLI), each tagged `prod_safe` — and maintains them under
   `{workspace_root}/{slug}/testcases/` (one file per feature slug + regenerated
   `INDEX.md`; superseded cases are retired in place, never deleted). Two modes:
-  `deliver` (cases derive from the run's FR/EC + technical design, zero code reads)
-  and `baseline` (characterization cases for an existing workspace's features from
-  platform.md + REPO_PROFILEs + specs). Draft → user gate → persist, mirroring the
-  task-planner.
-- **Lifecycle hooks**: `/deliver` Phase 8 gains Step 8.55 (always-offered, gated —
-  drafts cases for the just-shipped feature; persisted cases ride the Step 8.65
-  memory sync) and `/discover` Phase C gains Step 6 (optional baseline suite for
-  existing features, skipping features that already have one).
+  `deliver` (cases derive from a /deliver run's FR/EC + technical design, zero
+  code reads) and `baseline` (characterization cases for an existing workspace's
+  features from platform.md + REPO_PROFILEs + specs). Draft → caller's user gate
+  → persist, mirroring the task-planner.
 - **Team-shared, context-isolated storage**: `testcases` added to the
   `sync-memory.js` ALLOW list + redaction loop and to the memory-repo `.gitignore`
   allow-list (with an in-place self-heal for memory repos bootstrapped before this

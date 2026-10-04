@@ -1,8 +1,10 @@
 # Acceptance test cases + regression (design)
 
-Status: **slice 1 shipped** (test-designer agent, durable storage, /deliver + /discover hooks) ·
-**slice 2 deferred** (regression-runner agent + `/pipecrew:regression` skill).
-Decided 2026-10-03/04 (solution-architect consultation + user direction).
+Status: **slice 1 shipped — standalone only** (test-designer agent + durable storage, dispatched
+directly via the Agent tool; NOT wired into /deliver or /discover by explicit user decision —
+pipeline integration comes later) · **slice 2 deferred** (regression-runner agent +
+`/pipecrew:regression` skill). Decided 2026-10-03/04 (solution-architect consultation + user
+direction).
 
 ## Problem
 
@@ -21,8 +23,8 @@ plugin's existing implementer/reviewer and deliver/assess pairs.
 - **`pipecrew:test-designer`** (shipped) — authors + maintains the suite. Modes: `deliver`
   (FR/EC + technical design → cases; no code reads) and `baseline` (platform.md +
   REPO_PROFILEs + specs → characterization cases for existing features; targeted spot-reads
-  only, never repo sweeps). Phases: `draft` (run dir only) → user gate → `persist`
-  (durable files + INDEX.md, supersede-with-retire on re-author).
+  only, never repo sweeps). Phases: `draft` (caller's draft_dir only) → user gate →
+  `persist` (durable files + INDEX.md, supersede-with-retire on re-author).
 - **`pipecrew:regression-runner`** (deferred) — executes/verifies stored cases, emits
   `pass | fail | unverifiable` per case. Hard charter rule: no runtime evidence → never
   `pass`. Second hard rule: never execute a mutating step against a production target,
@@ -53,13 +55,27 @@ regression runner. No pointer from platform.md, AGENTS.md, repo context docs, or
 repos-parent routing file — an ever-growing suite must not ride in ambient session context
 (see the v1.14.0 orchestrator token-cost analysis).
 
-## Lifecycle wiring (shipped)
+## Invocation (shipped: standalone only)
 
-- `/deliver` Phase 8 **Step 8.55** (always offered, gated): draft → approve/adjust/skip →
-  persist; new cases ride the Step 8.65 memory sync.
-- `/discover` Phase C **Step 6** (optional, gated): baseline suite for existing features;
-  skips features that already have an active suite.
-- Re-runnable any time by dispatching the test-designer in baseline mode.
+Dispatched directly with the Agent tool (`subagent_type: pipecrew:test-designer`; it has a
+row in the repos-parent routing file's agent table). Caller provides mode/phase/draft_dir
+and runs the gate between `draft` and `persist`:
+
+- after a `/deliver` run: `mode: deliver` pointing at that run's dir — cases from its
+  FR/EC + technical design;
+- for an existing workspace: `mode: baseline` — one suite per existing feature.
+
+Persisted cases reach the team via the normal memory sync (`/pipecrew:memory-sync sync`
+or any skill's auto-sync) — `testcases` is in the allow-list.
+
+## Deferred: pipeline integration
+
+By explicit user decision, slice 1 does NOT touch /deliver or /discover. The agreed shape
+when integration happens (was drafted, then pulled back out): `/deliver` Phase 8 gains an
+always-offered gated step (draft → approve/adjust/skip → persist, placed before the
+feedback offering and before the memory-sync step so cases ride the same push), and
+`/discover` Phase C gains an optional gated baseline step that skips features with an
+existing active suite.
 
 ## Deferred: regression-runner + /pipecrew:regression
 

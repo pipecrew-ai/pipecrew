@@ -1,6 +1,6 @@
 ## Phase C: Generation
 
-Generate all workspace-layer files. This phase creates the config, AGENTS.md files, domain agents, optional agent-context docs, and (optionally) a baseline acceptance test suite.
+Generate all workspace-layer files. This phase creates the config, AGENTS.md files, domain agents, and optional agent-context docs.
 
 **Incremental mode** (`discover_mode == incremental`): scope this phase to `new_repos`. Specifically: (1) config.json was already MERGED in B2 — Step 1 just re-validates; (2) Step 2 generates AGENTS.md + agent-context for the new repos only — existing repos' docs are never touched; (3) **skip domain-agent generation** (Step 3 and the implementer-agent publish) — the workspace `agents/` and published `~/.claude/agents/{slug}-*` already exist and don't change when repos are added; if a new repo's stack has no matching plugin implementer/reviewer, note it for the user instead of generating one; (4) Step 4 appends the new repos' audit findings to the existing `context/audit-findings.md`. Full spec: `{plugin_dir}/rules/incremental-discovery.md` § "Phase C". The steps below otherwise run as written, looping over the new repos.
 
@@ -748,30 +748,6 @@ node {plugin_dir}/scripts/sync-root-claude.js --user
 
 On `no`: skip silently — do not note it as a deficiency; the repos-parent files are the primary mechanism. Remember the choice for this run only (re-offer on future /discover runs, since the registry will have changed).
 
-**Update scratchpad**: add a `Routing AGENTS.md` row to `## Generation Status` (per parent: `created` / `updated` / `appended` / `unchanged` / `migrated` / `legacy`, from the script's output; plus `user-level: WRITTEN / SKIPPED`).
-
-### Step 6: Baseline acceptance test cases (optional, gated)
-
-Offer to generate a baseline regression suite for the workspace's EXISTING features — durable, feature-level acceptance cases under `{workspace_root}/{slug}/testcases/` that regression / UAT / release smoke runs consume later. (Features shipped through `/deliver` get their cases automatically at its Phase 8 gate; this step covers everything that already exists.)
-
-```
-Optionally, I can draft a baseline acceptance test suite for this workspace's existing
-features — 3–8 feature-level Given/When/Then cases per feature, derived from platform.md
-+ the repo profiles just generated (characterizing CURRENT behavior, so regression can
-catch unintended change after each release). You review every case before anything is
-written. Generate it? (yes / no / only=<feature,...>)
-```
-
-On `no`: log `Baseline test cases: declined` and skip silently — `/deliver` still offers per-feature cases later, and this can be re-run any time by dispatching `pipecrew:test-designer` in baseline mode.
-
-On `yes` (or `only=...`):
-
-1. **Draft** — dispatch `pipecrew:test-designer` with `mode: baseline`, `phase: draft`, `workspace_root`, `slug`, `discover_run_dir: {run_dir}` (its REPO_PROFILE JSONs are fresh — the agent reads those + platform.md + specs, never sweeping repos), and `feature_scope` if the user gave `only=...`. It writes one draft per feature under `{run_dir}/testcases-draft/` plus a `SUMMARY.md`.
-2. **Gate** — show `SUMMARY.md` (features covered / skipped, case + prod-safe counts, ALL assumptions — baseline cases characterize current behavior, so the assumptions list is where a latent bug would get enshrined as "expected"; make the user actually look at it). `(yes / adjust / no)` — on `adjust`, collect pushback verbatim, re-dispatch draft, re-gate.
-3. **Persist** — on `yes`, dispatch `phase: persist` with the draft dir + adjustments. The agent writes `{workspace_root}/{slug}/testcases/{feature-slug}.md` per feature + regenerates `testcases/INDEX.md`. If the workspace has GitHub-backed memory enabled, the suite rides the end-of-discover memory sync automatically (`testcases` is in the sync allow-list).
-
-**Read-isolation rule**: never reference `testcases/` from platform.md, AGENTS.md, repo context docs, or the routing file written in Step 5 — the suite is consumed ONLY by the test-designer and the regression runner, and must not land in any session's ambient context.
-
-**Update scratchpad**: add a `Baseline test cases` row to `## Generation Status` (`persisted: N features / M cases` / `declined` / `skipped`). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
+**Update scratchpad**: add a `Routing AGENTS.md` row to `## Generation Status` (per parent: `created` / `updated` / `appended` / `unchanged` / `migrated` / `legacy`, from the script's output; plus `user-level: WRITTEN / SKIPPED`). Set Phase C status to COMPLETED. Set Current Phase to "D. Verification".
 
 ---

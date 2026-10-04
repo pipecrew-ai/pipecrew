@@ -19,6 +19,45 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 ## [Unreleased]
 
 ### Added
+- **Acceptance test cases: `/pipecrew:design-tests` skill + `pipecrew:test-designer`
+  agent + durable per-workspace suite** (`skills/design-tests/SKILL.md`,
+  `agents/test-designer.md`, `docs/design/test-cases.md`). **Standalone —
+  deliberately NOT wired into /deliver or /discover yet** (pipeline integration is
+  a recorded follow-up). The skill resolves the workspace, runs the draft → user
+  gate (yes / adjust / no) → persist protocol, and offers a memory sync;
+  `/design-tests status` renders the suite index. The agent authors feature-level Given/When/Then cases — 3–8 per feature (one per FR +
+  load-bearing ECs), written at the feature's outermost surface (UI journey / API
+  / event / CLI), each tagged `prod_safe` — and maintains them under
+  `{workspace_root}/{slug}/testcases/` (one file per feature slug + regenerated
+  `INDEX.md`; superseded cases are retired in place, never deleted). Two modes:
+  `deliver` (cases derive from a /deliver run's FR/EC + technical design, zero
+  code reads) and `baseline` (characterization cases for an existing workspace's
+  features from platform.md + REPO_PROFILEs + specs). Draft → caller's user gate
+  → persist, mirroring the task-planner.
+- **Team-shared, context-isolated storage**: `testcases` added to the
+  `sync-memory.js` ALLOW list + redaction loop and to the memory-repo `.gitignore`
+  allow-list (with an in-place self-heal for memory repos bootstrapped before this
+  existed). Deliberately NOT referenced from platform.md / AGENTS.md / routing
+  files — the suite is read only by the test-designer and the future regression
+  runner, so it never rides in ambient session context.
+- **Regression execution: `/pipecrew:run-regression` skill +
+  `pipecrew:regression-runner` agent** (`skills/run-regression/SKILL.md`,
+  `agents/regression-runner.md`) — standalone, same author/run split as
+  implementer/reviewer. Runs the suite against a named environment from the new
+  optional `workspace.environments` config block (`--env=uat|staging|production`,
+  `--scope=all|feature:<slug>`): full-suite release gate in staging/UAT, UAT
+  first-pass whose report doubles as the human sign-off sheet, and a confirm-first
+  production smoke restricted to `prod_safe` (read-only) cases. UI-surface cases
+  are driven through the chrome-devtools MCP when installed (ensure-mcp detection,
+  offer-not-silent install — same contract as /assess); no environment configured →
+  code-grounded verification. Honest verdicts: `pass` (runtime evidence only) |
+  `fail` (evidence or file:line contradiction) | `consistent` (code agrees, nothing
+  executed) | `unverifiable` (with reason). Hard runner rules: no runtime evidence →
+  never pass; never execute a mutating step against a production target, even when
+  a case is mistagged. Only bookkeeping writes: `last_verified` + the run report.
+- Deferred by design (recorded in `docs/design/test-cases.md`): wiring either
+  skill into /deliver and /discover, and synthetic-tenant support for mutating
+  cases in production.
 - **Provenance trailers on every pipeline-created commit.** `/deliver` commits
   (Phase 5 task commits, Phase 5.5 fix rounds, the Phase 8 catch-all) and
   `/patch --commit` commits now end with a trailer paragraph:

@@ -55,18 +55,23 @@ regression runner. No pointer from platform.md, AGENTS.md, repo context docs, or
 repos-parent routing file — an ever-growing suite must not ride in ambient session context
 (see the v1.14.0 orchestrator token-cost analysis).
 
-## Invocation (shipped: standalone only)
+## Invocation (shipped: standalone skill)
 
-Dispatched directly with the Agent tool (`subagent_type: pipecrew:test-designer`; it has a
-row in the repos-parent routing file's agent table). Caller provides mode/phase/draft_dir
-and runs the gate between `draft` and `persist`:
+**`/pipecrew:design-tests`** (`skills/design-tests/SKILL.md`) is the front door — it
+resolves the workspace, dispatches the `pipecrew:test-designer` agent's `draft` phase,
+runs the user gate (yes / adjust / no), dispatches `persist` on approval, and offers a
+memory sync. Named as a verb per house convention; "design" pairs with the agent name.
 
-- after a `/deliver` run: `mode: deliver` pointing at that run's dir — cases from its
+- `/design-tests` — baseline mode: one suite per existing feature (`--only=` to scope);
+- `/design-tests --run=<run_id>` — deliver mode: cases from a past /deliver run's
   FR/EC + technical design;
-- for an existing workspace: `mode: baseline` — one suite per existing feature.
+- `/design-tests status` — renders `testcases/INDEX.md` (the only sanctioned way to
+  look at the suite without pulling case files into context).
 
-Persisted cases reach the team via the normal memory sync (`/pipecrew:memory-sync sync`
-or any skill's auto-sync) — `testcases` is in the allow-list.
+Direct agent dispatch remains possible (caller provides mode/phase/draft_dir and runs
+the gate itself), but the skill is preferred — it guarantees the gate. Persisted cases
+reach the team via the normal memory sync (`/pipecrew:memory-sync sync` or any skill's
+auto-sync) — `testcases` is in the allow-list.
 
 ## Deferred: pipeline integration
 

@@ -19,11 +19,13 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 ## [Unreleased]
 
 ### Added
-- **Acceptance test cases: `pipecrew:test-designer` agent + durable per-workspace
-  suite** (`agents/test-designer.md`, `docs/design/test-cases.md`). **Standalone
-  agent — dispatched directly via the Agent tool; deliberately NOT wired into
-  /deliver or /discover yet** (pipeline integration is a recorded follow-up).
-  Authors feature-level Given/When/Then cases — 3–8 per feature (one per FR +
+- **Acceptance test cases: `/pipecrew:design-tests` skill + `pipecrew:test-designer`
+  agent + durable per-workspace suite** (`skills/design-tests/SKILL.md`,
+  `agents/test-designer.md`, `docs/design/test-cases.md`). **Standalone —
+  deliberately NOT wired into /deliver or /discover yet** (pipeline integration is
+  a recorded follow-up). The skill resolves the workspace, runs the draft → user
+  gate (yes / adjust / no) → persist protocol, and offers a memory sync;
+  `/design-tests status` renders the suite index. The agent authors feature-level Given/When/Then cases — 3–8 per feature (one per FR +
   load-bearing ECs), written at the feature's outermost surface (UI journey / API
   / event / CLI), each tagged `prod_safe` — and maintains them under
   `{workspace_root}/{slug}/testcases/` (one file per feature slug + regenerated

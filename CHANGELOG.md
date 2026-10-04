@@ -40,11 +40,24 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   existed). Deliberately NOT referenced from platform.md / AGENTS.md / routing
   files — the suite is read only by the test-designer and the future regression
   runner, so it never rides in ambient session context.
-- Deferred by design (recorded in `docs/design/test-cases.md`): the
-  `pipecrew:regression-runner` agent + `/pipecrew:run-regression` skill — named
-  per-workspace environments, UAT first-pass whose report doubles as the human
-  sign-off sheet, full-suite release gate in staging/UAT, and a `prod_safe`-only
-  smoke subset in production.
+- **Regression execution: `/pipecrew:run-regression` skill +
+  `pipecrew:regression-runner` agent** (`skills/run-regression/SKILL.md`,
+  `agents/regression-runner.md`) — standalone, same author/run split as
+  implementer/reviewer. Runs the suite against a named environment from the new
+  optional `workspace.environments` config block (`--env=uat|staging|production`,
+  `--scope=all|feature:<slug>`): full-suite release gate in staging/UAT, UAT
+  first-pass whose report doubles as the human sign-off sheet, and a confirm-first
+  production smoke restricted to `prod_safe` (read-only) cases. UI-surface cases
+  are driven through the chrome-devtools MCP when installed (ensure-mcp detection,
+  offer-not-silent install — same contract as /assess); no environment configured →
+  code-grounded verification. Honest verdicts: `pass` (runtime evidence only) |
+  `fail` (evidence or file:line contradiction) | `consistent` (code agrees, nothing
+  executed) | `unverifiable` (with reason). Hard runner rules: no runtime evidence →
+  never pass; never execute a mutating step against a production target, even when
+  a case is mistagged. Only bookkeeping writes: `last_verified` + the run report.
+- Deferred by design (recorded in `docs/design/test-cases.md`): wiring either
+  skill into /deliver and /discover, and synthetic-tenant support for mutating
+  cases in production.
 
 ## [1.14.0] - 2026-10-03
 

@@ -25,6 +25,7 @@ Before working on a repo, read its workspace's `context/platform.md` (domain + a
 | Context docs audited or refreshed after code drift | `/pipecrew:context-refresh` |
 | Architecture diagrams generated or refreshed | `/pipecrew:draw-diagram` |
 | Acceptance test cases authored — baseline suite for existing features, or covering a past /deliver run | `/pipecrew:design-tests` |
+| The acceptance suite executed — regression release gate, UAT first-pass, or production smoke | `/pipecrew:run-regression` |
 | A new project onboarded, or repos added to a workspace | `/pipecrew:discover` |
 | A teammate onboarded onto an existing workspace | `/pipecrew:join <memory-repo-url>` |
 | Shared team memory inspected or synced now | `/pipecrew:memory-sync status \| pull \| sync` |

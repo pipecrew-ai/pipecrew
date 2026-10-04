@@ -1,11 +1,10 @@
 # Acceptance test cases + regression (design)
 
-Status: **slice 1 shipped — standalone only** (test-designer agent + durable storage, dispatched
-directly via the Agent tool; NOT wired into /deliver or /discover by explicit user decision —
-pipeline integration comes later) · **slice 2 deferred** (regression-runner agent +
-`/pipecrew:run-regression` skill — verb-named per house convention, user's pick over
-`run-tests`/`regress`). Decided 2026-10-03/04 (solution-architect consultation + user
-direction).
+Status: **both slices shipped, standalone only** — slice 1: `pipecrew:test-designer` agent
+behind `/pipecrew:design-tests`; slice 2: `pipecrew:regression-runner` agent behind
+`/pipecrew:run-regression` (verb names per house convention, user's picks). NOT wired into
+/deliver or /discover by explicit user decision — pipeline integration comes later.
+Decided 2026-10-03/04 (solution-architect consultation + user direction).
 
 ## Problem
 
@@ -26,10 +25,16 @@ plugin's existing implementer/reviewer and deliver/assess pairs.
   REPO_PROFILEs + specs → characterization cases for existing features; targeted spot-reads
   only, never repo sweeps). Phases: `draft` (caller's draft_dir only) → user gate →
   `persist` (durable files + INDEX.md, supersede-with-retire on re-author).
-- **`pipecrew:regression-runner`** (deferred) — executes/verifies stored cases, emits
-  `pass | fail | unverifiable` per case. Hard charter rule: no runtime evidence → never
-  `pass`. Second hard rule: never execute a mutating step against a production target,
-  even if a case is mistagged.
+- **`pipecrew:regression-runner`** (shipped, behind `/pipecrew:run-regression`) —
+  executes/verifies stored cases, emits `pass | fail | consistent | unverifiable` per case
+  (`consistent` = code-grounded agreement without runtime evidence — distinct from `pass`
+  by design). Hard charter rule: no runtime evidence → never `pass`. Second hard rule:
+  never execute a mutating step against a production target, even if a case is mistagged —
+  the runner re-checks every step itself; the tag is a filter, not the guarantee. UI-surface
+  cases are driven through the chrome-devtools MCP when installed (same ensure-mcp contract
+  as /assess Step 4.5); browser unavailable → those cases fall back to code-grounded,
+  capped at `consistent`. Only bookkeeping writes: `last_verified` in attempted case files
+  + INDEX.md, report under `runs/run-regression/{ts}/`.
 
 ## Case format + granularity
 
@@ -76,35 +81,41 @@ auto-sync) — `testcases` is in the allow-list.
 
 ## Deferred: pipeline integration
 
-By explicit user decision, slice 1 does NOT touch /deliver or /discover. The agreed shape
+By explicit user decision, neither slice touches /deliver or /discover. The agreed shape
 when integration happens (was drafted, then pulled back out): `/deliver` Phase 8 gains an
 always-offered gated step (draft → approve/adjust/skip → persist, placed before the
 feedback offering and before the memory-sync step so cases ride the same push), and
 `/discover` Phase C gains an optional gated baseline step that skips features with an
 existing active suite.
 
-## Deferred: regression-runner + /pipecrew:run-regression
+## Shipped: /pipecrew:run-regression (slice 2, standalone)
 
-Agreed shape, to be built as slice 2:
+`skills/run-regression/SKILL.md` wraps the runner:
 
-- **Named environments** per workspace in `config.json` (e.g. `uat`, `staging`,
-  `production: true`) — not a hardcoded pair. `--env=<name>` selects the target.
-- **Three tiers**: UAT = full suite, per-feature scope, before release (the runner's report
-  doubles as the human UAT sign-off sheet — agent verifies behavior, human accepts intent);
-  staging/UAT full-suite run = the release gate; production = **`prod_safe` subset only**
-  (read-only smoke), every release. Mutating cases run against production only if a
-  workspace later builds synthetic-tenant support (an `env` field on cases is reserved
-  for that; no workspace has it today).
-- **Scope flag**: `--scope=feature:<slug>` (UAT) vs `--scope=all` (regression).
-- **Credentials**: supplied by the operator at run time, never stored in case files;
-  production credentials should be read-only at the credential level, not just by charter.
-- Where no environment exists at all, the runner verifies scenarios against current code
-  and reports honestly (`unverifiable` where code-reading can't settle it). For the plugin
+- **Named environments** per workspace in `config.json` under `workspace.environments`
+  (e.g. `uat`, `staging`, `production: true`) — not a hardcoded pair; `--env=<name>`
+  selects the target; validate-config is permissive so the block is optional.
+- **Three tiers**: UAT = per-feature scope before release (`--scope=feature:<slug>` —
+  the report includes the human sign-off sheet: agent verifies behavior, human accepts
+  intent); staging/UAT full-suite run (`--scope=all`) = the release gate; production =
+  **`prod_safe` subset only** (read-only smoke), confirm-first gate, every release.
+  Mutating cases run against production only if a workspace later builds synthetic-tenant
+  support (an `env` field on cases is reserved for that; no workspace has it today).
+- **Browser**: UI-surface cases use the chrome-devtools MCP when installed (detected via
+  `ensure-mcp.js`, offer-not-silent install — same contract as /assess Step 4.5);
+  unavailable → those cases downgrade to code-grounded (`consistent` cap).
+- **Credentials**: supplied by the operator at run time, never stored in case files or
+  echoed; production credentials should be read-only at the credential level, not just
+  by charter.
+- **No environment at all** → code-grounded mode: `fail` (code contradicts, file:line) /
+  `consistent` (code agrees, nothing executed) / `unverifiable`; a repo's own test suite
+  counts as runtime evidence (`pass`) for exactly the cases it covers. For the plugin
   workspace itself, regression ≈ code-grounded verification + `node eval/run.js`.
 
 ## Explicitly out of scope (all slices)
 
-Booting services / driving frontends from the runner, CI integration, auto-retirement
+Booting/starting services or frontends from the runner (it targets already-running
+environments; browser-driving a running UI is in scope), CI integration, auto-retirement
 heuristics, synthetic-tenant implementation inside target products.
 
 ## Rejected alternatives

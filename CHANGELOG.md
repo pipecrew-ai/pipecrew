@@ -41,7 +41,7 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   files — the suite is read only by the test-designer and the future regression
   runner, so it never rides in ambient session context.
 - Deferred by design (recorded in `docs/design/test-cases.md`): the
-  `pipecrew:regression-runner` agent + `/pipecrew:regression` skill — named
+  `pipecrew:regression-runner` agent + `/pipecrew:run-regression` skill — named
   per-workspace environments, UAT first-pass whose report doubles as the human
   sign-off sheet, full-suite release gate in staging/UAT, and a `prod_safe`-only
   smoke subset in production.

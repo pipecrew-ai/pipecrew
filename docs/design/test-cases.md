@@ -3,7 +3,8 @@
 Status: **slice 1 shipped — standalone only** (test-designer agent + durable storage, dispatched
 directly via the Agent tool; NOT wired into /deliver or /discover by explicit user decision —
 pipeline integration comes later) · **slice 2 deferred** (regression-runner agent +
-`/pipecrew:regression` skill). Decided 2026-10-03/04 (solution-architect consultation + user
+`/pipecrew:run-regression` skill — verb-named per house convention, user's pick over
+`run-tests`/`regress`). Decided 2026-10-03/04 (solution-architect consultation + user
 direction).
 
 ## Problem
@@ -82,7 +83,7 @@ feedback offering and before the memory-sync step so cases ride the same push), 
 `/discover` Phase C gains an optional gated baseline step that skips features with an
 existing active suite.
 
-## Deferred: regression-runner + /pipecrew:regression
+## Deferred: regression-runner + /pipecrew:run-regression
 
 Agreed shape, to be built as slice 2:
 

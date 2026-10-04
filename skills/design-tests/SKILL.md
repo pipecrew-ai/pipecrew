@@ -113,5 +113,5 @@ Read `{workspace_root}/{slug}/testcases/INDEX.md` and render it as-is (one line 
 
 ## Notes
 - **Relationship to the agent**: this skill is the front door; `pipecrew:test-designer` holds the case format, sizing rule (3–8 per feature), outermost-surface rule, and supersede semantics. Direct agent dispatch remains possible but this skill is preferred — it guarantees the gate.
-- **Regression execution is NOT this skill.** Running the suite (UAT first-pass, staging release gate, production prod-safe smoke) is the deferred `/pipecrew:regression` — see `docs/design/test-cases.md`.
+- **Regression execution is NOT this skill.** Running the suite (UAT first-pass, staging release gate, production prod-safe smoke) is the deferred `/pipecrew:run-regression` — see `docs/design/test-cases.md`.
 - **Pipelines untouched.** `/deliver` and `/discover` do not invoke this; integration into those flows is a recorded follow-up in the same design doc.

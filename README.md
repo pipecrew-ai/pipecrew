@@ -137,7 +137,6 @@ flags, agents, and supported stacks: [**docs/CHEATSHEET.md**](docs/CHEATSHEET.md
 ## Learn more
 
 - [**Cheatsheet**](docs/CHEATSHEET.md) — every skill, flag, agent, stack, and phase on one page
-- [**Design docs**](docs/design/) — context engineering, shared memory, workspace registry, test cases
 - [**CHANGELOG**](CHANGELOG.md) · [**pipecrew.ai**](https://pipecrew.ai)
 
 ## License

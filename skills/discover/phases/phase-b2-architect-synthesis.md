@@ -375,11 +375,11 @@ node {plugin_dir}/scripts/mint-domain-id.js --config={workspace_root}/{slug}/con
 ```
 
 Now run the validator, then register the workspace so it's resolvable by slug from
-anywhere (and set as current):
+anywhere (and set as the default):
 
 ```bash
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
-node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
+node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --default
 ```
 
 Registration records the workspace's absolute path in the registry

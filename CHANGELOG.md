@@ -16,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [Unreleased]
+
+### Changed
+- **Session-scoped workspace resolution — `current` renamed `default_workspace`.**
+  The registry's `current` key was machine-global mutable state: with two parallel
+  sessions on different workspaces, a bare skill invocation targeted whatever was
+  set last, machine-wide. Resolution is now session-scoped before global
+  (`--workspace=<slug>` → `$PIPECREW_WORKSPACE` pin (slug or path, new) →
+  **cwd inference** → `default_workspace` → sole registered): a session working
+  inside a workspace's folder or any of its repos (per that workspace's
+  `config.json` `repos.*.path`) resolves that workspace automatically — longest
+  path match wins, an exact tie across workspaces is ambiguous (exit 3, never a
+  guess). Nothing implicit ever writes `default_workspace`; it changes only via
+  `--set-default`, `--register … --default`, and onboarding (`/discover`, `/join`).
+  Auto-migrated on first read; `--set-current` / `--register … --current` kept as
+  deprecated aliases; `--list --json` mirrors the value under `current` for one
+  release. `workspace-root.js --get` inherits cwd inference, so legacy callers
+  become session-scoped too. New `--resolve` flags: `--cwd=<path>`, `--no-cwd`.
+  See `docs/design/workspace-registry.md` § Follow-up.
+
 ## [1.16.0] - 2026-10-05
 
 ### Added

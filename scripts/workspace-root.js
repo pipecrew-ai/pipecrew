@@ -8,8 +8,9 @@
  * skills that still call it resolve correctly during and after the transition.
  *
  * Because every workspace lives at `<parent>/<slug>`, `--get` returns the PARENT
- * of the *resolved current* workspace — so a caller that joins `{root}/{slug}`
- * for the current slug still lands on the right folder. New code should call
+ * of the *session-resolved* workspace (cwd inference, then the configured
+ * default) — so a caller that joins `{root}/{slug}` still lands on the right
+ * folder. New code should call
  * `workspace-registry.js --resolve` (path of the chosen workspace directly) or
  * `--root-for=<slug>` instead.
  *
@@ -78,16 +79,18 @@ function expandTilde(p) {
   return p;
 }
 
-// Legacy root: parent of the given (or current) workspace; else a configured
-// default; else the hardcoded default. A slug makes `{root}/{slug}` correct for
-// a workspace that lives outside the current one's parent.
+// Legacy root: parent of the given (or session-resolved) workspace; else a
+// configured default; else the hardcoded default. A slug makes `{root}/{slug}`
+// correct for a workspace that lives outside the resolved one's parent.
+// Passing cwd gives legacy callers session-scoped resolution too: a session
+// inside a repo tree gets that repo's workspace root, not a machine-global one.
 function resolveRoot(slug) {
   if (!slug && process.env[reg.ENV_VAR]) {
-    const r = reg.resolve(null);
+    const r = reg.resolve(null, { cwd: process.cwd() });
     if (!r.error) return r.root; // env override still resolves via the ephemeral scan
     return reg.norm(expandTilde(process.env[reg.ENV_VAR]));
   }
-  const r = reg.resolve(slug || null);
+  const r = reg.resolve(slug || null, { cwd: process.cwd() });
   if (!r.error) return r.root;
   const cfg = reg.loadPersisted();
   if (cfg.default_root) return reg.norm(expandTilde(cfg.default_root));
@@ -128,7 +131,7 @@ if (require.main === module) {
     const cfg = reg.loadPersisted();
     cfg.default_root = raw;           // preserve the user's ~-form as the creation dir
     for (const ws of reg.scanRoot(resolved)) reg.upsert(cfg, ws.path, false); // adopt existing
-    if (!cfg.current && cfg.workspaces.length === 1) cfg.current = cfg.workspaces[0].slug;
+    if (!cfg.default_workspace && cfg.workspaces.length === 1) cfg.default_workspace = cfg.workspaces[0].slug;
     reg.writeConfig(cfg);
     process.stdout.write(resolved + '\n');
     process.exit(0);

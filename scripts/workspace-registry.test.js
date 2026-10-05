@@ -29,24 +29,28 @@ function fresh() { // isolated config file + returns its path
   return cfgPath;
 }
 // Materialize a workspace dir: <root>/<slug>/config.json with a workspace block.
-function makeWorkspace(root, slug) {
+// `repos` (optional): { key: relOrAbsPath } — written as repos.{key}.path.
+function makeWorkspace(root, slug, repos) {
   const dir = path.join(root, slug);
   fs.mkdirSync(dir, { recursive: true });
+  const repoBlock = {};
+  for (const key of Object.keys(repos || {})) repoBlock[key] = { path: repos[key].replace(/\\/g, '/'), type: 'other', role: 'other' };
   fs.writeFileSync(path.join(dir, 'config.json'),
-    JSON.stringify({ workspace: { name: slug, slug }, repos: {}, services: {} }, null, 2));
+    JSON.stringify({ workspace: { name: slug, slug }, repos: repoBlock, services: {} }, null, 2));
   return dir.replace(/\\/g, '/');
 }
+// PIPECREW_WORKSPACE is blanked so a pin in the developer's own env can't leak in.
 function run(cfgPath, args, extraEnv = {}) {
   const r = spawnSync('node', [SCRIPT, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, PIPECREW_CONFIG_FILE: cfgPath, PIPECREW_WORKSPACE_ROOT: '', ...extraEnv },
+    env: { ...process.env, PIPECREW_CONFIG_FILE: cfgPath, PIPECREW_WORKSPACE_ROOT: '', PIPECREW_WORKSPACE: '', ...extraEnv },
   });
   return { code: r.status, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
 function runRoot(cfgPath, args, extraEnv = {}) {
   const r = spawnSync('node', [ROOTSHIM, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, PIPECREW_CONFIG_FILE: cfgPath, PIPECREW_WORKSPACE_ROOT: '', ...extraEnv },
+    env: { ...process.env, PIPECREW_CONFIG_FILE: cfgPath, PIPECREW_WORKSPACE_ROOT: '', PIPECREW_WORKSPACE: '', ...extraEnv },
   });
   return { code: r.status, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
@@ -63,18 +67,39 @@ test('register + resolve by slug returns the exact path (workspace lives anywher
   eq(run(cfg, ['--resolve', '--workspace=beta']).out, b, 'beta path');
 });
 
-test('resolve with no flag uses current', () => {
+test('resolve with no flag uses the default workspace', () => {
   const cfg = fresh();
   const a = makeWorkspace(path.join(TMP, 'cur1'), 'one');
   const b = makeWorkspace(path.join(TMP, 'cur2'), 'two');
   run(cfg, [`--register=${a}`]);
-  run(cfg, [`--register=${b}`, '--current']);
-  eq(run(cfg, ['--resolve']).out, b, 'current is two');
-  run(cfg, ['--set-current=one']);
-  eq(run(cfg, ['--resolve']).out, a, 'current switched to one');
+  run(cfg, [`--register=${b}`, '--default']);
+  eq(run(cfg, ['--resolve']).out, b, 'default is two');
+  run(cfg, ['--set-default=one']);
+  eq(run(cfg, ['--resolve']).out, a, 'default switched to one');
 });
 
-test('resolve is ambiguous (exit 3) when multiple and no current/slug', () => {
+test('deprecated aliases --set-current / --register --current still set the default', () => {
+  const cfg = fresh();
+  const a = makeWorkspace(path.join(TMP, 'ali1'), 'al-one');
+  const b = makeWorkspace(path.join(TMP, 'ali2'), 'al-two');
+  run(cfg, [`--register=${a}`, '--current']);
+  eq(run(cfg, ['--resolve']).out, a, '--register --current sets default');
+  run(cfg, [`--register=${b}`]);
+  run(cfg, ['--set-current=al-two']);
+  eq(run(cfg, ['--resolve']).out, b, '--set-current sets default');
+});
+
+test('rename migration: legacy `current` key becomes `default_workspace`', () => {
+  const cfg = fresh();
+  const a = makeWorkspace(path.join(TMP, 'mig'), 'mig-ws');
+  fs.writeFileSync(cfg, JSON.stringify({ workspaces: [{ slug: 'mig-ws', path: a }], current: 'mig-ws' }));
+  eq(run(cfg, ['--resolve']).out, a, 'still resolves after migration');
+  const raw = JSON.parse(fs.readFileSync(cfg, 'utf8'));
+  eq(raw.default_workspace, 'mig-ws', 'default_workspace set');
+  eq(raw.current, undefined, 'legacy current key removed');
+});
+
+test('resolve is ambiguous (exit 3) when multiple and no default/slug', () => {
   const cfg = fresh();
   run(cfg, [`--register=${makeWorkspace(path.join(TMP, 'ambA'), 'a1')}`]);
   run(cfg, [`--register=${makeWorkspace(path.join(TMP, 'ambB'), 'a2')}`]);
@@ -146,13 +171,82 @@ test('re-register updates path without duplicating the slug', () => {
   eq(ws[0].path, a2, 'path updated to new location');
 });
 
+// ---- session-scoped resolution: cwd inference + $PIPECREW_WORKSPACE ----
+
+test('cwd inside a workspace folder resolves that workspace (beats the default)', () => {
+  const cfg = fresh();
+  const a = makeWorkspace(path.join(TMP, 'cwdA'), 'cwd-a');
+  const b = makeWorkspace(path.join(TMP, 'cwdB'), 'cwd-b');
+  run(cfg, [`--register=${a}`, '--default']);
+  run(cfg, [`--register=${b}`]);
+  eq(run(cfg, ['--resolve', `--cwd=${b}/context`]).out, b, 'cwd wins over default');
+});
+
+test('cwd inside a registered repo path resolves the owning workspace', () => {
+  const cfg = fresh();
+  const repoDir = path.join(TMP, 'somewhere-else', 'api-repo').replace(/\\/g, '/');
+  fs.mkdirSync(path.join(repoDir, 'src'), { recursive: true });
+  const a = makeWorkspace(path.join(TMP, 'repoWs'), 'repo-ws', { api: repoDir });
+  const b = makeWorkspace(path.join(TMP, 'otherWs'), 'other-ws');
+  run(cfg, [`--register=${a}`]);
+  run(cfg, [`--register=${b}`, '--default']);
+  eq(run(cfg, ['--resolve', `--cwd=${repoDir}/src`]).out, a, 'repo cwd maps to its workspace');
+});
+
+test('longest path match wins when candidates nest', () => {
+  const cfg = fresh();
+  const a = makeWorkspace(path.join(TMP, 'umb'), 'umb-ws'); // a's own folder is the umbrella
+  const nestedRepo = `${a}/nested-repo`;
+  fs.mkdirSync(path.join(nestedRepo, 'src'), { recursive: true });
+  const b = makeWorkspace(path.join(TMP, 'owner'), 'owner-ws', { nested: nestedRepo });
+  run(cfg, [`--register=${a}`]);
+  run(cfg, [`--register=${b}`]);
+  eq(run(cfg, ['--resolve', `--cwd=${nestedRepo}/src`]).out, b, 'deeper repo claim beats shallower folder claim');
+});
+
+test('exact tie between two workspaces is ambiguous (exit 3), never a guess', () => {
+  const cfg = fresh();
+  const shared = path.join(TMP, 'shared-repo').replace(/\\/g, '/');
+  fs.mkdirSync(shared, { recursive: true });
+  const a = makeWorkspace(path.join(TMP, 'tieA'), 'tie-a', { shared });
+  const b = makeWorkspace(path.join(TMP, 'tieB'), 'tie-b', { shared });
+  run(cfg, [`--register=${a}`, '--default']);
+  run(cfg, [`--register=${b}`]);
+  const r = run(cfg, ['--resolve', `--cwd=${shared}`]);
+  eq(r.code, 3, 'tie -> exit 3 (no fall-through to default)');
+  assert(r.err.includes('tie-a') && r.err.includes('tie-b'), 'lists both claimants');
+});
+
+test('--no-cwd disables inference; --workspace beats cwd', () => {
+  const cfg = fresh();
+  const a = makeWorkspace(path.join(TMP, 'precA'), 'prec-a');
+  const b = makeWorkspace(path.join(TMP, 'precB'), 'prec-b');
+  run(cfg, [`--register=${a}`, '--default']);
+  run(cfg, [`--register=${b}`]);
+  eq(run(cfg, ['--resolve', `--cwd=${b}`, '--no-cwd']).out, a, '--no-cwd falls back to default');
+  eq(run(cfg, ['--resolve', '--workspace=prec-a', `--cwd=${b}`]).out, a, 'explicit slug beats cwd');
+});
+
+test('$PIPECREW_WORKSPACE pins by slug or path and beats cwd', () => {
+  const cfg = fresh();
+  const a = makeWorkspace(path.join(TMP, 'pinA'), 'pin-a');
+  const b = makeWorkspace(path.join(TMP, 'pinB'), 'pin-b');
+  run(cfg, [`--register=${a}`]);
+  run(cfg, [`--register=${b}`, '--default']);
+  eq(run(cfg, ['--resolve'], { PIPECREW_WORKSPACE: 'pin-a' }).out, a, 'pin by slug');
+  eq(run(cfg, ['--resolve', `--cwd=${b}`], { PIPECREW_WORKSPACE: 'pin-a' }).out, a, 'pin beats cwd');
+  const unreg = makeWorkspace(path.join(TMP, 'pinC'), 'pin-c'); // never registered
+  eq(run(cfg, ['--resolve'], { PIPECREW_WORKSPACE: unreg }).out, unreg, 'pin by path works unregistered');
+  eq(run(cfg, ['--resolve'], { PIPECREW_WORKSPACE: 'no-such' }).code, 3, 'bad pin errors instead of silently falling back');
+});
+
 // ---- backward-compat shim ----
 
-test('workspace-root.js --get returns the PARENT of the current workspace', () => {
+test('workspace-root.js --get returns the PARENT of the resolved (default) workspace', () => {
   const cfg = fresh();
   const a = makeWorkspace(path.join(TMP, 'shimRoot'), 'shim-ws');
-  run(cfg, [`--register=${a}`, '--current']);
-  eq(runRoot(cfg, ['--get']).out, path.join(TMP, 'shimRoot').replace(/\\/g, '/'), '--get is parent of current');
+  run(cfg, [`--register=${a}`, '--default']);
+  eq(runRoot(cfg, ['--get']).out, path.join(TMP, 'shimRoot').replace(/\\/g, '/'), '--get is parent of default');
 });
 
 test('workspace-root.js --check exits 0 when a workspace is registered, 2 when empty', () => {

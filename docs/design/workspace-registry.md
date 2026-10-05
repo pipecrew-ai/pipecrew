@@ -4,6 +4,10 @@ Status: **implemented** in v1.10.0 (`scripts/workspace-registry.js` + a compat s
 `scripts/workspace-root.js`; skills resolve via the registry). Auto-migration is on by
 default and idempotent. This doc is the design of record.
 
+> **Amended** — see [Follow-up: session-scoped resolution](#follow-up-session-scoped-resolution--cwd-inference--default_workspace)
+> below. `current` is renamed `default_workspace` and demoted to a fallback behind
+> cwd inference; the precedence table in this section is the v1.10 original.
+
 ## Problem
 
 PipeCrew resolves a **single** `workspace_root` (`scripts/workspace-root.js`), and all
@@ -126,3 +130,91 @@ incrementally.
 - **Per-workspace vs. global default location.** Keep `~/.claude/pipecrew/workspaces/` as
   the default *creation* dir for users who don't specify, while allowing any path? (Yes,
   recommended — zero-config still works.)
+
+---
+
+## Follow-up: session-scoped resolution — cwd inference + `default_workspace`
+
+Status: **implemented** (same files: `scripts/workspace-registry.js`, shim in
+`scripts/workspace-root.js`). Supersedes the resolution-precedence section above.
+
+### Problem
+
+`current` is **machine-global mutable state**, and its name over-promises. It reads as
+"the workspace of this session," but nothing session-scoped exists — it is only "the
+slug last explicitly set." Two consequences:
+
+1. **Parallel sessions collide.** A user running two sessions against two workspaces
+   gets whatever `current` happens to be on every bare invocation. Onboarding a new
+   workspace (`/discover`, `/join` set it `current`) silently retargets every other
+   open session's bare commands.
+2. **The bare invocation is ambiguous by construction.** Which workspace a command
+   means is a property of *where the session is working* — its working directory —
+   not of the machine. The registry already knows every workspace path, and each
+   workspace's `config.json` knows its repo paths, so the session's cwd determines
+   the workspace in almost every real case. `current` was standing in for
+   information we already had.
+
+(Note: the v1.10 text above says `current` changes "via `--workspace` or an explicit
+set." The implementation never persisted on `--workspace` — resolution was always
+read-only — and this follow-up makes that the documented contract.)
+
+### Design
+
+Rename `current` → **`default_workspace`** (it is a *default*, not a pointer to
+anything live) and demote it behind session-scoped inference:
+
+```
+1. --workspace=<slug>        per-invocation; NEVER persisted
+2. $PIPECREW_WORKSPACE       slug OR workspace path; session-scoped pin
+                             (the alias promised in the v1.10 doc, now real)
+3. cwd inference             cwd inside a registered workspace folder, or inside
+                             any of its repos (per that workspace's config.json
+                             repos.*.path) → that workspace
+4. config.default_workspace  explicit fallback
+5. exactly one registered    → that one
+6. none / ambiguous          → exit 3 with candidates (caller asks)
+```
+
+`$PIPECREW_WORKSPACE_ROOT` keeps its existing meaning (ephemerally *replace the
+candidate list* by scanning a dir); the steps above then run against that list.
+
+**cwd inference rules:**
+- Candidate dirs per workspace: the workspace folder itself + every `repos.*.path`
+  in its `config.json`. Match = cwd equals a candidate or is beneath it (segment
+  boundary; case-insensitive on Windows/macOS).
+- **Longest-path match wins** (a repo nested under another workspace's umbrella dir
+  resolves to the repo's owner).
+- An exact tie across different workspaces (the same dir claimed by two) is
+  **ambiguous — exit 3 listing the claimants**, never a silent guess and never a
+  fall-through to `default_workspace` (which could pick wrong silently).
+- CLI: `--resolve` infers from `process.cwd()` by default; `--cwd=<path>` overrides
+  (tests/scripts), `--no-cwd` disables.
+
+**Nothing implicit ever writes `default_workspace`.** It changes only via
+`--set-default=<slug>`, `--register=<path> --default`, and the end of `/discover` /
+`/join` (making the workspace you just onboarded the default is an explicit act the
+user performed).
+
+### Backward compatibility
+
+- **Auto-migrate on load:** `current` → `default_workspace`, once, idempotent — same
+  pattern as the v1.10 `workspace_root` migration.
+- **CLI aliases kept:** `--set-current=<slug>` ≡ `--set-default=<slug>`;
+  `--register … --current` ≡ `--register … --default`.
+- **`--list --json`** emits `default_workspace` and mirrors it under the deprecated
+  `current` key for one release (no external reader of the config key was found;
+  the mirror covers script-level consumers of the JSON output).
+- **`workspace-root.js --get`** now returns the parent of the *session-resolved*
+  workspace (it inherits cwd inference through `resolve()`) — strictly better for
+  the legacy callers: a session inside a repo tree gets that repo's workspace root.
+
+### Blast radius
+
+| File | Change |
+|---|---|
+| `scripts/workspace-registry.js` | rename + migration; `$PIPECREW_WORKSPACE` pin; `inferFromCwd()`; `--set-default` / `--default` (+ aliases); `--resolve --cwd/--no-cwd` |
+| `scripts/workspace-root.js` | pass `cwd` into `resolve()`; write `default_workspace` in `--set` |
+| `scripts/workspace-registry.test.js` | migration, pin, inference (match / longest / tie / opt-out), precedence, aliases |
+| `skills/join`, `skills/discover` | `--register … --default` (alias change only) |
+| `README.md`, `skills/deliver/phases/pre-flight.md` | wording: default + cwd inference |

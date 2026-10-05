@@ -94,14 +94,15 @@ Then record the teammate's root so future `config.portable.json` regens stay sta
 
 ```bash
 node {plugin_dir}/scripts/validate-config.js {workspace_root}/{slug}/config.json
-node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --current
+node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slug} --default
 node {plugin_dir}/scripts/sync-memory.js status {workspace_root}/{slug}
 node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/config.json
 ```
 - The validator confirms every resolved `path` exists on disk (so it catches a clone that
   didn't land or a wrong local path) — fix and re-run Step 5 on any error.
-- `--register … --current` adds the joined workspace to the teammate's registry and makes it
-  active, so subsequent `/deliver`, `/memory-sync`, etc. resolve it by slug from anywhere.
+- `--register … --default` adds the joined workspace to the teammate's registry and makes it
+  the default, so subsequent `/deliver`, `/memory-sync`, etc. resolve it by slug from anywhere
+  (sessions working inside another workspace's repos still resolve that one via cwd inference).
 - `status` confirms the memory repo is wired and reports how fresh it is.
 - `sync-root-claude` places (or updates) the PipeCrew routing context at the parent
   directory(ies) of the repos just wired up (for clone mode that's `{clone_root}`; for

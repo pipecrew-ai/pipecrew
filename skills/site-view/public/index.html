@@ -1858,7 +1858,7 @@
 
 <div class="footer">
   <span>PIPELINE VIEW · v2 (stage-flow)</span>
-  <span>SSE STREAM → http://127.0.0.1:5173/events</span>
+  <span id="sse-stream-label">SSE STREAM → /events</span>
   <span>CTRL+C TO STOP SERVER</span>
 </div>
 
@@ -2973,6 +2973,8 @@ function reconcileMuteAgainst(latestSince) {
 function connect() {
   const evt = new EventSource('/events');
   const status = document.getElementById('live-status');
+  const sseLabel = document.getElementById('sse-stream-label');
+  if (sseLabel) sseLabel.textContent = `SSE STREAM → ${location.origin}/events`;
   evt.onopen = () => { status.textContent = 'LIVE'; };
   evt.onmessage = (m) => {
     try {

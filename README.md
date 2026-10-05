@@ -17,11 +17,10 @@ Hand it one feature; it ships across every repo that feature touches — enginee
 context and learning your platform, so **every run starts smarter than the last**.
 
 [![Website](https://img.shields.io/badge/pipecrew.ai-website-2563eb)](https://pipecrew.ai)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757)](https://claude.ai/claude-code)
 [![Release](https://img.shields.io/github/v/release/pipecrew-ai/pipecrew?color=blue)](https://github.com/pipecrew-ai/pipecrew/releases/latest)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[**Try it free**](#see-it-work--free) · [**Install**](#install) · [**First feature**](#your-first-feature) · [**What do you want to do?**](#what-do-you-want-to-do) · [**Agents**](#agents) · [**Cheatsheet**](docs/CHEATSHEET.md)
+[**Simulate run**](#see-it-work--free) · [**Install**](#install) · [**First feature**](#your-first-feature) · [**What do you want to do?**](#what-do-you-want-to-do) · [**Agents**](#agents) · [**Cheatsheet**](docs/CHEATSHEET.md)
 
 </div>
 

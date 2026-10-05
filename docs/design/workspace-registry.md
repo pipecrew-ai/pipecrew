@@ -271,8 +271,14 @@ Rules:
 - **`/join`**: `{workspace_root}` := the cwd. The memory repo is cloned to
   `{cwd}/{slug}`; clone-mode code repos land as **direct siblings** `{cwd}/{key}`
   (previously `{workspace_root}/{slug}-repos/{key}`) — giving the joiner the exact
-  layout the owner has. `--repos-root=<dir>` still overrides; point-to-local mode is
-  unchanged.
+  layout the owner has. `--repos-root=<dir>` still overrides. In point-to-local mode
+  (repos already on disk elsewhere), `/join` nudges toward the same convergence:
+  with `--mode=local` it says up front that the best place to run from is the
+  directory containing the repos; and when the collected `repos_root` differs from
+  the anchor, it offers to move the fresh memory clone to `{repos_root}/{slug}`
+  (safe — nothing references the path until config rebuild/registration). Declining
+  is fine: cwd inference resolves the workspace from the workspace folder and from
+  every repo path alike.
 - **Root routing context lands at the project directory for free.**
   `sync-root-claude.js` already anchors at the parent directory(ies) of the repos in
   `config.json`; with repos in the project directory, that *is* the project directory.

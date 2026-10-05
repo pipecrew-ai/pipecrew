@@ -8,6 +8,7 @@
   "homepage": "https://github.com/pipecrew-ai/pipecrew",
   "repository": "https://github.com/pipecrew-ai/pipecrew",
   "license": "Apache-2.0",
+  "hooks": "./.claude-plugin/hooks/hooks.json",
   "keywords": [
     "pipecrew",
     "feature-pipeline",

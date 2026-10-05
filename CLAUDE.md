@@ -41,10 +41,13 @@ crew runs unchanged. Only the manifests differ (`.claude-plugin/` vs `.cursor-pl
 - **Don't fork skills or agents per target.** If a change would only work in one harness, that's a
   smell — keep the shared files harness-agnostic. `SKILL.md` frontmatter (`name` + `description`)
   is a subset of both harnesses' schemas, so it stays portable.
-- **Hooks are Claude-Code-only today.** Claude's live at `.claude-plugin/hooks/hooks.json`; Cursor
-  auto-discovers a *top-level* `hooks/hooks.json` (which we intentionally don't ship yet), so the
-  two never collide. Porting the 4 hooks to Cursor's `hooks.json` + permission-output protocol is a
-  tracked follow-up — see the PR that introduced `.cursor-plugin/`.
+- **Hooks are Claude-Code-only today.** Claude's live at `.claude-plugin/hooks/hooks.json` and are
+  loaded ONLY because `.claude-plugin/plugin.json` declares `"hooks": "./.claude-plugin/hooks/hooks.json"` —
+  Claude Code auto-discovers only a *top-level* `hooks/hooks.json`, which we intentionally don't ship
+  because Cursor auto-discovers the same top-level path (incompatible format), so the two never collide.
+  Never remove the plugin.json `hooks` field: without it the hooks silently never fire (this exact bug
+  shipped from v1.1.0 to v1.16.0). Porting the 4 hooks to Cursor's `hooks.json` + permission-output
+  protocol is a tracked follow-up — see the PR that introduced `.cursor-plugin/`.
 - **Generated repo-context file is `AGENTS.md` (canonical), not `CLAUDE.md`.** It's the
   tool-agnostic standard read by Claude Code, Cursor, Codex, and 30+ agents. Generation writes
   `{repo}/AGENTS.md` plus a one-line `CLAUDE.md` = `@AGENTS.md` import shim — on **every** harness,

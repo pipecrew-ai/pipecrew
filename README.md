@@ -21,7 +21,7 @@ context and learning your platform, so **every run starts smarter than the last*
 [![Release](https://img.shields.io/github/v/release/pipecrew-ai/pipecrew?color=blue)](https://github.com/pipecrew-ai/pipecrew/releases/latest)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[**Try it free**](#see-it-work--free) · [**Install**](#install) · [**First feature**](#your-first-feature) · [**What do you want to do?**](#what-do-you-want-to-do) · [**Cost & safety**](#three-questions-youre-already-asking) · [**Cheatsheet**](docs/CHEATSHEET.md)
+[**Try it free**](#see-it-work--free) · [**Install**](#install) · [**First feature**](#your-first-feature) · [**What do you want to do?**](#what-do-you-want-to-do) · [**Agents**](#agents) · [**Cheatsheet**](docs/CHEATSHEET.md)
 
 </div>
 
@@ -133,6 +133,25 @@ exist for.
 
 Every row is a standalone skill — the pipeline is just the biggest one. Full reference with
 flags, agents, and supported stacks: [**docs/CHEATSHEET.md**](docs/CHEATSHEET.md).
+
+## Agents
+
+Behind the skills, a crew of **35 specialized agents**. The ones you'll meet most:
+
+| Agent | What it does |
+|---|---|
+| `solution-architect` | Designs the cross-repo solution — endpoints, schemas, boundaries |
+| `security-consultant` | Flags auth gaps, data exposure, and injection in designs and diffs |
+| `ux-consultant` | Produces an implementation-ready UX spec before the frontend is built |
+| `architecture-mapper` | Infers cross-repo topology and draws the Mermaid diagrams |
+| `context-manager` | Generates and refreshes `AGENTS.md` and agent-context docs |
+| `feedback-learner` | Proposes tier-classified durable-context updates from a merged PR or run |
+| `reporter` | Run report — waterfall timeline, per-agent tokens, real dollar cost |
+
+Plus a **paired implementer + reviewer for every supported stack** (Spring Boot, React, Next.js,
+NestJS, FastAPI, Flask, Django, Python workers, CDK, Terraform, mocks, schemas) — and the
+domain-specialized `product-owner` / `assessor` / `troubleshooter` that `/discover` generates per
+workspace. Full roster in [**docs/CHEATSHEET.md**](docs/CHEATSHEET.md).
 
 ## Learn more
 

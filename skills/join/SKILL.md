@@ -29,12 +29,11 @@ This skill is the teammate counterpart to `/pipecrew:memory-sync`: memory-sync
 
 ### Step 1: Resolve the project directory + slug
 
-1. **`{workspace_root}`**: the directory the user ran `/join` from (the session cwd) —
-   that directory IS the project directory, and everything this skill creates lands
-   under it: the memory clone at `{workspace_root}/{slug}`, cloned repos as its direct
-   siblings, and the root routing context at `{workspace_root}` itself (cwd-anchored
-   placement — see `docs/design/workspace-registry.md`). `$PIPECREW_WORKSPACE_ROOT`,
-   if set, overrides. Echo the resolved directory to the user before creating
+1. **`{workspace_root}`**: the directory the user ran `/join` from (the session's
+   working directory) — that directory IS the project directory, and everything this
+   skill creates lands under it: the memory clone at `{workspace_root}/{slug}`,
+   cloned repos as its direct siblings, and the root routing context at
+   `{workspace_root}` itself. `$PIPECREW_WORKSPACE_ROOT`, if set, overrides. Echo the resolved directory to the user before creating
    anything — if they ran `/join` somewhere unintended, they should say so now, not
    after three clones. If `--mode=local` was passed (the repos already exist on this
    machine), add one line to that echo: the best place to run `/join` from is the

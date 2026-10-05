@@ -385,8 +385,8 @@ node {plugin_dir}/scripts/workspace-registry.js --register={workspace_root}/{slu
 Registration records the workspace's absolute path in the registry
 (`~/.claude/pipecrew/config.json`). This is what lets a workspace live wherever it
 makes sense (next to its repos) and never get orphaned when another workspace is
-onboarded elsewhere — see `docs/design/workspace-registry.md`. Idempotent on re-runs
-(incremental mode re-registers the same path).
+onboarded elsewhere. Idempotent on re-runs (incremental mode re-registers the same
+path).
 
 Expect **0 warnings** after the probing step. If validation emits path-not-found warnings for `spec_copies`, the probe missed something — do not ignore; re-run the probe with a wider search (e.g., increase maxdepth, include additional exclude-dir patterns) and fix the paths in config before continuing.
 

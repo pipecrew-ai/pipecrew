@@ -36,7 +36,11 @@ This skill is the teammate counterpart to `/pipecrew:memory-sync`: memory-sync
    placement — see `docs/design/workspace-registry.md`). `$PIPECREW_WORKSPACE_ROOT`,
    if set, overrides. Echo the resolved directory to the user before creating
    anything — if they ran `/join` somewhere unintended, they should say so now, not
-   after three clones.
+   after three clones. If `--mode=local` was passed (the repos already exist on this
+   machine), add one line to that echo: the best place to run `/join` from is the
+   directory that contains those repos, so the workspace lands beside them — and if
+   the cwd isn't it, ask before cloning. (Without the flag the mode isn't known yet;
+   Step 4 offers to relocate instead.)
 2. **`{slug}`**: from `--workspace=<slug>` if given; else derive from the remote URL's repo name with any trailing `-memory` stripped (e.g. `acme-saas-memory.git` → `acme-saas`). Confirm the derived slug with the user before creating anything.
 3. If `{workspace_root}/{slug}/` already exists:
    - If it's already this memory repo (same `origin`) → skip Step 2, go to Step 3 (re-join / repair).
@@ -74,6 +78,7 @@ Ask the user once: **clone the repos, or point at copies you already have?** (`-
 
 **Local mode** (`--mode=local`):
 - Ask for the `repos_root` the teammate already uses. For each repo, the local path is `{repos_root}/{key}` by default; if their layout differs, collect an explicit path per repo.
+- **Keep the workspace with the code**: if `{repos_root}` differs from `{workspace_root}`, offer to move the memory clone there — `{workspace_root}/{slug}` → `{repos_root}/{slug}` (a plain directory move; nothing references the path yet — `config.json`, registration, and the root routing context all happen in Steps 5–6). On yes, move it and set `{workspace_root} = {repos_root}` for the remaining steps, so the joiner still ends up with the owner's repos-plus-workspace layout. On no, continue as-is — cwd inference resolves the workspace from both locations either way.
 
 Either way you end up with, per repo, one of: an absolute local path, or a decision to skip. Build a `--map=key=path,...` for explicit paths and a `--skip=key,...` for any the teammate opts out of. Use a single `--repos-root` when every path is just `{root}/{key}`.
 

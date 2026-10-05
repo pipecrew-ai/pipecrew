@@ -66,9 +66,19 @@ Sixty seconds, no tokens spent, and you've seen the whole pipeline before onboar
 claude plugin install https://github.com/pipecrew-ai/pipecrew
 ```
 
-**Cursor** (v2.5+) — same repo, dual-target: `Customize → Plugins → /add-plugin` → paste the repo URL.
-All 20 skills and the 35-agent crew ship to both; a few lifecycle hooks are Claude-Code-only for now
-([details](docs/CHEATSHEET.md#cursor-notes)).
+**Cursor** (v2.5+):
+
+```bash
+# Marketplace / git install (recommended):
+#   Customize → Plugins → /add-plugin → paste the repo URL
+#   github.com/pipecrew-ai/pipecrew
+
+# Local dev against a clone:
+cursor-agent --plugin-dir /path/to/pipecrew
+```
+
+Same repo, dual-target — all 20 skills and the 35-agent crew ship to both; a few lifecycle hooks
+are Claude-Code-only for now ([details](docs/CHEATSHEET.md#cursor-notes)).
 
 Updates ship as [GitHub Releases](https://github.com/pipecrew-ai/pipecrew/releases) — enable
 auto-update once via `/plugin` → Marketplaces → pipecrew, or see [updating](docs/CHEATSHEET.md#updating).

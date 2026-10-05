@@ -227,8 +227,7 @@ If `Discover mode: incremental`, also restore the `## Incremental` block (mode, 
 **Step 0.0: Determine the workspace anchor (the project directory).**
 
 The workspace is created **in the project directory, next to the repos being
-discovered** — not under a machine-global storage root (see
-`docs/design/workspace-registry.md` § cwd-anchored placement). Resolve the anchor:
+discovered** — not under a machine-global storage root. Resolve the anchor:
 
 1. `$PIPECREW_WORKSPACE_ROOT` set → `{workspace_root}` = its value (escape hatch, unchanged).
 2. Exactly **one** `parent_dir` argument given → `{workspace_root}` = that directory

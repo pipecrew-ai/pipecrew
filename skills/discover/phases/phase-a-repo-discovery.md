@@ -20,6 +20,14 @@ find {parent_dir} -maxdepth 2 -name ".git" -type d | sed 's|/.git$||'
 
 This finds repos up to 2 levels deep. Collect the list.
 
+**Exclude PipeCrew workspace folders from the result.** Workspaces live in the project
+directory next to the code repos (cwd-anchored placement), and a memory-enabled
+workspace is itself a git repo — so the scan can pick it up. Drop any scanned directory
+that matches the workspace sentinel: it contains `config.portable.json`, **or** it
+contains `config.json` alongside a `context/` directory. This covers this project's own
+workspace (`{workspace_root}/{slug}`), workspaces of other projects, and memory clones
+created by `/join`. Never classify a workspace folder as a code repo.
+
 ### Step 1.5: Detect an existing workspace → choose full vs incremental
 
 Before detecting tech stacks, check whether this directory belongs to an

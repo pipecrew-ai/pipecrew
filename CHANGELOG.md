@@ -19,6 +19,20 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
 ## [Unreleased]
 
 ### Changed
+- **cwd-anchored placement — new workspaces are created in the project directory.**
+  `/discover` now creates the workspace at `{project}/{slug}` — the directory it was
+  run from (or the sole `parent_dir` argument) — instead of a machine-global storage
+  root; the "Where should PipeCrew store workspaces?" prompt is gone. `/join` anchors
+  the same way: run it from the directory the project should live in — the memory
+  repo clones to `{cwd}/{slug}` and clone-mode code repos land as its **direct
+  siblings** (previously `{slug}-repos/` under the global root), so owner and joiner
+  end up with the identical repos-plus-workspace layout, and the root routing
+  `AGENTS.md` lands at the project directory on both paths. `/discover`'s repo scan
+  now skips PipeCrew workspace folders (a memory-enabled workspace is itself a git
+  repo sitting beside the code). Existing workspaces are untouched (registry-tracked
+  by absolute path); `/deliver` with nothing registered now says "run /discover or
+  /join" instead of asking for a storage root. Design:
+  `docs/design/workspace-registry.md` § cwd-anchored placement.
 - **Session-scoped workspace resolution — `current` renamed `default_workspace`.**
   The registry's `current` key was machine-global mutable state: with two parallel
   sessions on different workspaces, a bare skill invocation targeted whatever was

@@ -69,25 +69,28 @@ Each phase has its own file under `skills/discover/phases/`. Orchestrator loads 
 
 Three steps that MUST run before Phase A or any file write.
 
-### Step 0.0 — Resolve workspace root
+### Step 0.0 — Determine the workspace anchor (project directory)
 
-```bash
-node {plugin}/scripts/workspace-root.js --check
-```
+No prompt and no global root (cwd-anchored placement — `docs/design/workspace-registry.md`):
 
-| Exit code | Meaning |
+| Precedence | `{workspace_root}` |
 |---|---|
-| 0 | Already configured (or `$PIPECREW_WORKSPACE_ROOT` is set) |
-| 2 | First-time use — orchestrator asks: *"Where should PipeCrew store workspaces? Default: `~/.claude/pipecrew/workspaces`"* and persists with `workspace-root.js --set=<path>` |
+| `$PIPECREW_WORKSPACE_ROOT` set | its value (escape hatch) |
+| exactly one `parent_dir` arg | that directory |
+| otherwise | the session's cwd |
 
-Persisted to `~/.claude/pipecrew/config.json`. Future `/discover` and `/deliver` runs reuse the same root without re-prompting.
+The workspace is created at `{workspace_root}/{slug}`, beside the repos; the registry
+tracks it by absolute path, and cwd inference resolves it for later sessions.
 
-### Step 0.1 — Workspace name
+### Step 0.1 — Workspace name + placement confirmation
 
 Asked once. Used to derive:
 - `workspace.name` — display name
 - `workspace.slug` — kebab-case, ≤20 chars, used as directory name and agent prefix
 - `run_id` — `{YYYY-MM-DD-HHMMSS}-{slug}`
+
+Then a one-line confirmation of `{workspace_root}/{slug}` (the user may give a
+different parent directory).
 
 ### Step 0.2 — Usage gate
 

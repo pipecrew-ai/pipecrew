@@ -1,6 +1,6 @@
 ---
 name: join
-description: "Onboard a teammate onto an EXISTING pipecrew workspace from its shared GitHub memory repo — no /discover, no re-analysis. Clones the private memory repo (context/platform.md, agents/, history/, config.portable.json), then rebuilds the machine-specific config.json locally: for each repo it either clones from the repo's repo_url into {slug}-repos/ or points at a copy the teammate already has. The inverse of what the workspace owner published via memory-sync. Use when a colleague has set up a workspace with GitHub-backed memory and you want to run /deliver, /review, etc. against the same shared platform context."
+description: "Onboard a teammate onto an EXISTING pipecrew workspace from its shared GitHub memory repo — no /discover, no re-analysis. Run it from the directory the project should live in: it clones the private memory repo there (context/platform.md, agents/, history/, config.portable.json), then rebuilds the machine-specific config.json locally: for each repo it either clones from the repo's repo_url as a direct sibling of the memory clone or points at a copy the teammate already has. The inverse of what the workspace owner published via memory-sync. Use when a colleague has set up a workspace with GitHub-backed memory and you want to run /deliver, /review, etc. against the same shared platform context."
 ---
 
 ## Usage
@@ -27,9 +27,16 @@ This skill is the teammate counterpart to `/pipecrew:memory-sync`: memory-sync
 - **Do not run redaction or push anything.** `join` is read-mostly on the memory side: it clones and reads. It writes only local, gitignored files (`config.json`, `config.local.json`). It never commits to or pushes the memory repo — the owner's syncs and the teammate's later runs do that.
 - **This is not `/discover`.** Never re-analyze the code or regenerate `platform.md`/agents — the shared memory is authoritative. If the teammate wants a fresh analysis, that's `/discover`, not `join`.
 
-### Step 1: Resolve workspace_root + slug
+### Step 1: Resolve the project directory + slug
 
-1. **`{workspace_root}`**: `node {plugin_dir}/scripts/workspace-root.js --check`. If it exits non-zero, prompt for a root and set it: `node {plugin_dir}/scripts/workspace-root.js --set=<path>`. Then `--get` the resolved absolute path.
+1. **`{workspace_root}`**: the directory the user ran `/join` from (the session cwd) —
+   that directory IS the project directory, and everything this skill creates lands
+   under it: the memory clone at `{workspace_root}/{slug}`, cloned repos as its direct
+   siblings, and the root routing context at `{workspace_root}` itself (cwd-anchored
+   placement — see `docs/design/workspace-registry.md`). `$PIPECREW_WORKSPACE_ROOT`,
+   if set, overrides. Echo the resolved directory to the user before creating
+   anything — if they ran `/join` somewhere unintended, they should say so now, not
+   after three clones.
 2. **`{slug}`**: from `--workspace=<slug>` if given; else derive from the remote URL's repo name with any trailing `-memory` stripped (e.g. `acme-saas-memory.git` → `acme-saas`). Confirm the derived slug with the user before creating anything.
 3. If `{workspace_root}/{slug}/` already exists:
    - If it's already this memory repo (same `origin`) → skip Step 2, go to Step 3 (re-join / repair).
@@ -58,7 +65,7 @@ Present the roster to the user: which repos have a `repo_url` (cloneable) and wh
 Ask the user once: **clone the repos, or point at copies you already have?** (`--mode` skips the ask.)
 
 **Clone mode** (`--mode=clone`):
-- Default clone root is `{workspace_root}/{slug}-repos/` — a **sibling** of the memory repo, never inside it (the memory repo is itself a git repo). Override with `--repos-root=<dir>`; confirm the target with the user.
+- Default clone root is `{workspace_root}` itself — each repo lands as a **direct sibling** of the memory clone (`{workspace_root}/{key}`), never inside it (the memory repo is itself a git repo). This gives the teammate the same project-directory layout the owner has: repos + workspace side by side. Override with `--repos-root=<dir>`; confirm the target with the user. If a destination `{clone_root}/{key}` already exists, STOP for that repo and ask — point at it with `--map`, or `--skip` it; never clone over it.
 - List every repo with a `repo_url` + its destination `{clone_root}/{key}`, then — after one explicit confirmation — clone each:
   ```bash
   git clone <repo_url> {clone_root}/{key}
@@ -105,8 +112,9 @@ node {plugin_dir}/scripts/sync-root-claude.js --config={workspace_root}/{slug}/c
   (sessions working inside another workspace's repos still resolve that one via cwd inference).
 - `status` confirms the memory repo is wired and reports how fresh it is.
 - `sync-root-claude` places (or updates) the PipeCrew routing context at the parent
-  directory(ies) of the repos just wired up (for clone mode that's `{clone_root}`; for
-  local mode the teammate's own repos root) — the guide that tells any agent session
+  directory(ies) of the repos just wired up (for clone mode that's the project
+  directory `/join` ran from; for local mode the teammate's own repos root) — the
+  guide that tells any agent session
   launched in or below those repos that the PipeCrew skills/agents exist and when to
   use them, with this workspace's context paths and agent names. Content lands in
   `AGENTS.md` (read natively by Cursor and other agents) with a one-line `CLAUDE.md`

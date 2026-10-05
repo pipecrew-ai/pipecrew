@@ -224,23 +224,25 @@ If `Discover mode: incremental`, also restore the `## Incremental` block (mode, 
 
 ### PRE-PHASE 0: Workspace name + usage gate
 
-**Step 0.0: Resolve the workspace root directory.**
+**Step 0.0: Determine the workspace anchor (the project directory).**
 
-Before creating any workspace dir, make sure the user's preferred root is known. Run `node {plugin_dir}/scripts/workspace-root.js --check`:
-- Exit 0 — already configured (or `$PIPECREW_WORKSPACE_ROOT` is set). Skip to 0.1.
-- Exit 2 — never configured. First resolve the harness-appropriate default — `node {plugin_dir}/scripts/workspace-root.js --default` (`~/.claude/pipecrew/workspaces` under Claude Code, `~/.cursor/pipecrew/workspaces` under Cursor) — then ask the user once, substituting that value into the prompt (do NOT hardcode `.claude`):
+The workspace is created **in the project directory, next to the repos being
+discovered** — not under a machine-global storage root (see
+`docs/design/workspace-registry.md` § cwd-anchored placement). Resolve the anchor:
 
-  ```
-  Where should PipeCrew store workspaces?
-  Default: <output of --default>
-  (Press Enter to accept the default, or paste an absolute/~-prefixed path.)
-  ```
+1. `$PIPECREW_WORKSPACE_ROOT` set → `{workspace_root}` = its value (escape hatch, unchanged).
+2. Exactly **one** `parent_dir` argument given → `{workspace_root}` = that directory
+   (absolute) — the workspace stays with the repos even when discovering a directory
+   other than the cwd.
+3. Otherwise (no args, or several `parent_dir`s) → `{workspace_root}` = the session's
+   current working directory.
 
-  Then persist the answer (or the default) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes the harness plugin config (`~/.claude/pipecrew/config.json` or `~/.cursor/pipecrew/config.json`) so `/deliver` and future `/discover` runs reuse the same root without re-prompting.
+Do NOT prompt "Where should PipeCrew store workspaces?" and do NOT call
+`workspace-root.js --set` — there is no global root to configure. (Placement is
+confirmed per-project in Step 0.1; the registry tracks the workspace by absolute path,
+and cwd inference resolves it for every later session in the project tree.)
 
-After this step, capture `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get)` and use it everywhere the remaining steps show a literal `pipecrew/workspaces/` path.
-
-**Step 0.1: Ask workspace name.**
+**Step 0.1: Ask workspace name + confirm placement.**
 
 Before Phase A, the orchestrator must know the workspace name to create the scratchpad directory. Ask:
 
@@ -250,6 +252,19 @@ What's the project/platform name?
 ```
 
 From the answer, derive the slug (kebab-case, ≤20 chars) and compute `run_id` = `{YYYY-MM-DD-HHMMSS}-{slug}`.
+
+Then confirm placement in one line:
+
+```
+Workspace will be created at {workspace_root}/{slug}
+(Press Enter to accept, or paste a different parent directory.)
+```
+
+If the user supplies a path, set `{workspace_root}` to it. If `{workspace_root}/{slug}`
+already exists and is not an interrupted run of this same workspace (no `config.json`
+from a prior onboarding — e.g. it's a code repo that happens to share the slug), STOP
+and ask for a different name or parent. Use `{workspace_root}` everywhere the remaining
+steps and phase files reference it.
 
 **Step 0.2: Pre-flight usage gate** (same gate `/deliver` runs before Phase 1).
 

@@ -13,7 +13,7 @@ Top-level pieces:
 
 # The core mental model
 
-Every command operates against a **workspace** — a directory under a configurable workspaces root (`~/.claude/pipecrew/workspaces/{slug}/` by default, set once via `scripts/workspace-root.js`). The full layout (workspace + per-repo + user-level):
+Every command operates against a **workspace** — a self-contained `{slug}/` folder created by `/discover` or `/join` **in the project directory, beside the repos** (cwd-anchored placement), registry-tracked by absolute path and resolved per session via cwd inference (`scripts/workspace-registry.js`; see `docs/design/workspace-registry.md`). The full layout (workspace + per-repo + user-level):
 
 ### Workspace tier
 

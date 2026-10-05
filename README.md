@@ -12,16 +12,16 @@
 
 ### A crew that learns your platform
 
-A **self-learning, multi-repo agent crew** for [Claude Code](https://claude.ai/claude-code).
+A **self-learning, multi-repo agent crew** for [Claude Code](https://claude.ai/claude-code) — and [Cursor](https://cursor.com).
 Hand it one feature; it ships across every repo that feature touches — engineering its own
 context and learning your platform, so **every run starts smarter than the last**.
 
 [![Website](https://img.shields.io/badge/pipecrew.ai-website-2563eb)](https://pipecrew.ai)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757)](https://claude.ai/claude-code)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/pipecrew-ai/pipecrew/releases/latest)
+[![Version](https://img.shields.io/badge/version-1.16.1-blue)](https://github.com/pipecrew-ai/pipecrew/releases/latest)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[**Website**](https://pipecrew.ai) · [**Install**](#install) · [**Quick start**](#quick-start) · [**Skills**](#skills) · [**Agents**](#agents) · [**Supported stacks**](#supported-tech-stacks)
+[**Website**](https://pipecrew.ai) · [**Install**](#install) · [**Quick start**](#quick-start) · [**Skills**](#skills) · [**Agents**](#agents) · [**Supported stacks**](#supported-tech-stacks) · [**Observability**](#observability--cost)
 
 </div>
 
@@ -106,11 +106,11 @@ auto-discovers the shared `skills/` and `agents/`.
 cursor-agent --plugin-dir /path/to/pipecrew
 ```
 
-> **What ships to Cursor today:** all `/discover`, `/deliver`, `/review`, `/assess`, `/learn`,
-> `/patch` … skills and the full 33-agent crew, dispatched via Cursor's Task-tool subagents.
-> The lifecycle **hooks** (update nudge, `/troubleshoot` read-only guard, `/deliver --auto-approve`,
-> and the site-view "needs approval" banner) are Claude-Code-only for now — a Cursor `hooks.json`
-> port is tracked as a follow-up. Nothing else differs.
+> **What ships to Cursor today:** all 20 skills — `/discover`, `/deliver`, `/review`, `/assess`,
+> `/learn`, `/patch`, `/design-tests`, `/run-regression` … — and the full 35-agent crew, dispatched
+> via Cursor's Task-tool subagents. The lifecycle **hooks** (update nudge, `/troubleshoot` read-only
+> guard, `/deliver --auto-approve`, and the site-view "needs approval" banner) are Claude-Code-only
+> for now — a Cursor `hooks.json` port is tracked as a follow-up. Nothing else differs.
 
 ## Updating
 
@@ -135,7 +135,9 @@ Prefer hands-off updates? Enable auto-update once — `/plugin` → **Marketplac
 Scans repos, detects tech stacks, asks a few domain questions, and **writes the durable layer once**
 to a `{slug}/` workspace folder **in your project directory, next to the repos** — workspace config,
 a `platform.md` map of your domain and topology, per-repo `AGENTS.md`, and domain-specialized agents.
-Run it once per project, from the directory that holds the repos.
+It also drops a **routing `AGENTS.md` at the project directory**, so any plain Claude Code or Cursor
+session opened there knows which workspace it's in and which skills to reach for. Run it once per
+project, from the directory that holds the repos.
 
 > **Context file:** PipeCrew writes a per-repo **`AGENTS.md`** — the tool-agnostic
 > standard read natively by Claude Code, Cursor, Codex, and 30+ agents. It also drops a
@@ -144,26 +146,35 @@ Run it once per project, from the directory that holds the repos.
 > before this convention keep working — the crew reads `AGENTS.md`, falling back to
 > `CLAUDE.md` when only the latter exists.
 
+Not sure *what* to build yet? `/brainstorm` ideates with you first — greenfield mode produces a
+`PROJECT_BRIEF` that `/scaffold` and `/discover --greenfield` consume; feature mode reads your
+`platform.md` and diverges into a ranked set of feature options. Add `--technical` to brainstorm
+*how* to build instead: the solution-architect lays out 2–3 approaches with trade-offs.
+
 ### 2. Ship a feature — `/deliver`
 
 ```bash
 /deliver "publishers can choose contract type"
 ```
 
-Seven phases run automatically — **the contract lands before any code is written**:
+Eight phases run automatically — **the contract lands before any code is written**:
 
 | Phase | What happens |
 |------|---------------|
 | **1 · Requirements** | `product-owner` extracts the FR/EC list |
 | **2 · Architecture** | `solution-architect` designs endpoints, schemas, boundaries |
-| **3 · Spec edit** | contract schemas (Avro / JSON Schema / Protobuf), then OpenAPI specs — per repo, you review the diffs |
-| **4 · Plan** | implementation tasks as tracked files |
+| **3 · Contracts & specs** | contract schemas (Avro / JSON Schema / Protobuf), then OpenAPI specs — per repo, you review the diffs |
+| **4 · Plan** | `task-planner` turns the design into tracked task files with a context budget |
 | **5 · Build** | parallel implementers: backend + frontend (with UX pass) + mock + infra, each in its own worktree |
-| **5.5 · Review** | per-repo, stack-aware code review with findings + fix rounds |
+| **5.5 · Review** | per-repo, stack-aware code review with findings + fix rounds — plus a security review when the feature warrants it |
 | **6 · Assess** | cross-repo integration check + live in-browser verification |
-| **7 · Report** | execution report, context refresh, optional PRs |
+| **7 · Report** | execution report with real token + dollar cost, context refresh |
+| **8 · Publish** | draft PRs in every repo (`--with-pr`), cross-linked, with provenance trailers |
 
-> A live dashboard at `http://localhost:5173` shows the crew queue up, build, and finish in real time.
+> A live dashboard at `http://localhost:5173` shows the crew queue up, build, and finish in real
+> time — including a **context gauge** on the orchestrator's window. Want to see the whole thing
+> without spending a token? `/simulate-run` generates a full demo workspace with realistic run
+> artifacts and opens the dashboard on it.
 
 ### 3. Apply known changes — `/patch`
 
@@ -183,19 +194,38 @@ doc. Recipes live in your workspace, encode your team's conventions, and accumul
 class of change gets cheaper to repeat. `/patch` bounces to `/deliver` the moment a change needs
 requirements, UX, or a new cross-repo contract: it applies decisions, it doesn't make them.
 
-### 4. Standalone skills
+### 4. Guard it with tests — `/design-tests` + `/run-regression`
+
+The features the crew ships (and the ones you already had) become a **durable acceptance suite**
+under `{workspace}/testcases/` — Given/When/Then cases at the feature's outermost surface, never
+unit-granular:
+
+```bash
+/design-tests                          # baseline: characterize the features you already have
+/design-tests --run=<run_id>           # cases for a feature a /deliver run just shipped
+/run-regression --env=staging          # full regression against an environment
+/run-regression --scope=feature:<slug> # UAT first-pass — the report doubles as the sign-off sheet
+```
+
+The runner gives an **honest per-case verdict** — `pass` / `fail` / `consistent` / `unverifiable` —
+and never claims `pass` without runtime evidence. Against a production environment it runs
+read-only `prod_safe` cases only, and it never executes a mutating step there. UI cases drive a
+real browser when the chrome-devtools MCP is connected.
+
+### 5. Standalone skills
 
 ```bash
 /review publisher-service --branch=feature/my-feature   # per-repo review against the contract
 /assess --branch=feature/my-feature                     # cross-repo integration check
+/troubleshoot "uploads 500 since yesterday"             # read-only incident triage → file:line
 /context-refresh publisher-service --mode=audit         # audit/refresh agent-context
 ```
 
-### 5. Work as a team
+### 6. Work as a team
 
 PipeCrew's cross-repo knowledge — `platform.md`, diagrams, tuned agents, accumulated
-learnings — is a per-workspace **shared memory** that can live in a private GitHub repo.
-The owner turns it on once:
+learnings, the test suite — is a per-workspace **shared memory** that can live in a private
+GitHub repo. The owner turns it on once:
 
 ```bash
 /memory-sync enable        # bootstrap a private {slug}-memory repo + first sync
@@ -216,6 +246,12 @@ onboarding) or points at copies the teammate already has, and rebuilds their mac
 immediately run `/deliver` against the same shared platform context. Day-to-day,
 `/memory-sync status | pull | sync` keeps everyone level. See
 [`docs/design/github-memory.md`](docs/design/github-memory.md).
+
+> Each workspace also carries a **stable domain identity** (`domain_<ULID>` in `config.json`) and
+> can declare `external_dependencies` edges to the domains it consumes — the groundwork for memory
+> that survives across workspaces and teams. Mint one for an existing workspace with
+> `node <plugin>/scripts/mint-domain-id.js`. See
+> [`docs/design/domain-durable-memory.md`](docs/design/domain-durable-memory.md).
 
 ### Multiple workspaces
 
@@ -247,26 +283,52 @@ more than one root, `--adopt=<that-root>` brings the rest back into view. See
 
 ## Skills
 
-The full pipeline is one command — but **every capability is also a standalone skill** you can run on demand.
+The full pipeline is one command — but **every capability is also a standalone skill** you can run on demand. Twenty in all:
+
+**Ideate & onboard**
 
 | Skill | Purpose |
 |-------|---------|
+| `/brainstorm` | What to build (greenfield or feature options) — or how, with `--technical` |
+| `/scaffold` | Greenfield project scaffolding from a brainstorm — repos, config, context |
 | `/discover` | One-time project onboarding — scans repos, detects stacks, generates context |
-| `/deliver` | End-to-end feature pipeline — the full seven-phase run |
+| `/join` | Onboard a teammate onto an existing workspace from its shared memory repo — clone/rehydrate `config.json`, no re-`/discover` |
+
+**Ship**
+
+| Skill | Purpose |
+|-------|---------|
+| `/deliver` | End-to-end feature pipeline — the full eight-phase run |
 | `/patch` | Lightweight memory-backed fixes — audit findings, codemods, migrations via reusable recipes |
 | `/review` | Standalone per-repo code review against the contract |
 | `/assess` | Cross-repo integration check on a branch + live in-browser verification |
+
+**Verify & learn**
+
+| Skill | Purpose |
+|-------|---------|
+| `/design-tests` | Author feature-level acceptance cases into a durable regression suite |
+| `/run-regression` | Execute the suite against an environment — regression, UAT sign-off, or prod smoke |
+| `/troubleshoot` | Read-only cross-repo incident triage → root cause at `file:line` |
 | `/learn` | Feed a merged PR / run / diff back — proposes tier-classified durable-context updates |
+
+**Context & memory**
+
+| Skill | Purpose |
+|-------|---------|
 | `/context-refresh` | Audit or refresh a repo's agent-context |
 | `/draw-diagram` | Generate or refresh a workspace's architecture diagrams — canonical Mermaid files, or a focused `--topic` view |
 | `/memory-sync` | Manage the workspace's shared, GitHub-backed memory — status, pull, publish |
-| `/join` | Onboard a teammate onto an existing workspace from its shared memory repo — clone/rehydrate `config.json`, no re-`/discover` |
-| `/scaffold` | Greenfield project scaffolding from a brainstorm — repos, config, context |
-| `/troubleshoot` | Read-only cross-repo incident triage → root cause at `file:line` |
+
+**Watch**
+
+| Skill | Purpose |
+|-------|---------|
 | `/site-view` | Live browser dashboard of the crew — queued, building, done, in real time |
 | `/siteview-fleet` | Machine-wide fleet dashboard of **every** Claude Code session at once (via the standalone `pipecrew-siteview`) |
 | `/siteview-list` | List every site-view server running on localhost — port, PID, workspace, run-id, and which are awaiting input |
 | `/siteview-cleanup` | Kill stale site-view servers (`--keep-latest`, `--keep-port`, `--dry-run`; defaults to a safe dry-run) |
+| `/simulate-run` | Generate a full demo workspace with realistic run artifacts — see everything, spend nothing |
 
 ### Fleet view — every session at once
 
@@ -289,6 +351,21 @@ pipecrew-siteview --install-hooks     # optional: "needs approval" desktop notif
 `~/pipecrew-siteview` clone → a global install). If it isn't installed, the skill
 **asks first** and, on your OK, runs `npm install -g pipecrew-siteview` for you —
 it never installs silently.
+
+## Observability & cost
+
+A crew of 35 agents is only trustworthy if you can see what it did and what it cost:
+
+- **Real dollars, not vibes.** Every run's report leads with the cost split — orchestrator vs
+  agents, cache-read share, per-agent token breakdown, waterfall timeline. Rates come from a
+  `pricing.json` rate card shipped as data (override with `--pricing=<json>`); unknown models
+  are flagged, never silently priced.
+- **Context gauge + reset gates.** The site-view header shows the orchestrator's live context
+  window (amber past 500k tokens, red past 750k). Long runs get an explicit gate suggesting a
+  clean stop and `/deliver --resume` instead of degrading quietly.
+- **Provenance on every commit.** Pipeline commits carry `PipeCrew-Run-Id:` and
+  `PipeCrew-Version:` trailers, so `git log` answers "which run touched this?" and `/learn`
+  partitions history by run precisely.
 
 ## Supported tech stacks
 
@@ -313,19 +390,19 @@ it never installs silently.
 
 ## Agents
 
-The crew is **33 specialized agents**. The orchestrator dispatches only the ones your workspace needs —
+The crew is **35 specialized agents**. The orchestrator dispatches only the ones your workspace needs —
 stack-specific implementers and reviewers run in parallel, while cross-cutting agents wrap around them.
 
-### Orchestration &amp; planning
+### Orchestration & planning
 
 | Agent | Role |
 |-------|------|
-| `product-brainstormer` | Greenfield idea → structured `PROJECT_BRIEF` |
+| `product-brainstormer` | Greenfield idea → structured `PROJECT_BRIEF`; feature mode → ranked `FEATURE_BRIEF` |
 | `solution-architect` | Cross-repo technical design that drives all implementation |
 | `task-planner` | Hydrates the architect's task skeleton into per-task files |
-| `reporter` | Run report — waterfall timeline, per-agent tokens, trends |
+| `reporter` | Run report — waterfall timeline, per-agent tokens, real dollar cost, trends |
 
-### Discovery, context &amp; learning
+### Discovery, context & learning
 
 | Agent | Role |
 |-------|------|
@@ -334,21 +411,23 @@ stack-specific implementers and reviewers run in parallel, while cross-cutting a
 | `context-manager` | Creates / refreshes agent-facing context (AGENTS.md, `agent-context/`) |
 | `feedback-learner` | Turns a merged PR / run / diff into durable-context updates |
 
-### Contracts &amp; specs
+### Contracts & specs
 
 | Agent | Role |
 |-------|------|
 | `openapi-spec-editor` | Applies the approved API design to OpenAPI spec files |
 | `schema-implementer` | Applies contract changes — JSON Schema / Avro / Protobuf |
 
-### Review &amp; advisory
+### Quality & advisory
 
 | Agent | Role |
 |-------|------|
 | `security-consultant` | Security review of the design and of implementation diffs |
 | `ux-consultant` | Produces an implementation-ready UX spec for frontend features |
+| `test-designer` | Authors the durable acceptance suite — from a run's FR/EC or a baseline sweep |
+| `regression-runner` | Executes the suite against an environment with honest per-case verdicts |
 
-### Stack implementers &amp; reviewers
+### Stack implementers & reviewers
 
 One implementer — and, where applicable, one reviewer — per stack. See [Supported tech stacks](#supported-tech-stacks)
 for each stack's `spec_policy`.
@@ -386,7 +465,8 @@ needed to skip irrelevant work.
 | `--no-review` | Skip code review |
 | `--security-review` / `--no-security` | Force / skip security review |
 | `--no-context-update` | Skip context refresh at Phase 7 |
-| `--with-pr` | Auto-create PRs |
+| `--with-pr` | Publish draft PRs at Phase 8 (`--publish-despite-blockers` to override the assess gate) |
+| `--auto-approve` | Hands-off run — a hook auto-approves safe tool calls, never risky ones |
 | `--resume` | Resume an interrupted pipeline |
 
 </details>
@@ -398,7 +478,7 @@ needed to skip irrelevant work.
 A three-layer design keeps the plugin generic, your platform knowledge durable, and each run clean:
 
 1. **Plugin layer** (this repo) — generic, installable, domain-agnostic.
-2. **Workspace layer** (generated by `/discover`) — per-project config, domain agents, `platform.md`, and the shared memory the crew learns into.
+2. **Workspace layer** (generated by `/discover`) — per-project config, domain agents, `platform.md`, the test suite, and the shared memory the crew learns into.
 3. **Pipeline layer** (ephemeral, per-run) — scratchpad, task files, outputs, checkpoints.
 
 <details>

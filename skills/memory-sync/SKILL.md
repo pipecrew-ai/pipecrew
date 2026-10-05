@@ -67,7 +67,7 @@ node {plugin_dir}/scripts/sync-memory.js {workspace_root}/{slug} \
 ```
 - Default `--message` to `"memory-sync: manual update"` if the user didn't supply one.
 - `--checkpoint=manual` labels any PR branch (`memory/manual-<sha>`).
-- The script picks commit-vs-PR from `sync_mode` + what changed (see `docs/design/github-memory.md` §3); relay whether it pushed to `main` or opened a PR. If it reports a `gh pr create` failure, the branch is still pushed — tell the user to open the PR manually (give them the branch name).
+- The script picks commit-vs-PR from `sync_mode` + what changed; relay whether it pushed to `main` or opened a PR. If it reports a `gh pr create` failure, the branch is still pushed — tell the user to open the PR manually (give them the branch name).
 
 ### Step 5 — `enable` (turn memory on for an existing workspace)
 
@@ -109,5 +109,5 @@ One concise line per the subcommand outcome. For `enable`, also tell the user th
 ## Notes
 
 - **Relationship to the automatic syncs.** `/discover`, `/learn`, `/context-refresh`, and `/deliver` already pull at pre-flight and sync at their checkpoints. This skill does not replace that — it's for the off-cycle cases: checking health, pulling on demand, retrying a failed push, and enabling memory after onboarding.
-- **Sync modes** (`config.workspace.memory.sync_mode`): `commit` (push to `main`), `pr` (always a `memory/*` PR), `hybrid` (PR for `platform.md`/ADR changes, commit for bookkeeping). See `docs/design/github-memory.md`.
+- **Sync modes** (`config.workspace.memory.sync_mode`): `commit` (push to `main`), `pr` (always a `memory/*` PR), `hybrid` (PR for `platform.md`/ADR changes, commit for bookkeeping).
 - **Why not named `/memory`?** Claude Code ships a built-in `/memory` command for editing `CLAUDE.md` files. This skill is namespaced `pipecrew:memory-sync` to stay unambiguous.

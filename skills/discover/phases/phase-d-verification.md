@@ -250,7 +250,7 @@ Re-run `/discover --resume --workspace={slug}` to fill the gaps.
 
 ### Step 8: Sync workspace memory to GitHub
 
-Workspace memory publishes the durable onboarding output — `context/` (incl. `platform.md`), `agents/`, `history/` — to a **private** GitHub repo so the team shares one source of truth. Full design: `docs/design/github-memory.md`.
+Workspace memory publishes the durable onboarding output — `context/` (incl. `platform.md`), `agents/`, `history/` — to a **private** GitHub repo so the team shares one source of truth.
 
 There are three entry states. Resolve which one you're in, then proceed:
 

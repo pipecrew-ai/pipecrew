@@ -176,7 +176,7 @@ Parallel dispatch: send ALL Agent tool calls in a single orchestrator message (o
 node {plugin_dir}/scripts/refresh-state.js seed --repo={repo_path} --repo-key={repo-key}
 ```
 
-This writes a committed `agent-context/.refresh-state.json` (baseline `{head_sha, branch, mode:full, by:discover}`). Skip for claude-only repos — the script no-ops when there's no `agent-context/`. The file commits alongside the generated docs (it's inside `agent-context/`), so do NOT add it to `.gitignore`. See `docs/design/refresh-state.md`.
+This writes a committed `agent-context/.refresh-state.json` (baseline `{head_sha, branch, mode:full, by:discover}`). Skip for claude-only repos — the script no-ops when there's no `agent-context/`. The file commits alongside the generated docs (it's inside `agent-context/`), so do NOT add it to `.gitignore`.
 
 ---
 

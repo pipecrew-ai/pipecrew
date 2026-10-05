@@ -107,5 +107,5 @@ no  → they ride the next sync automatically
 ## Notes
 - **Pairing**: `/design-tests` authors the suite (test-designer agent); `/run-regression` executes it (regression-runner agent). Same author/run split as implementer/reviewer.
 - **Honest verdicts**: `pass` needs runtime evidence from this run; code-grounded agreement is `consistent`, never pass. `unverifiable` is a to-do list for making the suite runnable, not noise — recurring ones usually mean a missing environment entry or missing credentials.
-- **Release ritual fit**: full suite against staging/UAT = the gate; after deploying, `--env=production` = the prod_safe smoke layer. Mutating cases run in production only if a workspace builds synthetic-tenant support (future `env` field on cases — see `docs/design/test-cases.md`).
-- **Pipelines untouched.** `/deliver` and `/discover` do not invoke this; integration is a recorded follow-up in the design doc.
+- **Release ritual fit**: full suite against staging/UAT = the gate; after deploying, `--env=production` = the prod_safe smoke layer. Mutating cases run in production only if a workspace builds synthetic-tenant support (future `env` field on cases).
+- **Pipelines untouched.** `/deliver` and `/discover` do not invoke this; integration is a recorded follow-up.

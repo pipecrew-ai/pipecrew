@@ -792,7 +792,7 @@ If the workspace opted into GitHub-backed memory and this run **changed** any du
 node {plugin_dir}/scripts/sync-memory.js {workspace_root}/{slug} --message "learn: {N} updates — {source}" --checkpoint=learn
 ```
 
-Skip when `memory.enabled` is absent/false, or when 0 findings were applied (nothing to sync). The script redacts secrets, commits the durable docs, rebases onto the team's latest, and publishes per `config.workspace.memory.sync_mode` — `commit` pushes straight to `main`; `hybrid`/`pr` open a `memory/*` PR when the change touches `platform.md` / an ADR (a rebase conflict always routes through a PR). Push/PR failures warn but never fail `/learn`. See `docs/design/github-memory.md`. **Note:** workspace-level findings update `{workspace_root}/{slug}/context/*` (synced here); repo-level findings update files *inside the code repos* (committed in those repos' own git, not here).
+Skip when `memory.enabled` is absent/false, or when 0 findings were applied (nothing to sync). The script redacts secrets, commits the durable docs, rebases onto the team's latest, and publishes per `config.workspace.memory.sync_mode` — `commit` pushes straight to `main`; `hybrid`/`pr` open a `memory/*` PR when the change touches `platform.md` / an ADR (a rebase conflict always routes through a PR). Push/PR failures warn but never fail `/learn`. **Note:** workspace-level findings update `{workspace_root}/{slug}/context/*` (synced here); repo-level findings update files *inside the code repos* (committed in those repos' own git, not here).
 
 ### Step 7.5: Finalize — update parent /deliver dispatch log (only when `--run` was supplied)
 

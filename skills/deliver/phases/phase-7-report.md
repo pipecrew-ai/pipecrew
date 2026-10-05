@@ -83,7 +83,7 @@ If a repo has no agent-context directory, skip it silently (this repo was onboar
 node {plugin_dir}/scripts/refresh-state.js advance --repo={repo_worktree_path} --mode=full --by=deliver
 ```
 
-This keeps `agent-context/.refresh-state.json` in step, so the next `/context-refresh` diffs from the delivered commit instead of re-scanning. Skip for claude-only repos (the script no-ops without `agent-context/`). See `docs/design/refresh-state.md`.
+This keeps `agent-context/.refresh-state.json` in step, so the next `/context-refresh` diffs from the delivered commit instead of re-scanning. Skip for claude-only repos (the script no-ops without `agent-context/`).
 
 ---
 

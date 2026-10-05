@@ -72,7 +72,7 @@ description: "Audit or refresh PipeCrew context docs at three scopes: a single r
 
 This skill defaults to a **git-diff fast path** for single-repo and `--all` scopes: only the docs that touch files changed since the last refresh get re-verified. The full claim-verification audit (slow but complete) becomes the safety net.
 
-**The baseline is a shared, committed file** — `{repo_path}/agent-context/.refresh-state.json`, versioned **in the code repo itself** so "docs verified through SHA X" travels with the docs across clones, branches, and merges. It is seeded by `/discover` (so the first refresh on a fresh workspace is already incremental) and advanced after each refresh. See `docs/design/refresh-state.md`. This replaces the old machine-local `runs/context-refresh/state.json`, which was never shared.
+**The baseline is a shared, committed file** — `{repo_path}/agent-context/.refresh-state.json`, versioned **in the code repo itself** so "docs verified through SHA X" travels with the docs across clones, branches, and merges. It is seeded by `/discover` (so the first refresh on a fresh workspace is already incremental) and advanced after each refresh. This replaces the old machine-local `runs/context-refresh/state.json`, which was never shared.
 
 **Do not hand-roll the decision** — run the engine per repo:
 
@@ -88,7 +88,7 @@ It reads the committed baseline and inspects git (`HEAD`, branch, dirty count), 
 | `fast` | HEAD moved since the baseline | Step 1.6 delta from `comparisonSha` |
 | `skip` | HEAD unchanged + clean tree | nothing to refresh — report and move on |
 
-The engine never auto-resolves merge conflicts on the baseline file: an unresolved conflict is unparseable, so `decide` safely reports `full` with a reason telling the operator to resolve it in git. See `docs/design/refresh-state.md`.
+The engine never auto-resolves merge conflicts on the baseline file: an unresolved conflict is unparseable, so `decide` safely reports `full` with a reason telling the operator to resolve it in git.
 
 Pass `--full` for the explicit override. `--since=<ref>` still overrides the comparison point for ad-hoc "audit since a tag" runs (used as-is, bypassing the baseline).
 
@@ -402,7 +402,7 @@ If the workspace opted into GitHub-backed memory and this refresh touched any **
 node {plugin_dir}/scripts/sync-memory.js {workspace_root}/{slug} --message "context-refresh: {scope} ({N} files)" --checkpoint=context-refresh
 ```
 
-Skip for `--mode=audit` (read-only, nothing changed) and when `memory.enabled` is absent/false. Per-repo doc refreshes (CLAUDE.md / agent-context inside the code repos) are committed in those repos' own git, not the memory repo. The script redacts secrets, commits, rebases onto the team's latest, and publishes per `config.workspace.memory.sync_mode` — a `platform.md` refresh under `hybrid`/`pr` opens a `memory/*` PR; an observability/audit-findings refresh commits directly. Push/PR failures warn but never fail the refresh. See `docs/design/github-memory.md`.
+Skip for `--mode=audit` (read-only, nothing changed) and when `memory.enabled` is absent/false. Per-repo doc refreshes (CLAUDE.md / agent-context inside the code repos) are committed in those repos' own git, not the memory repo. The script redacts secrets, commits, rebases onto the team's latest, and publishes per `config.workspace.memory.sync_mode` — a `platform.md` refresh under `hybrid`/`pr` opens a `memory/*` PR; an observability/audit-findings refresh commits directly. Push/PR failures warn but never fail the refresh.
 
 ---
 

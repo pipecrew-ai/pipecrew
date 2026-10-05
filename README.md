@@ -51,7 +51,7 @@ run artifacts and opens the live dashboard — the crew queuing, building, finis
 **zero agent cost**:
 
 ```bash
-claude plugin install https://github.com/pipecrew-ai/pipecrew
+claude plugin install pipecrew --marketplace pipecrew-ai/pipecrew
 /simulate-run
 ```
 
@@ -62,8 +62,11 @@ Sixty seconds, no tokens spent, and you've seen the whole pipeline before onboar
 **Claude Code:**
 
 ```bash
-claude plugin install https://github.com/pipecrew-ai/pipecrew
+claude plugin marketplace add pipecrew-ai/pipecrew
+claude plugin install pipecrew@pipecrew
 ```
+
+Or in one command (Claude Code v2.1.275+): `claude plugin install pipecrew --marketplace pipecrew-ai/pipecrew`
 
 **Cursor** (v2.5+):
 

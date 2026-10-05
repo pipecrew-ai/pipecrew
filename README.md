@@ -30,7 +30,7 @@ context and learning your platform, so **every run starts smarter than the last*
 > **Not a faster one-shot agent** — a crew that fans out across your repos, engineers its own
 > context, and gets sharper every run. One feature in, PRs across every repo out.
 
-<p align="center"><img src="assets/site-view-demo.gif" alt="The site-view dashboard: the crew building a feature live — stages completing, the pyramid rising, approval gates pausing the run" width="720" /></p>
+<p align="center"><img src="assets/site-view-demo.gif" alt="The site-view dashboard: the crew building a feature live — stages completing, tokens climbing, the pyramid rising to a shipped feature" width="720" /></p>
 
 Nothing a one-shot agent learns survives the session. Your platform's conventions, the gotchas,
 the way you *always* do it — re-explained every run, like onboarding a new hire on a loop. And the

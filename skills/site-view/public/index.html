@@ -657,16 +657,6 @@
     border-radius: 3px;
     transition: width 0.6s ease, background 0.3s ease;
   }
-  /* Token-budget warning: when total agent+orchestrator tokens exceed 1M,
-     recolour the bar red and pulse the TOTAL label + a trailing "!" badge. */
-  .token-summary .bar-fill.warning {
-    background: #e56060;
-    animation: tokenBudgetPulse 1.2s ease-in-out infinite;
-  }
-  @keyframes tokenBudgetPulse {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.55; }
-  }
   .token-summary .budget-warn {
     display: none;
     margin-left: 6px;
@@ -680,9 +670,6 @@
     vertical-align: middle;
   }
   .token-summary .budget-warn.active { display: inline-block; }
-  @media (prefers-reduced-motion: reduce) {
-    .token-summary .bar-fill.warning { animation: none; }
-  }
 
   /* strokes on characters */
   svg.char .stroke-main { fill: none; stroke: var(--line); stroke-width: 1.5; }
@@ -1580,7 +1567,6 @@
   <span title="Sum of per-sub-agent token cost across every card, derived from each sub-agent's own transcript. Separate from the orchestrator's own usage above.">AGENTS <b id="agent-tokens">0</b></span>
   <span>TOTAL <b id="total-tokens">0</b>
     <span class="bar"><span class="bar-fill" id="token-bar" style="width: 0%"></span></span>
-    <span class="budget-warn" id="token-budget-warn" title="Total tokens exceeded 1M — budget warning">OVER 1M</span>
   </span>
 </div>
 
@@ -2546,16 +2532,13 @@ function applyState(state) {
   const shipDur = document.getElementById('ship-duration');
   if (shipTok) shipTok.textContent = totalTokens > 0 ? formatTokens(totalTokens) : '—';
   if (shipDur) shipDur.textContent = formatDuration(state.runDurationMs);
-  // Bar fill scaled to a 1M budget: 100% at 1M tokens. When total exceeds
-  // 1M, the bar sticks at 100% and gets a red pulse + "OVER 1M" warning chip.
+  // Bar fill scaled to a 1M reference: 100% at 1M tokens, capped there.
+  // Totals are informational only — the actionable signal is the CONTEXT
+  // gauge below (orchestrator window), which keeps its RESET? chip.
   const TOKEN_BUDGET = 1_000_000;
   const pct = Math.min(100, Math.round((totalTokens / TOKEN_BUDGET) * 100));
   const bar = document.getElementById('token-bar');
-  const warn = document.getElementById('token-budget-warn');
   bar.style.width = pct + '%';
-  const overBudget = totalTokens > TOKEN_BUDGET;
-  bar.classList.toggle('warning', overBudget);
-  if (warn) warn.classList.toggle('active', overBudget);
   // CONTEXT gauge — the orchestrator's live window (last turn's prompt side),
   // scaled to a 1M window. Default fill under 500k, amber to 750k, red above;
   // past 500k the RESET? chip appears (the /deliver gates offer a session

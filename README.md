@@ -133,8 +133,9 @@ Prefer hands-off updates? Enable auto-update once — `/plugin` → **Marketplac
 ```
 
 Scans repos, detects tech stacks, asks a few domain questions, and **writes the durable layer once**
-under `{workspace_root}/{slug}/` — workspace config, a `platform.md` map of your domain and topology,
-per-repo `AGENTS.md`, and domain-specialized agents. Run it once per project.
+to a `{slug}/` workspace folder **in your project directory, next to the repos** — workspace config,
+a `platform.md` map of your domain and topology, per-repo `AGENTS.md`, and domain-specialized agents.
+Run it once per project, from the directory that holds the repos.
 
 > **Context file:** PipeCrew writes a per-repo **`AGENTS.md`** — the tool-agnostic
 > standard read natively by Claude Code, Cursor, Codex, and 30+ agents. It also drops a
@@ -208,18 +209,21 @@ single command — no re-onboarding, no code analysis:
 /join git@github.com:acme/acme-saas-memory.git   # clone shared memory, wire up config.json
 ```
 
-`/join` clones the memory repo, then either clones each code repo (from the `repo_url`
-recorded at onboarding, into `{slug}-repos/`) or points at copies the teammate already has,
-and rebuilds their machine-local `config.json`. They immediately run `/deliver` against the
-same shared platform context. Day-to-day, `/memory-sync status | pull | sync` keeps everyone
-level. See [`docs/design/github-memory.md`](docs/design/github-memory.md).
+Run `/join` **from the directory the project should live in**: it clones the memory repo
+there, then either clones each code repo beside it (from the `repo_url` recorded at
+onboarding) or points at copies the teammate already has, and rebuilds their machine-local
+`config.json` — ending with the same repos-plus-workspace layout the owner has. They
+immediately run `/deliver` against the same shared platform context. Day-to-day,
+`/memory-sync status | pull | sync` keeps everyone level. See
+[`docs/design/github-memory.md`](docs/design/github-memory.md).
 
 ### Multiple workspaces
 
-You can onboard as many workspaces as you like — one per project/platform — and each can
-live **wherever its repos live** (a workspace is a self-contained folder). PipeCrew tracks
-them in a **registry** (`~/.claude/pipecrew/config.json`), so onboarding a new one never
-hides the others.
+You can onboard as many workspaces as you like — one per project/platform — and each
+lives **where its repos live**: `/discover` and `/join` create the workspace folder in the
+project directory they're run from, beside the code (a workspace is a self-contained
+folder). PipeCrew tracks them all in a **registry** (`~/.claude/pipecrew/config.json`),
+so onboarding a new one never hides the others.
 
 Which workspace a command means is resolved **per session**, so parallel sessions on
 different workspaces never interfere: an explicit `--workspace=<slug>` wins; else a

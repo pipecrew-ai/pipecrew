@@ -4,9 +4,11 @@ Status: **implemented** in v1.10.0 (`scripts/workspace-registry.js` + a compat s
 `scripts/workspace-root.js`; skills resolve via the registry). Auto-migration is on by
 default and idempotent. This doc is the design of record.
 
-> **Amended** — see [Follow-up: session-scoped resolution](#follow-up-session-scoped-resolution--cwd-inference--default_workspace)
-> below. `current` is renamed `default_workspace` and demoted to a fallback behind
-> cwd inference; the precedence table in this section is the v1.10 original.
+> **Amended twice** — see [Follow-up: session-scoped resolution](#follow-up-session-scoped-resolution--cwd-inference--default_workspace)
+> (`current` renamed `default_workspace`, demoted behind cwd inference; the precedence
+> table in this section is the v1.10 original) and
+> [Follow-up: cwd-anchored placement](#follow-up-cwd-anchored-placement--the-project-directory-is-the-workspace-root)
+> (new workspaces are created in the project directory, not under a global root).
 
 ## Problem
 
@@ -218,3 +220,95 @@ user performed).
 | `scripts/workspace-registry.test.js` | migration, pin, inference (match / longest / tie / opt-out), precedence, aliases |
 | `skills/join`, `skills/discover` | `--register … --default` (alias change only) |
 | `README.md`, `skills/deliver/phases/pre-flight.md` | wording: default + cwd inference |
+
+---
+
+## Follow-up: cwd-anchored placement — the project directory is the workspace root
+
+Status: **implemented** (skill-level change — placement is a creation-time decision made
+by `/discover` and `/join`; no script behavior changes. `workspace-root.js --set` /
+`--default` remain as legacy/manual controls).
+
+### Problem
+
+The registry freed workspaces to *live* anywhere, and the previous follow-up made
+*resolution* session-scoped — but **placement** of a new workspace still defaulted to a
+machine-global root (`~/.claude/pipecrew/workspaces`), prompted once at first run
+("Where should PipeCrew store workspaces?"). Three consequences:
+
+1. **The project splits across two locations.** `/discover` scans repos at the cwd but
+   teleports the workspace to the global root. The repos and their durable context end
+   up far apart, and cwd inference has to bridge a gap that placement created.
+2. **Owner and joiner end up with different disk layouts.** The owner has repos wherever
+   they work plus a workspace under the global root; a joiner gets the workspace *and* a
+   `{slug}-repos/` bundle under *their* global root. `/join` ignored the invoking
+   directory entirely.
+3. **The prompt asks a machine-level question about a per-project fact.** Where a
+   workspace belongs is a property of the project (next to its repos), not of the
+   machine.
+
+### Design
+
+**The directory the user runs the creating command from — the project directory — is the
+anchor.** Both creation paths converge on one layout:
+
+```
+{project}/                  ← user runs /discover or /join here
+├── AGENTS.md (+ CLAUDE.md shim)   ← PipeCrew routing context (root dispatcher)
+├── {slug}/                 ← the workspace (= the memory repo working copy when enabled)
+├── repo-a/
+└── repo-b/
+```
+
+Rules:
+
+- **`/discover`**: `{workspace_root}` := the sole explicit `parent_dir` when exactly one
+  is given (keeps workspace and repos together even when discovering a directory other
+  than the cwd), else the session cwd. The workspace is created at
+  `{workspace_root}/{slug}` after a one-line placement confirmation (the user may give a
+  different parent). `$PIPECREW_WORKSPACE_ROOT`, when set, still overrides as before.
+  The "Where should PipeCrew store workspaces?" prompt is gone.
+- **`/join`**: `{workspace_root}` := the cwd. The memory repo is cloned to
+  `{cwd}/{slug}`; clone-mode code repos land as **direct siblings** `{cwd}/{key}`
+  (previously `{workspace_root}/{slug}-repos/{key}`) — giving the joiner the exact
+  layout the owner has. `--repos-root=<dir>` still overrides; point-to-local mode is
+  unchanged.
+- **Root routing context lands at the project directory for free.**
+  `sync-root-claude.js` already anchors at the parent directory(ies) of the repos in
+  `config.json`; with repos in the project directory, that *is* the project directory.
+  No script change.
+- **Workspace folders must be excluded from repo scanning.** A memory-enabled workspace
+  is itself a git repo and now sits among the code repos. Phase A of `/discover` skips
+  any scanned directory that is a PipeCrew workspace — sentinel: it contains
+  `config.portable.json`, or `config.json` alongside a `context/` directory. The same
+  sentinel backs `/join`'s existing "already exists and isn't this memory repo → stop"
+  guard.
+- **The registry is unchanged.** Creation still ends in
+  `workspace-registry.js --register=<abs path> --default`. cwd inference (previous
+  follow-up) makes the in-project layout self-resolving: any session in the project
+  tree targets its workspace with no flag, no env var, no default.
+
+### Backward compatibility
+
+- **Existing workspaces are untouched** — the registry stores absolute paths; nothing
+  moves, nothing re-resolves differently.
+- **Legacy root config keys** (`default_root`, deprecated `workspace_root`) stay
+  readable; `workspace-root.js` keeps serving legacy callers (e.g. the simulate-run
+  demo workspace). No skill prompts to *set* them anymore.
+- **`/deliver` pre-flight** no longer walks the "never configured → prompt for a root"
+  path: with zero workspaces registered the correct message is "no workspace found —
+  run `/discover` or `/join` first", not a storage-location question.
+- **Central-layout holdouts**: a user who wants the old `~/.claude/pipecrew/workspaces`
+  shape answers the `/discover` placement confirmation with that path — same outcome,
+  now an explicit per-project choice.
+
+### Blast radius
+
+| File | Change |
+|---|---|
+| `skills/discover/SKILL.md` | PRE-PHASE 0 Step 0.0 rewritten: anchor rule + placement confirmation; global-root prompt removed |
+| `skills/discover/phases/phase-a-repo-discovery.md` | Step 1 scan excludes PipeCrew workspace folders |
+| `skills/join/SKILL.md` | Step 1 anchors at cwd; Step 4 clone default = direct siblings of cwd; Step 6 note |
+| `skills/deliver/phases/pre-flight.md` | Step 0 "never configured" branch → "no workspace — run /discover or /join" |
+| `README.md`, `docs/design/plugin-flow-detailed-discover.md` | placement + layout docs |
+| scripts | **none** — placement is a skill-level decision |

@@ -142,17 +142,17 @@ When `--resume` is passed:
 
 **Step 0: Resolve the workspace root directory.**
 
-Workspaces live under `{workspace_root}/<slug>/`. The root is resolved by `node {plugin_dir}/scripts/workspace-root.js` with this precedence: `$PIPECREW_WORKSPACE_ROOT` env var → `~/.claude/pipecrew/config.json` → default `~/.claude/pipecrew/workspaces/`.
+Workspaces are registry-tracked and live in their project directories (cwd-anchored placement — see `docs/design/workspace-registry.md`); `{workspace_root}` here is just the parent of the resolved workspace.
 
-1. Run `node {plugin_dir}/scripts/workspace-root.js --check`. Exit 0 = already configured (or env var set), skip to step 3. Exit 2 = never configured — prompt the user once:
+1. Run `node {plugin_dir}/scripts/workspace-root.js --check`. Exit 0 = at least one workspace is registered (or an env override is set), continue to step 3. Exit 2 = nothing registered on this machine — `/deliver` has nothing to run against. Stop with:
 
    ```
-   Where should PipeCrew store workspaces?
-   Default: ~/.claude/pipecrew/workspaces
-   (Press Enter to accept the default, or paste an absolute/~-prefixed path.)
+   No PipeCrew workspace found on this machine.
+   Onboard one first: /pipecrew:discover (from your project directory),
+   or /pipecrew:join <memory-repo-url> if a teammate already shared one.
    ```
 
-2. Save the answer (or the default if the user pressed Enter) with `node {plugin_dir}/scripts/workspace-root.js --set="<path>"`. This writes `~/.claude/pipecrew/config.json` so future runs don't re-prompt.
+2. (Removed — there is no global storage root to configure; placement happens in /discover and /join.)
 
 3. Capture the resolved path: `{workspace_root} = $(node {plugin_dir}/scripts/workspace-root.js --get --workspace={workspace})` — passing the selected slug returns the parent of *that* workspace, so this is correct even when the workspace lives outside the default root (workspaces are registry-tracked and can live anywhere; see `docs/design/workspace-registry.md`). If the slug isn't known yet, omit `--workspace` to get the session-resolved root (cwd inference — a session inside a workspace's folder or repos resolves that workspace — falling back to the configured default workspace). Use this alias everywhere in the remaining steps — wherever a phase file shows the literal `~/.claude/pipecrew/workspaces/`, substitute `{workspace_root}/`.
 

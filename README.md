@@ -134,25 +134,6 @@ exist for.
 Every row is a standalone skill — the pipeline is just the biggest one. Full reference with
 flags, agents, and supported stacks: [**docs/CHEATSHEET.md**](docs/CHEATSHEET.md).
 
-## Three questions you're already asking
-
-**What does a run cost?** You'll know exactly: every run ends with a report that leads with real
-dollars — orchestrator vs agents, cache-read share, per-agent token breakdown — priced from a
-`pricing.json` rate card shipped as data. The dashboard shows a live context gauge, and long runs
-get an explicit gate suggesting a clean stop + `/deliver --resume` instead of degrading quietly.
-
-**Is it safe to let a crew loose on my repos?** Every phase ends at a gate you approve. PRs are
-drafts. `/troubleshoot` is read-only *by hook*, not by promise. Terraform plans are artifacts —
-the crew never applies. Even `--auto-approve` mode only auto-approves a safe allowlist, never
-pushes, deletes, or deploys. And every pipeline commit carries `PipeCrew-Run-Id` +
-`PipeCrew-Version` trailers, so `git log` always answers "which run touched this?"
-
-**My stack isn't on the list.** Twelve stacks ship with paired implementers + reviewers
-(Spring Boot, React, Next.js, NestJS, FastAPI, Flask, Django, Python workers, CDK, Terraform,
-mocks, schemas) — and for anything else (Rails, Phoenix, Go, .NET, Kotlin, your in-house
-framework), `/discover` reads your repo's conventions and **auto-generates a tailored
-implementer**, no plugin change required.
-
 ## Learn more
 
 - [**Cheatsheet**](docs/CHEATSHEET.md) — every skill, flag, agent, stack, and phase on one page

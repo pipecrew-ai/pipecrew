@@ -72,6 +72,15 @@ try {
     (r.exit === 0 && !allowed(r)) ? ok('no marker + Edit → no-op (not auto-approved)') : bad('no marker + Edit → no-op', `exit=${r.exit} out=${r.stdout}`);
   }
 
+  // ── No marker: /explain cache calls are always auto-approved ─────────────
+  {
+    const script = path.join(__dirname, 'explain-cache.js');
+    const r = run(bash(`node ${script} lookup --cache-dir=/tmp/ws/acme/runs/explain/cache --question="q" --perspective=technical`));
+    (r.exit === 0 && allowed(r)) ? ok('explain-cache lookup → allow (no marker needed)') : bad('explain-cache lookup → allow', `exit=${r.exit} out=${r.stdout}`);
+    const r2 = run(bash(`node ${script} lookup --cache-dir=/tmp/ws/acme/runs/explain/cache --question="q"; rm -rf ~`));
+    (r2.exit === 0 && !allowed(r2)) ? ok('explain-cache + chained command → no-op (prompts)') : bad('explain-cache chained → no-op', `exit=${r2.exit} out=${r2.stdout}`);
+  }
+
   // ── Troubleshoot marker live + Bash → guard ──────────────────────────────
   clearMarkers(); setTroubleshoot();
   {

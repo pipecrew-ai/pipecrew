@@ -39,6 +39,7 @@ Output: `config.json`, `platform.md`, per-repo `CLAUDE.md`, domain agents.
 - `/assess` — cross-repo assessment standalone
 - `/learn` — turn PR review / run feedback into durable context updates (with optional fix-round)
 - `/draw-diagram` — flowchart **or** C4 Context+Container, standalone via `architecture-mapper` (Tier A→D scan)
+- `/explain` — read-only, cited answers from the curated context (product or technical perspective) via `explainer`; context gaps hand off to `/learn`
 - `/scaffold`, `/troubleshoot`, `/context-refresh`, `/simulate-run`, `/site-view`
 
 ---

@@ -135,6 +135,7 @@ exist for.
 | Acceptance tests authored into a durable suite | `/design-tests` |
 | The suite run — regression, UAT sign-off, prod smoke | `/run-regression` |
 | A bug investigated from a symptom (read-only) | `/troubleshoot "<symptom>"` |
+| Any concept, flow, or code explained — product or technical, with sources | `/explain "<question>"` |
 | Feedback captured into durable conventions | `/learn` |
 | Context docs audited or refreshed after drift | `/context-refresh` |
 | Architecture diagrams generated or refreshed | `/draw-diagram` |
@@ -148,7 +149,7 @@ flags, agents, and supported stacks: [**docs/CHEATSHEET.md**](docs/CHEATSHEET.md
 
 ## Agents
 
-Behind the skills, a crew of **35 specialized agents**. The ones you'll meet most:
+Behind the skills, a crew of **36 specialized agents**. The ones you'll meet most:
 
 | Agent | What it does |
 |---|---|

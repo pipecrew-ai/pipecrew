@@ -17,13 +17,14 @@ The plugin was designed so almost every component can run outside `/deliver`. Th
 | `/learn` | ✓ Fully standalone | Takes a merged PR URL, a `/deliver` run id, a branch diff, or free-form text. None require the pipeline to have just run. |
 | `/context-refresh` | ✓ Fully standalone | Audits or refreshes docs at three scopes (single repo / workspace / everything). Independent of `/deliver`. |
 | `/troubleshoot "<symptom>"` | ✓ Fully standalone | Cross-repo incident triage with read-only enforcement. Takes a one-line symptom. No pipeline state needed. |
+| `/explain "<question>"` | ✓ Fully standalone | Read-only, cited answers (product or technical perspective). Best with an onboarded workspace; falls back to repo-only answers without one. |
 | `/scaffold` | ✓ Fully standalone | Two modes (`--from-scratch` or `--from-example`). Greenfield repo creation. Can also be called by `/discover --greenfield` but works independently. |
 | `/simulate-run` | ✓ Fully standalone | Generates a demo workspace + spawns site-view. Zero agent cost. |
 | `/site-view` | ✓ Fully standalone | Browser UI. Can run pointed at any workspace's run directory, including historical runs. |
 | `/siteview-list`, `/siteview-cleanup` | ✓ Fully standalone | Pure ops utilities for managing running site-views. |
 | `/deliver` | ✗ Pipeline-only | This IS the pipeline. Everything else is upstream-or-downstream of it. |
 
-**Net**: 11 of 12 skills are designed to be invoked outside the pipeline. `/deliver` is the orchestrator that ties everything together; the rest are independently useful.
+**Net**: 12 of 13 skills are designed to be invoked outside the pipeline. `/deliver` is the orchestrator that ties everything together; the rest are independently useful.
 
 ---
 

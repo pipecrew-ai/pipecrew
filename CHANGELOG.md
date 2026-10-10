@@ -16,6 +16,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.17.0] - Unreleased
+
+### Added
+- **`/explain` — read-only, cited answers from the curated context.** Ask about any
+  domain concept, entity, user flow, service, repo, or piece of code and get an answer
+  grounded in what PipeCrew already knows about the platform. Two perspectives:
+  **product** (`--product` — what it is, why it matters (value, revenue, customers),
+  who uses and owns it, how it differs from related offerings; business language from
+  the workspace docs only, never source code or system names — a "how" question gets
+  the business journey plus a pointer to `--technical`) and **technical** (`--technical` — how it works across services, data and status
+  lifecycle, decisions, `file:line`). Without a flag the perspective is inferred, with
+  a single `p / t` question when unclear. `--repo=` narrows to one repo. The workspace
+  is resolved via the registry like every other skill.
+- **Answer cache (`scripts/explain-cache.js`).** Every answer records a sha256 of each
+  file it was built from — context docs and code — plus the HEAD of each repo involved.
+  A repeat question is decided like `/context-refresh`'s baseline: **skip** (nothing
+  changed → the saved answer, instantly, no agent dispatch), **fast** (a minority of
+  sources changed → the explainer refreshes only the affected lines from only the
+  changed files and notes what changed), or **full** (no entry, `--fresh`, most sources
+  changed, a 7-day safety ceiling, or anything unreadable). Time alone never
+  invalidates an answer. Cached answers carry a status line and flag repos with new
+  commits the answer never read. Near-identical questions are shortlisted by word
+  overlap and confirmed by the model (or the user when unsure) before reuse. The cache
+  lives under `runs/explain/cache/` (local; `/memory-sync` never publishes it) and keeps
+  the last 3 versions of each answer. Answers are saved by piping them to the script
+  (no temp file), and in Claude Code the PreToolUse hook approves the cache calls
+  without a prompt (`scripts/explain-cache-autoapprove.js`) — only PipeCrew's own
+  script, an explain cache dir, and no shell chaining; anything else still prompts.
+- **Quick by default, `--deep` on demand.** Reading source to verify claims is the main
+  cost of an answer, so the default depth answers from the curated docs and opens code
+  only where they fall short (uncovered hops, `<!-- verify -->` markers, exact-behavior
+  questions, real examples). `--deep` verifies every load-bearing claim in code — slower
+  and costlier, but it surfaces doc-vs-code drift and earns `high` confidence.
+- **`explainer` agent.** Loads context in tiers — `platform.md` → topology / runtime /
+  decisions / ADRs → repo `AGENTS.md` (legacy `CLAUDE.md`) + `agent-context/` → source —
+  reading matching sections rather than whole docs, and stops when it has enough.
+  Answers are caveman-dense labeled sections — a one-line "X = …" summary, What,
+  Trigger, Flow (origin to final effect, across repos), External deps, Output (with a
+  concrete example taken from checked-in samples or the code), Config / deploy, Errors,
+  Hazards — with inline citations and a confidence line, ending in an
+  `EXPLAIN_SOURCES` block the cache fingerprints. Read-only by tool
+  list (`Read`, `Glob`, `Grep` — no shell, no writes). Mapped to the site-view's `sage`
+  character.
+- **Context-gap hand-off.** When the curated context can't answer — or the code
+  contradicts it — the answer lists the gaps and `/explain` offers a ready-to-run
+  `/learn "…"` command, so the next answer doesn't have to dig.
+- **Repo-only fallback.** With no onboarded workspace, `/explain` answers from the
+  current repo's context file, `agent-context/`, and code, clearly labeled as
+  repo-only. Incident reports are routed to `/troubleshoot`; change requests to
+  `/deliver` / `/patch`.
+
 ## [1.16.2] - 2026-10-08
 
 ### Fixed

@@ -18,6 +18,7 @@ Before working on a repo, read its workspace's `context/platform.md` (domain + a
 | A feature shipped end-to-end across repos (requirements → design → implementation → review) | `/pipecrew:deliver <description>` |
 | A small, well-specified mechanical change (audit fix, codemod, convention sweep) | `/pipecrew:patch` — bounce to `/deliver` if it grows requirements or contract changes |
 | A bug or incident investigated from a symptom (read-only triage) | `/pipecrew:troubleshoot <symptom>` |
+| A concept, flow, service, or piece of code explained — product or technical perspective, with sources | `/pipecrew:explain <question>` |
 | A branch or PR reviewed in one repo | `/pipecrew:review` |
 | A feature branch's cross-repo integration verified | `/pipecrew:assess` |
 | Feedback (merged PR, run, session, notes) captured into durable conventions | `/pipecrew:learn` |
@@ -39,6 +40,7 @@ Skills orchestrate multi-agent pipelines; for a single consultation, analysis, o
 | Technical design or architecture opinion | `pipecrew:solution-architect` (`MODE: brainstorm` for consultations) |
 | Product requirements (FR/EC) from a feature idea | `<slug>-product-owner` |
 | Read-only incident triage report | `<slug>-troubleshooter` |
+| Read-only, cited explanation of a concept, flow, or code path | `pipecrew:explainer` (`PERSPECTIVE: product` or `technical` as the first line) |
 | Cross-repo quality assessment of a branch | `<slug>-assessor` |
 | UX recommendation + implementation spec for a frontend | `pipecrew:ux-consultant` |
 | Security review of a design or a diff | `pipecrew:security-consultant` |

@@ -703,7 +703,7 @@ const ROLE_PATTERNS = [
   // taking, and we want feedback-learner to resolve to its own character
   // (closes the pyramid at end of run) instead of merging into sage.
   { role: 'loop',    patterns: ['feedback-learner'] },
-  { role: 'sage',    patterns: ['context-manager'] },
+  { role: 'sage',    patterns: ['context-manager', 'explainer'] },
 ];
 
 function agentToRole(agentName) {

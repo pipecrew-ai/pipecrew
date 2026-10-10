@@ -52,6 +52,7 @@ The full pipeline is one command — but **every capability is also a standalone
 
 | Skill | Purpose |
 |-------|---------|
+| `/explain` | Read-only, cited answers about any concept, flow, service, or code — product or technical perspective; context gaps hand off to `/learn` |
 | `/context-refresh` | Audit or refresh a repo's agent-context |
 | `/draw-diagram` | Generate or refresh a workspace's architecture diagrams — canonical Mermaid files, or a focused `--topic` view |
 | `/memory-sync` | Manage the workspace's shared, GitHub-backed memory — status, pull, publish |
@@ -90,6 +91,7 @@ requirements, UX, or a new cross-repo contract: it applies decisions, it doesn't
 /review publisher-service --branch=feature/my-feature   # per-repo review against the contract
 /assess --branch=feature/my-feature                     # cross-repo integration check
 /troubleshoot "uploads 500 since yesterday"             # read-only incident triage → file:line
+/explain --technical "how does a contract get approved?" # cited, cross-repo explanation
 /context-refresh publisher-service --mode=audit         # audit/refresh agent-context
 ```
 
@@ -166,7 +168,7 @@ needed to skip irrelevant work.
 
 ## Agents
 
-The crew is **35 specialized agents**. The orchestrator dispatches only the ones your workspace needs —
+The crew is **36 specialized agents**. The orchestrator dispatches only the ones your workspace needs —
 stack-specific implementers and reviewers run in parallel, while cross-cutting agents wrap around them.
 
 ### Orchestration & planning
@@ -186,6 +188,7 @@ stack-specific implementers and reviewers run in parallel, while cross-cutting a
 | `architecture-mapper` | Infers cross-repo topology from the code → Mermaid diagrams |
 | `context-manager` | Creates / refreshes agent-facing context (AGENTS.md, `agent-context/`) |
 | `feedback-learner` | Turns a merged PR / run / diff into durable-context updates |
+| `explainer` | Read-only, cited answers from the curated context for `/explain` — product or technical perspective |
 
 ### Contracts & specs
 

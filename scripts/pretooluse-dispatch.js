@@ -20,6 +20,8 @@
  * this file is only the read-once + route shim.
  *
  *   troubleshoot guard  → DENY via exit 1 + stderr reason (Bash only)
+ *   explain cache calls  → ALLOW, always on, only PipeCrew's own explain-cache.js
+ *                          (explain-cache-autoapprove.js)
  *   deliver auto-approve → ALLOW via {permissionDecision:"allow"} on stdout
  *   otherwise            → exit 0, no output (normal permission prompt)
  *
@@ -29,6 +31,7 @@
 const fs = require('fs');
 const guard = require('./troubleshooter-bash-guard.js');
 const autoapprove = require('./deliver-autoapprove-hook.js');
+const explainCache = require('./explain-cache-autoapprove.js');
 
 // ── Read the PreToolUse payload from stdin, once ────────────────────────────
 let payload;
@@ -53,7 +56,19 @@ if (payload.tool_name === 'Bash' && guard.markerActive()) {
   process.exit(0);
 }
 
-// ── 2) /deliver --auto-approve helper (ALLOW) — when a run is active ─────────
+// ── 2) /explain cache calls (ALLOW) — always on, only PipeCrew's own script ──
+if (payload.tool_name === 'Bash') {
+  const command = payload.tool_input && payload.tool_input.command;
+  if (typeof command === 'string' && command.includes('explain-cache.js')) {
+    const res = explainCache.classify(command);
+    if (res.allow) {
+      process.stdout.write(autoapprove.allowOutput(`pipecrew /explain: ${res.reason}`));
+      process.exit(0);
+    }
+  }
+}
+
+// ── 3) /deliver --auto-approve helper (ALLOW) — when a run is active ─────────
 const marker = autoapprove.activeMarker();
 if (marker) {
   const res = autoapprove.classifyToolCall(payload);
@@ -64,5 +79,5 @@ if (marker) {
   }
 }
 
-// ── 3) Neither active (or deferred) → normal permission flow ────────────────
+// ── 4) Nothing matched (or deferred) → normal permission flow ───────────────
 process.exit(0);

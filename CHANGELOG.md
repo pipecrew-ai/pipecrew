@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
-## [1.17.0] - Unreleased
+## [1.17.0] - 2026-10-10
 
 ### Added
 - **`/explain` — read-only, cited answers from the curated context.** Ask about any

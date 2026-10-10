@@ -13,10 +13,19 @@
  *   <<'PIPECREW_EXPLAIN_EOF' … PIPECREW_EXPLAIN_EOF as the last line.
  *
  * Rejected (falls back to the normal prompt): any shell metacharacter in the
- * command line ($ ` \ ; & | < > ( ) or a newline), unbalanced quotes, a script
+ * command line ($ ` ; & | < > ( ) or a newline), unbalanced quotes, a script
  * that isn't byte-identical to this plugin's explain-cache.js, a --cache-dir
  * outside an explain cache, a non-hex --key, or a heredoc whose terminator
  * appears anywhere but the last line.
+ *
+ * Backslashes are normalized to '/' before the structural checks so native
+ * Windows paths (C:\…\scripts\explain-cache.js) classify the same as POSIX
+ * ones. This is safe: every chaining / substitution / redirection operator
+ * ($ ` ; & | < > ( ) and newlines) stays banned, so a single "node …" command
+ * can't chain, substitute, or redirect regardless of backslashes — and
+ * normalizing an escape sequence only ever makes it MORE likely to hit the
+ * metacharacter filter, never less. The one exception preserved before
+ * normalization is a trailing "\<newline>" line continuation.
  *
  * Zero dependencies — pure Node stdlib.
  */
@@ -29,7 +38,7 @@ const HEREDOC_OPEN = `<<'${HEREDOC_TAG}'`;
 const OWN_SCRIPT = path.join(__dirname, 'explain-cache.js');
 const CACHE_DIR_RE = /(\/runs\/explain\/cache|\/explain-cache\/[^/]+)\/?$/;
 const KEY_RE = /^[0-9a-f]{16}$/;
-const META_RE = /[$`\\;&|<>()\n\r]/;
+const META_RE = /[$`;&|<>()\n\r]/;
 
 function sha(file) {
   try { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); } catch (_) { return null; }
@@ -81,7 +90,8 @@ function classify(command) {
     heredoc = true;
   }
 
-  line = line.replace(/\\\n/g, ' ').trim();
+  line = line.replace(/\\\n/g, ' ');     // collapse "\<newline>" continuations first
+  line = line.replace(/\\/g, '/').trim(); // then normalize Windows path separators
   if (META_RE.test(line)) return no('shell metacharacter in command line');
   const argv = words(line);
   if (!argv) return no('unbalanced quotes');

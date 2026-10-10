@@ -43,6 +43,15 @@ check('repo-only cache dir → allow',
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
+// ── Windows paths (backslashes normalized to '/') ────────────────────────────
+const WIN = (s) => s.replace(/\//g, '\\'); // force native-Windows separators
+check('backslash script + backslash cache dir → allow',
+  allow(`node ${WIN(SCRIPT)} lookup --cache-dir=${WIN(CACHE)} --question="how does billing work?" --perspective=technical`));
+check('backslash store heredoc → allow',
+  allow(`node ${WIN(SCRIPT)} store --cache-dir=${WIN(CACHE)} --question="q" --answer-file=- <<'PIPECREW_EXPLAIN_EOF'\nanswer $(x)\nPIPECREW_EXPLAIN_EOF`));
+check('backslash-escaped semicolon still rejected (normalized → ; survives)',
+  !allow(lookup(' \\; rm -rf ~')));
+
 // ── rejected ────────────────────────────────────────────────────────────────
 check('command substitution in question → reject', !allow(`node ${SCRIPT} lookup --cache-dir=${CACHE} --question="$(rm -rf ~)"`));
 check('backtick in question → reject', !allow(`node ${SCRIPT} lookup --cache-dir=${CACHE} --question="\`id\`"`));

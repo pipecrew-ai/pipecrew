@@ -383,7 +383,6 @@ function readWorkspaceOverview() {
   const configPath = path.join(wsDir, 'config.json');
   const platformPath = path.join(wsDir, 'context', 'platform.md');
   const auditPath = path.join(wsDir, 'context', 'audit-findings.md');
-  const architectureMmdPath = path.join(wsDir, 'context', 'diagrams', 'architecture.mmd');
   const architectureOverviewMmdPath = path.join(wsDir, 'context', 'diagrams', 'architecture-overview.mmd');
   const discoverRunsDir = path.join(wsDir, 'runs', 'discover');
   const deliverRunsDir = path.join(wsDir, 'runs', 'deliver');
@@ -416,7 +415,6 @@ function readWorkspaceOverview() {
     deliver_runs: [],
     learn_runs: [],
     design_systems: [],
-    architecture_mermaid: null,
     architecture_overview_mermaid: null,
   };
 
@@ -565,17 +563,11 @@ function readWorkspaceOverview() {
     } catch (_) {}
   }
 
-  // 5. Architecture diagrams (Mermaid source from /discover Phase B2)
+  // 5. Architecture diagram (Mermaid source from /discover Phase B2)
   //    - architecture-overview.mmd: C4-style high-level block diagram (5-8 capability blocks)
-  //    - architecture.mmd: detailed topology (every service, DB, queue, Lambda)
   if (fs.existsSync(architectureOverviewMmdPath)) {
     try {
       data.architecture_overview_mermaid = fs.readFileSync(architectureOverviewMmdPath, 'utf8').trim();
-    } catch (_) {}
-  }
-  if (fs.existsSync(architectureMmdPath)) {
-    try {
-      data.architecture_mermaid = fs.readFileSync(architectureMmdPath, 'utf8').trim();
     } catch (_) {}
   }
 

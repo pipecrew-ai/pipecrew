@@ -21,20 +21,17 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed
 
 let counter = 0;
 const OVERVIEW = 'graph TB\n  A[Frontend] --> B[Service]\n';
-const DETAILED = 'flowchart LR\n  A -->|calls| B\n';
 const PLATFORM_OK = [
   '# Platform', '',
   '## Architecture Diagram', '',
-  '- [diagrams/architecture-overview.mmd](./diagrams/architecture-overview.mmd) — high-level',
-  '- [diagrams/architecture.mmd](./diagrams/architecture.mmd) — detailed', '',
+  '- [diagrams/architecture-overview.mmd](./diagrams/architecture-overview.mmd) — high-level', '',
 ].join('\n');
 
 // Build a context dir; overrides let each test perturb one artifact.
-function makeContext({ overview = OVERVIEW, detailed = DETAILED, platform = PLATFORM_OK, omit } = {}) {
+function makeContext({ overview = OVERVIEW, platform = PLATFORM_OK, omit } = {}) {
   const ctx = path.join(TMP, `ctx-${counter++}`);
   fs.mkdirSync(path.join(ctx, 'diagrams'), { recursive: true });
   if (omit !== 'overview') fs.writeFileSync(path.join(ctx, 'diagrams', 'architecture-overview.mmd'), overview);
-  if (omit !== 'detailed') fs.writeFileSync(path.join(ctx, 'diagrams', 'architecture.mmd'), detailed);
   if (omit !== 'platform') fs.writeFileSync(path.join(ctx, 'platform.md'), platform);
   return ctx;
 }
@@ -47,8 +44,8 @@ test('happy path → exit 0', () => {
   assert(r.status === 0, `expected 0, got ${r.status}: ${r.stderr}`);
 });
 
-test('missing a diagram → exit 1', () => {
-  const r = run(makeContext({ omit: 'detailed' }));
+test('missing the diagram → exit 1', () => {
+  const r = run(makeContext({ omit: 'overview' }));
   assert(r.status === 1, `expected 1, got ${r.status}`);
   assert(/missing diagram/.test(r.stderr), r.stderr);
 });
@@ -84,10 +81,10 @@ test('platform.md with inline ```mermaid → exit 1', () => {
 });
 
 test('platform.md missing a pointer link → exit 1', () => {
-  const bad = PLATFORM_OK.replace(/.*architecture\.mmd.*\n/, '');
+  const bad = PLATFORM_OK.replace(/.*architecture-overview\.mmd.*\n/, '');
   const r = run(makeContext({ platform: bad }));
   assert(r.status === 1, `expected 1, got ${r.status}`);
-  assert(/does not reference diagrams\/architecture\.mmd/.test(r.stderr), r.stderr);
+  assert(/does not reference diagrams\/architecture-overview\.mmd/.test(r.stderr), r.stderr);
 });
 
 test('missing platform.md → exit 1', () => {
@@ -97,7 +94,7 @@ test('missing platform.md → exit 1', () => {
 });
 
 test('dotted-edge label with a period → warning (exit 2)', () => {
-  const r = run(makeContext({ detailed: 'flowchart LR\n  A -.v1.2.-> B\n' }));
+  const r = run(makeContext({ overview: 'flowchart LR\n  A -.v1.2.-> B\n' }));
   assert(r.status === 2, `expected 2 (warn), got ${r.status}: ${r.stderr}`);
   assert(/dotted-edge/.test(r.stderr), r.stderr);
 });

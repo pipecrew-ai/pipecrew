@@ -204,7 +204,7 @@ The JSON serves as the addressable index for orchestration (which components to 
 
 **Producer**: `architecture-mapper` agent (dispatched by `/draw-diagram --scan` or `/draw-diagram --repos`)
 **Consumers**: `/draw-diagram` skill orchestrator (prints summary), human reviewer (audits skipped/unresolved items), future `--reconcile` mode (compares against `platform.md`)
-**File**: emitted in the agent's response alongside `architecture-overview.mmd` + `architecture.mmd` blocks; the orchestrator extracts it for printing
+**File**: emitted in the agent's response alongside the `architecture-overview.mmd` block; the orchestrator extracts it for printing
 **Canonical example**: [`templates/blocks/mapper-report.example.json`](./mapper-report.example.json)
 
 **Field reference:**

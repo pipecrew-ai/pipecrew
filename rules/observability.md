@@ -29,7 +29,7 @@ This is the **source of truth** for how every skill in the plugin records what i
 │   ├── platform.md            updated by /discover and /context-refresh
 │   ├── audit-findings.md      design-system.md is per-repo: {repo_path}/agent-context/design-system.md
 │   ├── adrs/                  architecture decision records (INDEX.md + ADR-NNN-<slug>.md)
-│   └── diagrams/              workspace architecture diagrams (architecture.mmd, architecture-overview.mmd, topic diagrams)
+│   └── diagrams/              workspace architecture diagrams (architecture-overview.mmd, topic diagrams)
 ├── history/                   durable workspace history (NOT auto-loaded — humans + next /learn dedup)
 │   └── learn-log.md           append-only — populated by /learn over time
 ├── agents/                    generated from templates at onboarding, stable

@@ -1,13 +1,12 @@
 # Discovery-Mode Diagram Rules
 
-**Load only in `/discover` Phase B2** — the solution-architect reads this file when generating architecture diagrams. It is NOT included in the agent's system prompt to keep the context window lean during `/deliver` design-mode invocations.
+**Load only in `/discover` Phase B2** — the solution-architect reads this file when generating the architecture diagram. It is NOT included in the agent's system prompt to keep the context window lean during `/deliver` design-mode invocations.
 
-The architect produces two complementary Mermaid files during discovery:
+The architect produces one Mermaid file during discovery:
 
 1. `architecture-overview.mmd` — high-level C4-style block diagram for a new team member.
-2. `architecture.mmd` — detailed topology with every service, DB, queue, Lambda.
 
-Both render live in the site-view "Project" drawer via `mermaid.js`.
+It renders live in the site-view "Project" drawer via `mermaid.js`.
 
 ---
 
@@ -33,7 +32,7 @@ Both render live in the site-view "Project" drawer via `mermaid.js`.
 
 - Drop organization/company prefixes (e.g., `abvi-`) from service names unless the prefix IS the AWS resource name.
 - Databases: use short logical names (`auth_db`, `publisher_db`), not the full AWS name (`abvi_auth_db_prod`).
-- Object storage (S3): use a short logical purpose (`books S3`, `bulk upload S3`) rather than the full bucket name — the cylinder shape is narrow and long names get truncated. The detailed diagram carries the full AWS names.
+- Object storage (S3): use a short logical purpose (`books S3`, `bulk upload S3`) rather than the full bucket name — the cylinder shape is narrow and long names get truncated. Full AWS resource names don't belong in this high-level view.
 - Queues: short logical name (`email-send`, `bulk-review`), same reason.
 - Prefer single-line labels. Use `<br/>` only when a meaningful two-part split clarifies the role.
 
@@ -42,7 +41,7 @@ Both render live in the site-view "Project" drawer via `mermaid.js`.
 - `-->` **synchronous** interaction. Label with ONE word: `REST`, `access`, `validate`.
 - `-.->` **asynchronous** interaction. Label with ONE word: `queue`, `event`, `poll`, `upload`.
 
-No `==>` in the overview diagram (detailed-diagram convention only). Every edge gets a label — if you can't label it in one word, you're drawing an implementation detail that doesn't belong here.
+No `==>` in the overview diagram. Every edge gets a label — if you can't label it in one word, you're drawing an implementation detail that doesn't belong here.
 
 ### What to INCLUDE
 
@@ -101,11 +100,11 @@ Walk this checklist item-by-item. If any item fails, fix the diagram. Do NOT ret
 2. **Lambdas are INSIDE `Backend services`** (not their own category). Every Python Lambda, every async worker, every non-HTTP code unit = a backend service node.
 3. **No excluded blocks**: zero user/actor nodes, zero external-system nodes (Zoho, Stripe, etc.), zero edge infra (CloudFront, ALB, Nginx), zero Secrets Manager, zero capability-domain groupings ("Identity", "Review Workflow"), zero mock servers.
 4. **Every edge is labeled**. Run your eye down every `-->` and `-.->` line. Even service→own-DB edges need a label — use `access` if nothing better fits.
-5. **Labels are ONE word** (`REST`, `access`, `validate`, `queue`, `poll`, `event`, `publish`, `upload`). Multi-word labels (`Feign PublisherClient`) belong in the detailed diagram, NOT here.
-6. **Zero inter-service validate/read noise**: no `PUB -->|validate| UM`, no `BO -->|read| PUB`, no routine cross-service Feign edges. If they exist in the detailed diagram, they stay there.
+5. **Labels are ONE word** (`REST`, `access`, `validate`, `queue`, `poll`, `event`, `publish`, `upload`). Multi-word labels (`Feign PublisherClient`) are implementation detail — drop them, don't draw them here.
+6. **Zero inter-service validate/read noise**: no `PUB -->|validate| UM`, no `BO -->|read| PUB`, no routine cross-service Feign edges — they're noise at this altitude.
 7. **classDef palette matches EXACTLY** — copy the fill/stroke/color hex codes from the palette block above. The queue is `fill:#FDECEA` (red), NOT purple (`#F3E8FD`). The frontend class is `font-size:14px` with normal weight, NOT bold 17px. Only the `service` class is 17px bold.
 8. **No HTML tags in labels except `<br/>`**. Grep your output for `<b>`, `<span>`, `<font>`, `<div>`, `<em>`, `<i>`, `<strong>` — if any appear, strip them. Let `classDef` do the styling.
-9. **Data-source labels are short** (`auth_db`, `books S3`) — if any label would be clipped by the cylinder shape, shorten it further. The detailed diagram holds the full AWS resource names.
+9. **Data-source labels are short** (`auth_db`, `books S3`) — if any label would be clipped by the cylinder shape, shorten it further. Full AWS resource names don't belong in this high-level view.
 10. **Node count ≤ 15**. If higher, collapse duplicates (e.g., `book-metadata` + `book-data` S3 buckets → one `books S3` node).
 11. **Init directive on line 1** — the `%%{init: ...}%%` line is present with the exact config defined above.
 12. **Lexical safety**: grep for `-.` followed by any text containing `.` before `.->` — that's a parse error waiting to happen.
@@ -114,17 +113,4 @@ If all 12 pass, the diagram is ready to return. If you catch one on step 9 but f
 
 ---
 
-## Mermaid conventions for `architecture.mmd` (detailed)
-
-**Audience**: an implementer who needs to know "what actually talks to what" before changing code. Every real resource is drawn; every edge carries its specific label (endpoint prefix, Feign client name, queue ARN).
-
-- Use `graph LR` unless the topology is clearly top-down (then `graph TB`).
-- Group related nodes in `subgraph` blocks: Frontends, Services, Workers, Databases, Infrastructure, External.
-- Edge conventions:
-  - `-->` for **synchronous REST/RPC** calls — label with the endpoint prefix, Feign client name, or route.
-  - `-.->` for **async events** — label with the queue/topic name.
-  - `==>` for **shared-resource writes** — DB write, S3 upload.
-- `classDef` styling: `infra` (blue tones), `frontend` (green tones), `worker` (purple tones), `external` (orange tones), `orphan` (red dashed — for resources that exist but have no current owner).
-- Draw only edges you confirmed in code or configuration. If an integration is ambiguous, leave it out and flag it under `## Open Questions` in platform.md.
-
-Full phase-specific instructions (exact section list, skeletons, post-processing) live in `skills/discover/phases/phase-b2-architect-synthesis.md` — the orchestrator inlines the relevant parts at dispatch time.
+Full phase-specific instructions (exact section list, skeleton, post-processing) live in `skills/discover/phases/phase-b2-architect-synthesis.md` — the orchestrator inlines the relevant parts at dispatch time.

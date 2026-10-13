@@ -84,30 +84,27 @@ TEMPLATE SECTIONS:
 
 For the `## Architecture Diagram` section in platform.md, write EXACTLY this pointer content:
 
-    The architecture is captured as two complementary diagrams under the `diagrams/` subdirectory:
+    The architecture is captured as a high-level diagram under the `diagrams/` subdirectory:
 
     - [`diagrams/architecture-overview.mmd`](./diagrams/architecture-overview.mmd) — **high-level** C4-style
       block diagram for a new team member. ~10 nodes grouped into 4 categories
-      (Frontends / Backend services / Queues / Data sources). Read this first.
-    - [`diagrams/architecture.mmd`](./diagrams/architecture.mmd) — **detailed** topology with every
-      service, DB, queue, Lambda, and specific edge labels. Read this when you
-      need to know which endpoint / Feign client / bucket is involved.
+      (Frontends / Backend services / Queues / Data sources).
 
-    Both are rendered live in the site-view "Project" drawer. Edit the `.mmd`
-    files directly to update; re-running `/discover` will prompt before
+    It is rendered live in the site-view "Project" drawer. Edit the `.mmd`
+    file directly to update; re-running `/discover` will prompt before
     overwriting a hand-edited file.
 
-You produce **two diagrams** in this phase, with DIFFERENT rules per diagram.
+You produce **one diagram** in this phase.
 
-**Read the full rules file FIRST**, before producing either diagram:
+**Read the full rules file FIRST**, before producing the diagram:
 
 ```
 {plugin_dir}/rules/discovery-diagrams.md
 ```
 
-This file contains: the 4-block taxonomy for the overview, the node shape conventions per category, the classDef palette with exact hex codes, the init directive, the 12-item self-check checklist, the lexical-safety rules, and the detailed-diagram conventions. It is the single source of truth for diagramming. Do not rely on memory or reconstruct from examples — read the file at the start of this phase.
+This file contains: the 4-block taxonomy for the overview, the node shape conventions per category, the classDef palette with exact hex codes, the init directive, the 12-item self-check checklist, and the lexical-safety rules. It is the single source of truth for diagramming. Do not rely on memory or reconstruct from examples — read the file at the start of this phase.
 
-### Diagram 1: `architecture-overview.mmd` (high-level, new-joiner friendly)
+### `architecture-overview.mmd` (high-level, new-joiner friendly)
 
 Apply the "Mermaid conventions for `architecture-overview.mmd` (high-level)" section of the rules file. Key specifics for this workspace:
 
@@ -119,18 +116,9 @@ Apply the "Mermaid conventions for `architecture-overview.mmd` (high-level)" sec
 - Start with the init directive line from the rules file.
 - **Before returning this file, walk the 12-item Self-check at the end of the rules file.** Every item must pass.
 
-### Diagram 2: `architecture.mmd` (detailed topology)
-
-Apply the "Mermaid conventions for `architecture.mmd` (detailed)" section of the rules file. Specifics:
-
-- **Every service** from the Service Map as a node, grouped in `subgraph` blocks by role (Frontends, Services, Workers, Databases, Infrastructure, External).
-- **External actors** (user roles, third-party services) as nodes outside the service subgraphs, drawn at the top.
-- **Every edge** comes from the Integration Patterns you captured — label each edge with the endpoint prefix, queue/topic name, or resource name so a reader can audit it against the code.
-- Choose `graph LR` by default; switch to `graph TB` only if the topology is clearly top-down.
-
 ### Output shape expected from you
 
-Produce BOTH diagrams in your reply, clearly labeled, in this order:
+Produce the diagram in your reply, clearly labeled:
 
 ```
 <!-- BEGIN architecture-overview.mmd -->
@@ -140,56 +128,6 @@ graph LR
   ... high-level diagram per overview rules ...
 ```
 <!-- END architecture-overview.mmd -->
-
-<!-- BEGIN architecture.mmd -->
-```mermaid
-graph LR
-  ... detailed diagram per detailed rules ...
-```
-<!-- END architecture.mmd -->
-```
-
-Example skeleton for the **detailed** diagram (illustrates the conventions — do NOT copy literally; produce the real topology from the workspace):
-
-```mermaid
-graph LR
-    User((End User))
-    Admin((Admin))
-
-    subgraph Frontends
-        pub_fe[publisher-frontend<br/>react]:::frontend
-        admin_fe[admin-portal<br/>nextjs]:::frontend
-    end
-
-    subgraph Services
-        pub[publisher-service<br/>spring-boot]
-        user_mgmt[user-management<br/>spring-boot]
-        backoffice[backoffice-service<br/>spring-boot]
-    end
-
-    subgraph Workers
-        event_worker[order-event-worker<br/>python-worker]:::worker
-    end
-
-    subgraph Infrastructure
-        s3[(S3: book-content)]:::infra
-        sqs[/SQS: order-events/]:::infra
-        db[(Postgres)]:::infra
-    end
-
-    User --> pub_fe
-    Admin --> admin_fe
-    pub_fe -->|REST /v1/books/*| pub
-    admin_fe -->|REST /v1/backoffice/*| backoffice
-    pub -->|JWT validate| user_mgmt
-    pub ==>|uploads| s3
-    s3 -.->|ObjectCreated event| sqs
-    sqs -.->|poll| event_worker
-    event_worker ==>|write history| db
-
-    classDef infra fill:#2a3a50,stroke:#5577aa,color:#ccddff;
-    classDef worker fill:#3a2a50,stroke:#8855aa,color:#eeccff;
-    classDef frontend fill:#2a5030,stroke:#55aa66,color:#ccffdd;
 ```
 
 For the `## Architect Guidance` section, write EXACTLY this stub content (replace {workspace.name} with the actual name):
@@ -212,14 +150,13 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
 ```
 
 **After the architect returns**:
-1. Save the architect's **full raw output** (the platform.md sections PLUS both `<!-- BEGIN/END *.mmd -->` blocks) to `{run_dir}/outputs/phase-b2-architect-output.md`. This makes the extraction below deterministic and re-runnable on `--resume`. Then write `platform.md` (everything except the two `*.mmd` blocks) to `{workspace_root}/{slug}/context/platform.md`, and `mkdir -p {workspace_root}/{slug}/context/diagrams`.
-2. **Extract both diagrams deterministically with `extract-block.js --unfence`** — it pulls the `<!-- BEGIN/END {name} -->` body AND strips the inner ```` ```mermaid ``` ```` fence in one step, so there is no hand fence-stripping to get wrong. For each of `architecture-overview.mmd` and `architecture.mmd`:
+1. Save the architect's **full raw output** (the platform.md sections PLUS the `<!-- BEGIN/END architecture-overview.mmd -->` block) to `{run_dir}/outputs/phase-b2-architect-output.md`. This makes the extraction below deterministic and re-runnable on `--resume`. Then write `platform.md` (everything except the `.mmd` block) to `{workspace_root}/{slug}/context/platform.md`, and `mkdir -p {workspace_root}/{slug}/context/diagrams`.
+2. **Extract the diagram deterministically with `extract-block.js --unfence`** — it pulls the `<!-- BEGIN/END {name} -->` body AND strips the inner ```` ```mermaid ``` ```` fence in one step, so there is no hand fence-stripping to get wrong. For `architecture-overview.mmd`:
    - **Target doesn't exist yet** → extract straight to it:
      ```bash
      node {plugin_dir}/scripts/extract-block.js {run_dir}/outputs/phase-b2-architect-output.md architecture-overview.mmd --unfence > {workspace_root}/{slug}/context/diagrams/architecture-overview.mmd
      ```
-     (and the same for `architecture.mmd`).
-   - **Target already exists** (re-run or hand-edited) → extract to a temp path first (`{run_dir}/outputs/architecture-overview.mmd`), show a diff vs the existing file, and ask the user **overwrite / merge / keep**. Default **keep** — a hand-edited diagram is load-bearing and must not be silently clobbered. The two files are independent: the user may regenerate one and keep the other.
+   - **Target already exists** (re-run or hand-edited) → extract to a temp path first (`{run_dir}/outputs/architecture-overview.mmd`), show a diff vs the existing file, and ask the user **overwrite / merge / keep**. Default **keep** — a hand-edited diagram is load-bearing and must not be silently clobbered.
 3. **Verify — deterministic gate (replaces the old "lightweight syntax check"):**
    ```bash
    node {plugin_dir}/scripts/verify-sa-output.js {workspace_root}/{slug}/context

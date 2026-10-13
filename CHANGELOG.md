@@ -16,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.17.1] - 2026-10-14
+
+### Changed
+- **Discovery now produces one architecture diagram, not two.** `/discover` Phase B2 and
+  `/draw-diagram` (both workspace and code-scan modes) emit only the high-level
+  `architecture-overview.mmd` — the C4-style, ~10-node, new-joiner view. The detailed
+  `architecture.mmd` topology is no longer generated: in practice it drifted fastest, cost
+  the most tokens to keep honest, and the overview already answers the "what is this system"
+  question that the canonical pair existed for. The `--topic=<concern>` focused diagrams
+  (auth-flow, event-flow, deploy-topology, …) are unchanged, and the opt-in `--c4` style
+  (Context + Container) is untouched — reach for those when you need implementer-level detail.
+
+### Removed
+- `architecture.mmd` from the discovery output, the `solution-architect` / `architecture-mapper`
+  diagram contracts, the `rules/discovery-diagrams.md` detailed-diagram conventions, the
+  site-view "detailed topology" panel, and the `verify-sa-output.js` gate (which now checks the
+  single overview file). Existing hand-maintained `architecture.mmd` files on disk are left
+  alone — nothing deletes them; they just stop being regenerated.
+
 ## [1.17.0] - 2026-10-10
 
 ### Added

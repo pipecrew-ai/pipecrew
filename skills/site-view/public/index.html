@@ -3136,11 +3136,6 @@ function renderWorkspaceOverview(data) {
     tabs.architecture.parts.push('<div class="arch-diagram" id="arch-overview-container">Loading diagram…</div>');
     tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/diagrams/architecture-overview.mmd</code> — capability-shaped view (5-8 blocks, sync vs async only)</div>');
   }
-  if (data.architecture_mermaid) {
-    tabs.architecture.parts.push('<h3>Architecture — detailed topology</h3>');
-    tabs.architecture.parts.push('<div class="arch-diagram" id="arch-diagram-container">Loading diagram…</div>');
-    tabs.architecture.parts.push('<div class="arch-diagram-source">Source: <code>context/diagrams/architecture.mmd</code> — every service, DB, queue, Lambda, with specific edge labels</div>');
-  }
 
   // ──────────────── Overview tab — domain + repos + services ────────────────
   parts.push('<h3>Domain</h3>');
@@ -3348,10 +3343,6 @@ function renderWorkspaceOverview(data) {
   if (data.architecture_overview_mermaid) {
     const c = document.getElementById('arch-overview-container');
     if (c) renderMermaidInto(c, data.architecture_overview_mermaid);
-  }
-  if (data.architecture_mermaid) {
-    const c = document.getElementById('arch-diagram-container');
-    if (c) renderMermaidInto(c, data.architecture_mermaid);
   }
   if (data.platform_md_excerpt) {
     const c = document.getElementById('platform-md-container');

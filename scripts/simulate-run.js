@@ -905,113 +905,7 @@ flowchart LR
   class bookq,invq,notifq queue
   class pubdb,billdb,os,idem,s3 data
 `;
-  // Detailed topology — every real resource, full labels (endpoint paths, Feign client names,
-  // queue ARNs), ==> for shared writes, edge infra + secrets + monitoring + an orphan resource.
-  // This is the "implementer's map" — it must be obviously richer than the overview.
-  const detailed = `flowchart LR
-  subgraph client[Client tier]
-    fe[Frontend - React + TanStack Query<br/>web.demo.example.com]
-    mock[Mock Server - Express<br/>localhost:4010]
-  end
-
-  subgraph edge[Edge infra]
-    cf[CloudFront<br/>d1234.cloudfront.net]
-    alb[ALB<br/>api.demo.example.com]
-    cog[Cognito<br/>JWT issuer]
-  end
-
-  subgraph services[Service tier]
-    pub[publisher-svc<br/>Spring Boot 3 / Java 21<br/>API: /v1/publishers/**]
-    search[search-svc<br/>NestJS 10 / Node 20<br/>API: /v1/search/**]
-    billing[billing-svc<br/>FastAPI / Py 3.12<br/>API: /v1/invoices/**]
-    workersvc[notifications-worker<br/>Python 3.12 Lambda<br/>handler: notify.lambda_handler]
-    legacy[legacy-billing-cron<br/>Python 2.7 Lambda<br/>last deploy 2024-08-12]
-  end
-
-  subgraph data[Data — Terraform-owned]
-    pubdb[(RDS Postgres 15<br/>publisher_db<br/>db.r6g.large)]
-    billdb[(RDS Postgres 15<br/>billing_db<br/>db.r6g.large)]
-    os[(OpenSearch 2.11<br/>search-index<br/>3× r6g.large.search)]
-    idem[(DynamoDB<br/>notification_idem<br/>TTL 7d)]
-    s3[(S3<br/>demo-books-dev<br/>versioned + KMS)]
-    s3legacy[(S3<br/>demo-billing-archive<br/>no owner)]
-  end
-
-  subgraph queues[Queues — CDK-owned]
-    sqs[[SQS<br/>book-events.fifo<br/>visibility 60s, DLQ 5×]]
-    invq[[SQS<br/>invoice-events<br/>visibility 30s, DLQ 3×]]
-    notifq[[SQS<br/>notification-queue<br/>batch 10, DLQ 5×]]
-    sns[[SNS<br/>book-fanout-topic]]
-  end
-
-  subgraph ops[Ops + Secrets]
-    sm[Secrets Manager<br/>db creds + Stripe key]
-    cw[CloudWatch + X-Ray<br/>traceparent header]
-  end
-
-  subgraph external[External providers]
-    sg[SendGrid<br/>v3 transactional]
-    fcm[Firebase Cloud Messaging<br/>HTTP v1]
-    stripe[Stripe<br/>v2024-04-10]
-  end
-
-  fe -->|"GET /v1/publishers/{id}"| alb
-  fe -->|"GET /v1/search?q="| alb
-  fe -->|"POST /v1/invoices"| alb
-  fe -.->|"contract dev only"| mock
-  cf -.->|"static assets"| fe
-  alb -->|"Authorization: Bearer ..."| cog
-  alb -->|"/v1/publishers/**"| pub
-  alb -->|"/v1/search/**"| search
-  alb -->|"/v1/invoices/**"| billing
-
-  pub ==>|"JDBC HikariCP pool=20"| pubdb
-  pub ==>|"PutObject server-side encryption"| s3
-  pub -.->|"BookPublishedEvent v2 (FIFO group=publisherId)"| sqs
-  pub -->|"PublisherClient.getProfile (Feign)"| billing
-  pub -->|"GetSecretValue: rds/publisher"| sm
-
-  search ==>|"_bulk index, 500 docs / batch"| os
-  sqs -.->|"consume → reindex (10 msgs / poll)"| search
-  search -->|"GetSecretValue: opensearch/master"| sm
-
-  billing ==>|"asyncpg pool=10"| billdb
-  billing -.->|"InvoiceCreatedEvent (standard)"| invq
-  billing -->|"POST charges (idempotency-key)"| stripe
-  invq -.->|"consume (visibility 30s)"| workersvc
-
-  sqs -.->|"FilterPolicy: type=*.notify"| sns
-  sns -.->|"fanout"| notifq
-  notifq -.->|"consume (batch=10, partial-batch-fail)"| workersvc
-  workersvc ==>|"PutItem ConditionExpression: NotExists"| idem
-  workersvc -->|"POST /v3/mail/send"| sg
-  workersvc -->|"POST /v1/projects/.../messages:send"| fcm
-
-  pub -.->|"trace export"| cw
-  search -.->|"trace export"| cw
-  billing -.->|"trace export"| cw
-  workersvc -.->|"trace export"| cw
-
-  classDef frontend fill:#E6F4EA,stroke:#1E8E3E,stroke-width:1.5px,color:#0D5223
-  classDef service  fill:#FFF4E5,stroke:#E67C00,stroke-width:2px,color:#5A3A00,font-weight:600
-  classDef worker   fill:#F3E8FD,stroke:#7E22CE,stroke-width:1.5px,color:#3B0764
-  classDef queue    fill:#FDECEA,stroke:#C5221F,stroke-width:1.5px,color:#7A0D0D
-  classDef data     fill:#E8F0FE,stroke:#1A73E8,stroke-width:1.5px,color:#0B3D91
-  classDef infra    fill:#DDE7F5,stroke:#1A73E8,stroke-width:1.5px,color:#0B3D91
-  classDef external fill:#FFE7C7,stroke:#E67C00,stroke-width:1.5px,color:#5A3A00
-  classDef orphan   fill:#FFE0E0,stroke:#C5221F,stroke-width:1.5px,color:#7A0D0D,stroke-dasharray:5 3
-
-  class fe,mock frontend
-  class pub,search,billing service
-  class workersvc worker
-  class legacy,s3legacy orphan
-  class sqs,invq,notifq,sns queue
-  class pubdb,billdb,os,idem,s3 data
-  class cf,alb,cog,sm,cw infra
-  class sg,fcm,stripe external
-`;
   write(path.join(WS_DIR, 'context', 'diagrams', 'architecture-overview.mmd'), overview);
-  write(path.join(WS_DIR, 'context', 'diagrams', 'architecture.mmd'), detailed);
 }
 
 function writeLearnLog() {
@@ -1869,7 +1763,7 @@ console.log(`\n[sim] demo workspace ready at:\n  ${WS_DIR}\n`);
 console.log(`     /discover runs:    1 (${RUN_IDS.discover})`);
 console.log(`     /deliver runs:     ${usedReal ? '3 (2 synthesized + 1 from real run)' : '2 synthesized'}`);
 console.log(`     /learn runs:       2`);
-console.log(`     diagrams:          context/diagrams/architecture.mmd + architecture-overview.mmd`);
+console.log(`     diagrams:          context/diagrams/architecture-overview.mmd`);
 if (STEP_MS > 0) {
   console.log(`     live timeline:     deliver_a will animate (${STEP_MS}ms / step)`);
 }

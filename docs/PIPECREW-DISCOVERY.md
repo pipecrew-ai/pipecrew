@@ -34,7 +34,6 @@ Every command operates against a **workspace** — a self-contained `{slug}/` fo
 │   │   └── ADR-NNN-<slug>.md                      one file per decision (read by solution-architect's Step 0 when index tags match)
 │   └── diagrams/                                  workspace architecture diagrams (Mermaid)
 │       ├── architecture-overview.mmd              high-level C4 block diagram (~10 nodes, 4 subgraphs)
-│       ├── architecture.mmd                       detailed topology with every service / DB / queue / Lambda + edge labels
 │       ├── auth-flow.mmd                          example focused topic diagram (from /draw-diagram --topic)
 │       ├── event-flow.mmd                         example focused topic diagram
 │       └── audit-{YYYY-MM-DD}.md                  (only from /draw-diagram --audit)
@@ -176,7 +175,7 @@ Every command operates against a **workspace** — a self-contained `{slug}/` fo
 | `/discover` | One-time onboarding — scan repos, interrogate domain, write workspace files |
 | `/scaffold` | Create empty repos `--from-scratch` (from a brief) or `--from-example` (clone structure). Standalone or invoked by `/discover --greenfield` |
 | `/context-refresh` | Audit/refresh `platform.md` and per-repo `CLAUDE.md`/`agent-context/`/`DESIGN_SYSTEM.md` (with a git-diff fast path + periodic full-audit safety net) |
-| `/draw-diagram` | Regenerate the two canonical Mermaid diagrams, or produce a focused `--topic=auth-flow` view, in flowchart or `--c4` style. `--scan` mode reads code directly without needing `/discover` to have run |
+| `/draw-diagram` | Regenerate the canonical high-level Mermaid diagram, or produce a focused `--topic=auth-flow` view, in flowchart or `--c4` style. `--scan` mode reads code directly without needing `/discover` to have run |
 
 ## Feature work
 | Skill | What it does |

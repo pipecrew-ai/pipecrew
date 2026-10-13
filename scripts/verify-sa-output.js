@@ -2,7 +2,7 @@
 /**
  * verify-sa-output.js — deterministic gate for the solution-architect's
  * /discover Phase B2 output: the platform.md "Architecture Diagram" pointer
- * stub plus the two extracted Mermaid diagram files.
+ * stub plus the extracted Mermaid diagram file.
  *
  * Replaces the old "run a lightweight syntax check (or defer to the site-view
  * render error)" hand-step with a real, repeatable check — the same
@@ -29,7 +29,7 @@ const MERMAID_HEADERS = [
   'timeline', 'C4Context', 'C4Container', 'C4Component', 'C4Dynamic',
 ];
 
-const DIAGRAMS = ['architecture-overview.mmd', 'architecture.mmd'];
+const DIAGRAMS = ['architecture-overview.mmd'];
 
 function firstMeaningfulLine(body) {
   for (const raw of body.split(/\r?\n/)) {

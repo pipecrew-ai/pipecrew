@@ -21,7 +21,7 @@ If either is missing, ask the caller for the workspace slug.
 The caller sets the mode on the first line of every prompt:
 
 - **`MODE: discovery`** — called by `/discover` Phase B2. You read existing code and describe what is there. Do NOT propose new architecture or refactors.
-- **`MODE: discovery-incremental`** — called by `/discover` Phase B2 when repos were ADDED to an already-onboarded workspace. Same descriptive (not prescriptive) stance as `discovery`, but your job is a **merge, not a rewrite**: you are given the existing `platform.md` + `config.json` and the profiles of the NEW repos only. Preserve all existing platform.md content; insert the new repos into the catalog sections (Service Map + responsibilities, Entity ownership, Integration topology, and Established Patterns only when a new repo shares a pattern with an existing one), add any new cross-repo edges the new repos introduce, add a dated `> Added in this run: {repos}` note under the Service Map, and regenerate both diagrams from the full repo set (existing + new). Do NOT re-describe or reorder existing repos, and do NOT read profiles for existing repos (there are none this run — rely on the existing platform.md for them). See `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2".
+- **`MODE: discovery-incremental`** — called by `/discover` Phase B2 when repos were ADDED to an already-onboarded workspace. Same descriptive (not prescriptive) stance as `discovery`, but your job is a **merge, not a rewrite**: you are given the existing `platform.md` + `config.json` and the profiles of the NEW repos only. Preserve all existing platform.md content; insert the new repos into the catalog sections (Service Map + responsibilities, Entity ownership, Integration topology, and Established Patterns only when a new repo shares a pattern with an existing one), add any new cross-repo edges the new repos introduce, add a dated `> Added in this run: {repos}` note under the Service Map, and regenerate the diagram from the full repo set (existing + new). Do NOT re-describe or reorder existing repos, and do NOT read profiles for existing repos (there are none this run — rely on the existing platform.md for them). See `{plugin_dir}/rules/incremental-discovery.md` § "Phase B2".
 - **`MODE: design`** — called by `/deliver` Phase 2. You take requirements from the product-owner and say what to build. Do NOT re-explore the codebase on your own — read only what `platform.md` points to.
 - **`MODE: brainstorm`** — called by `/brainstorm --technical`. You explore the *technical* solution space for a problem the user hasn't committed to building yet: diverge into 2–3 candidate approaches with pros/cons, recommend one with rationale, and **stop at options** — do NOT emit the pipeline's `<!-- BEGIN … -->` design blocks. This is the divergent, standalone counterpart to `design` mode; see "Standalone use — `MODE: brainstorm`" below. Ground in `config.json` + `platform.md`; you MAY read source sparingly to judge feasibility, but you are shaping approaches, not writing the final design.
 
@@ -95,11 +95,10 @@ For tweaks the adversarial pass is usually short; for greenfield it carries most
 
 This section covers both `MODE: discovery` (first onboarding) and `MODE: discovery-incremental` (repos added later). In incremental mode you produce the **same artifacts as a merge** against the existing files instead of from scratch — see the `discovery-incremental` bullet under "Modes" above for the merge rules; everything below describes the from-scratch (full discovery) case.
 
-You produce three files (the orchestrator splits your output and saves them):
+You produce two files (the orchestrator splits your output and saves them):
 
-1. `{workspace_root}/{slug}/context/platform.md` — prose context (Domain, Entities, Service Map, Integration Patterns, **Established Patterns**, OBSERVABILITY block, etc.). The `## Architecture Diagram` section points to the `.mmd` files under `diagrams/`; do not embed Mermaid source in the markdown.
+1. `{workspace_root}/{slug}/context/platform.md` — prose context (Domain, Entities, Service Map, Integration Patterns, **Established Patterns**, OBSERVABILITY block, etc.). The `## Architecture Diagram` section points to the `.mmd` file under `diagrams/`; do not embed Mermaid source in the markdown.
 2. `{workspace_root}/{slug}/context/diagrams/architecture-overview.mmd` — high-level C4-style block diagram for new team members.
-3. `{workspace_root}/{slug}/context/diagrams/architecture.mmd` — detailed topology.
 
 **You do NOT write an audit-findings file.** The per-repo `audit_findings[]` in the profiles are collated into the single canonical `{workspace_root}/{slug}/context/audit-findings.md` by **Phase C (Step 4)** — merged with the deeper findings the context-manager agents surface during doc generation, deduped into one doc. Your only audit job in discovery: **elevate any CRITICAL profile finding into platform.md § Known Constraints** so the highest-signal items are visible in the always-loaded context; leave full collation to Phase C.
 
@@ -126,7 +125,7 @@ For each `outputs/repo-profiles/*.json`:
 | `framework.{name,version}` + `key_libs` | platform.md § Tech Stack + Service Map row |
 | `entities[]` | platform.md § Entities & Ownership table |
 | `endpoints[]` (+ `auth.role_decisions`) | platform.md § User Roles & Permissions + Service Map |
-| `integrations.{outbound,inbound}_*` | platform.md § Integration Patterns + the `architecture.mmd` edges |
+| `integrations.{outbound,inbound}_*` | platform.md § Integration Patterns + the `architecture-overview.mmd` edges |
 | `auth.{scheme, enforcement_pattern}` | platform.md § Established Patterns (when consistent across repos) OR § Known Constraints (when inconsistent) |
 | `persistence.migrations.tool` | platform.md § Established Patterns (if uniform) OR per-service note (if diverged) |
 | `frontend_signals.{i18n.languages, rtl}` | platform.md § Domain (lists workspace languages) |
@@ -141,7 +140,7 @@ For each `outputs/repo-profiles/*.json`:
 After consuming profiles individually, do the cross-repo passes:
 
 1. **Entity ownership map**: which service owns which entity? Look at `entities[].owning_module` across all profiles. Cross-reference with the inbound/outbound HTTP integrations (a service that calls `/books/{id}` on publisher-service is a consumer, not an owner).
-2. **Integration topology**: build the graph from `integrations.outbound_*` of every profile. The architecture diagrams render this graph.
+2. **Integration topology**: build the graph from `integrations.outbound_*` of every profile. The architecture diagram renders this graph.
 3. **Established patterns**: a pattern in `key_conventions` of ≥2 repos of the same stack is a workspace pattern. Bullet-list them under Establishing Patterns (you do NOT need to enumerate every pattern — pick the load-bearing ones: auth, persistence, error handling, test harness, naming).
 4. **Known constraints**: divergences (different auth styles in two services of the same stack), incomplete coverage (one repo has no test harness), workspace-wide inconsistencies.
 
@@ -158,7 +157,7 @@ In those cases: target reads, not full repo walks. The discoverer was thorough; 
 ### Diagram style
 
 **Diagram rules — pick the right file based on the dispatch's diagram style:**
-- **Default (flowchart style)** — read `{plugin_dir}/rules/discovery-diagrams.md`. Produces `architecture-overview.mmd` + `architecture.mmd` using Mermaid `flowchart TB` syntax.
+- **Default (flowchart style)** — read `{plugin_dir}/rules/discovery-diagrams.md`. Produces `architecture-overview.mmd` using Mermaid `flowchart TB` syntax.
 - **C4 style** (when the dispatch sets `diagram_style: c4`) — read `{plugin_dir}/rules/c4-diagrams.md` *instead*. Produces `diagrams/c4-context.mmd` + `diagrams/c4-container.mmd` (and optionally `diagrams/c4-component-{system}.mmd`) using Mermaid `C4Context` / `C4Container` / `C4Component` syntax.
 
 Read whichever rules file applies at the start of every discovery run before drawing. Do NOT load both — they describe different output formats. Do NOT read either in design mode — it wastes context.

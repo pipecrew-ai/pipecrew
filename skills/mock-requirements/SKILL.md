@@ -149,44 +149,105 @@ node {plugin_dir}/scripts/split-design.js {draft_dir}/requirements-round1.md
 test -s {draft_dir}/blocks/requirements-index.json
 ```
 
-If the split fails (exit 3) or the index file is empty, re-dispatch the product-owner via
-`SendMessage`: `"Your REQUIREMENTS_INDEX block is missing or invalid JSON. Re-emit it — same
-conversation, do not redo the prose."` Then re-run the split. The gate must NEVER open on a
+If the split fails (exit 3) or the index file is empty, re-dispatch a **fresh** product-owner
+(same subagent_type + fallback chain) with: `"The requirements at
+{draft_dir}/requirements-round1.md are missing a valid REQUIREMENTS_INDEX block (or its JSON is
+malformed). Read that file, fix/re-emit the block in place — do not redo the prose."` Then re-run
+the split. (Agents do not persist across dispatches and cannot be continued — always re-dispatch
+fresh and point at the on-disk file; never rely on `SendMessage`.) The gate must NEVER open on a
 document whose REQUIREMENTS_INDEX doesn't materialize.
 
-**Dispatch the ux-consultant.**
+#### Requirements gate (after Round-1 PO, BEFORE any UX work)
+
+The Developer approves the requirements **before** the ux-consultant runs — the UX agent must
+never work from un-approved requirements.
+
+Open the gate:
+
+```bash
+node {plugin_dir}/scripts/gate.js open --run-dir={draft_dir} --phase=requirements --gate=approval --question="Approve requirements for {feature-slug} before mocking?"
+```
+
+Present the PO digest (FR count, EC count, summary) and two options:
+- `approve` — proceed to the UX dispatch below.
+- `adjust` — collect the Developer's pushback verbatim, re-dispatch a **fresh** product-owner
+  (same subagent_type + fallback chain as above) with the pushback plus `"Revise the requirements
+  at {draft_dir}/requirements-round1.md in place and re-emit the REQUIREMENTS_INDEX block."`,
+  re-run the split, then re-open this gate. Requirements adjustments are **not** capped — the flow
+  does not continue until requirements are approved.
+
+Close the gate after the answer (both branches):
+
+```bash
+node {plugin_dir}/scripts/gate.js close --run-dir={draft_dir}
+```
+
+#### Resolve the frontend repo (design-system source for UX)
+
+Read `{workspace_root}/{slug}/config.json` and select the repo whose `role` is `frontend`; set
+`{frontend_repo_path}` to its `path`. If exactly one `frontend` repo exists, use it; if several,
+pick the one the feature most plausibly targets (ask the Developer if ambiguous); if none, set
+`{frontend_repo_path}` = `(none)` — tell the UX consultant there is no design system to match and
+to use clean, neutral styling (and say so in the spec).
+
+#### Dispatch the ux-consultant (Round 1)
 
 **Tool**: `Agent`  
 **subagent_type**: `pipecrew:ux-consultant`  
 **description**: `"Mock screens — {feature-slug} (Round 1)"`
 
+Fallback: if `pipecrew:ux-consultant` is not in the harness agent registry (plugin-namespaced
+agents can drop out mid-session), fall back to `general-purpose` with the preamble `"Read and
+behave as the agent defined at {plugin_dir}/agents/ux-consultant.md, then:"`. **Apply this same
+fallback to every ux-consultant dispatch below** (Round 2, adjust pass, EC-7 fix).
+
 Prompt:
 
 ```
-Produce a structured IMPLEMENTATION_SPEC and one self-contained static HTML file per screen,
-based on the requirements below.
+Produce a structured IMPLEMENTATION_SPEC and a set of self-contained static HTML screens that
+together simulate the feature's flow, based on the requirements below.
 
 REQUIREMENTS:
 {content of {draft_dir}/requirements-round1.md}
+
+TARGET FRONTEND REPO: {frontend_repo_path}   (or "none — use neutral styling")
+DESIGN SYSTEM: read this repo's DESIGN_SYSTEM.md (resolve via config.repos[*].design_system_path,
+else probe agent-context*/common/DESIGN_SYSTEM.md, docs/DESIGN_SYSTEM.md, DESIGN_SYSTEM.md) and
+study 1–2 existing feature screens for established layout/component patterns. The mock must
+VISUALLY APPROXIMATE this design system — colors, spacing, typography, component shapes, and any
+cross-cutting rules (e.g. RTL / locale) the platform uses. Name the REAL design-system components
+(the actual table / card / button / dialog components) per screen in the IMPLEMENTATION_SPEC so
+/deliver Phase 5b builds with them.
 
 IMPLEMENTATION_SPEC FILE: {draft_dir}/implementation-spec-round1.md
 SCREENS DIR: {draft_dir}/screens/
 
 Output format for the spec file:
 <!-- BEGIN IMPLEMENTATION_SPEC -->
-{structured spec — screens list, component descriptions, flow notes}
+{structured spec — screens list with the REAL component names per screen, per-screen states, and
+an explicit FLOW section: the entry screen and the ordered screen-to-screen transitions}
 <!-- END IMPLEMENTATION_SPEC -->
 
-For each screen named in the spec, write a self-contained HTML file to
-{draft_dir}/screens/{screen-name}.html. SELF-CONTAINMENT RULE (non-negotiable):
+Write ONE self-contained HTML file per screen to {draft_dir}/screens/{screen-name}.html. Each file
+is the canonical unit /deliver maps to one component/page — keep them SEPARATE (do NOT merge the
+flow into a single file).
+
+SELF-CONTAINMENT RULE (non-negotiable):
 - ALL CSS must be in an inline <style> block — no external stylesheets
 - No CDN script tags (no <script src="https://...">)
 - No external font imports (@import url(https://...))
 - No framework build steps
-The HTML must render correctly from the local filesystem.
+- The HTML must render correctly from the local filesystem.
 
-Write the full spec to the IMPLEMENTATION_SPEC FILE. Return only a digest: screen count,
-key design decisions.
+FLOW SIMULATION (review aid): wire the separate screens into a clickable walkthrough using
+RELATIVE links between the local files (e.g. <a href="vote-dialog.html">) and/or buttons that
+navigate to the next local .html, following the flow in the requirements. Local relative .html
+links ARE allowed — they are the ONE exception to "no external resources". Name the entry screen.
+Mark this navigation clearly as a REVIEW-ONLY aid that /deliver's implementer ignores (the real
+app uses its own router); it does not change the per-screen component contract.
+
+Write the full spec to the IMPLEMENTATION_SPEC FILE. Return only a digest: screen count, the entry
+screen, key design decisions, and which design system you matched.
 ```
 
 After the ux-consultant returns: verify `{draft_dir}/implementation-spec-round1.md` exists
@@ -194,35 +255,44 @@ and contains the `<!-- BEGIN IMPLEMENTATION_SPEC -->` delimiters.
 
 #### Round 2
 
-**Re-dispatch the product-owner (coverage validation) via `SendMessage`.**
+> Agents do not persist across dispatches and cannot be continued — both Round-2 steps dispatch a
+> **fresh** agent and pass the prior artifacts by path/content. Never rely on `SendMessage`.
 
-Send to the still-open product-owner agent:
-
-```
-Validate that every FR and EC you produced is addressed by the UX consultant's
-IMPLEMENTATION_SPEC and screens. Identify any uncovered requirements.
-
-UX IMPLEMENTATION_SPEC:
-{content of {draft_dir}/implementation-spec-round1.md}
-
-Produce requirements-round2.md at {draft_dir}/requirements-round2.md incorporating any
-clarifications. Retain the REQUIREMENTS_INDEX block — update it if any FR/EC changed.
-Return a coverage gap summary (or "no gaps found").
-```
-
-**Re-dispatch the ux-consultant (finalize) via `SendMessage`.**
-
-Send to the still-open ux-consultant agent:
+**Dispatch a FRESH product-owner (coverage validation).** Same `{slug}-product-owner` +
+fallback chain as Round 1.
 
 ```
-Finalize based on the product-owner's round-2 coverage review.
+You previously authored the requirements for this feature. Validate that every FR and EC is
+addressed by the UX consultant's IMPLEMENTATION_SPEC and screens; identify any uncovered
+requirements.
 
-PO COVERAGE REVIEW:
-{PO's round-2 response summary}
+YOUR ROUND-1 REQUIREMENTS: {draft_dir}/requirements-round1.md    (read this file)
+UX IMPLEMENTATION_SPEC:    {draft_dir}/implementation-spec-round1.md  (read this file)
 
-Update your IMPLEMENTATION_SPEC and HTML screens as needed.
-Write the final spec to {draft_dir}/implementation-spec-round2.md.
-Write updated HTML screens to {draft_dir}/screens/ (overwriting as needed).
+Produce {draft_dir}/requirements-round2.md incorporating any clarifications. Retain the
+REQUIREMENTS_INDEX block — update it if any FR/EC changed. Return a coverage gap summary
+(or "no gaps found").
+```
+
+Re-run the split on `requirements-round2.md` and confirm the index still materializes (same check
++ fresh re-dispatch recovery as Round 1).
+
+**Dispatch a FRESH ux-consultant (finalize).** Same subagent_type + fallback as the Round-1 UX
+dispatch.
+
+```
+You are finalizing mock screens drafted for this feature. Incorporate the product-owner's round-2
+coverage review.
+
+PO COVERAGE REVIEW: {PO's round-2 response summary}
+ROUND-1 SPEC:    {draft_dir}/implementation-spec-round1.md    (read this file)
+ROUND-1 SCREENS: {draft_dir}/screens/    (read the existing files — build on them, don't start over)
+TARGET FRONTEND REPO: {frontend_repo_path}    — keep matching its design system (see Round 1).
+
+Write the final spec to {draft_dir}/implementation-spec-round2.md (retain the IMPLEMENTATION_SPEC
+delimiters, the real component names, and the FLOW section with the entry screen + transitions).
+Update the HTML screens in {draft_dir}/screens/ (overwrite as needed), preserving the
+self-containment rule and the review-only relative-link navigation between screens.
 Return a digest of what changed.
 ```
 
@@ -242,10 +312,13 @@ For each `*.html` file in `{draft_dir}/screens/`, scan for external resource pat
 - `@import url(http`
 
 If any match is found: flag the specific file and pattern in the draft with a
-`[SELF-CONTAINMENT VIOLATION]` marker, then send a `SendMessage` to the ux-consultant asking
-it to inline the resource (CSS into `<style>`, small SVG/icon inline) before the gate opens.
-Re-check after the UX agent responds. If the violation persists after one fix attempt, surface
-it in the draft as an unresolved warning — do not loop.
+`[SELF-CONTAINMENT VIOLATION]` marker, then dispatch a **fresh** ux-consultant (same subagent_type
++ fallback) with the violation list and `"Inline these external resources (CSS into <style>, small
+SVG/icon inline) in the named files under {draft_dir}/screens/ — read the files and fix them in
+place. Relative links between local .html screens are allowed and must NOT be removed."` Re-check
+after it responds. If the violation persists after one fix attempt, surface it in the draft as an
+unresolved warning — do not loop. (Note: relative `.html` links between screens are the review-only
+flow aid — they are NOT violations; the scan above only flags `http`/`//` and external `<link>`.)
 
 The gate MUST NOT open on an HTML file with unresolved external resource references.
 
@@ -263,8 +336,9 @@ IMPLEMENTATION_SPEC:
 {paste content between <!-- BEGIN IMPLEMENTATION_SPEC --> / <!-- END IMPLEMENTATION_SPEC -->
 from {draft_dir}/implementation-spec-round2.md}
 
-HTML SCREENS ({N} files):
+HTML SCREENS ({N} files) — entry screen: {entry screen from the spec's FLOW section}:
 {for each file in {draft_dir}/screens/: print filename, line count, <title> value, first visible heading}
+To walk the flow, open the entry screen in a browser and follow the in-page links.
 
 {if PO round-2 identified coverage gaps:}
 **Coverage gaps (no third round — approve or request adjustment):**
@@ -307,9 +381,11 @@ No artifact persisted. The draft is available at {draft_dir} for reference.
 
 #### 4f: Adjust branch (FR-5 — one pass only)
 
-Collect the Developer's pushback verbatim. Re-dispatch the product-owner and/or ux-consultant
-via `SendMessage` with the adjustment text (one pass — the gate re-presents after this; if the
-Developer rejects again, the EC-5 branch applies: abort cleanly with no files written).
+Collect the Developer's pushback verbatim. Dispatch a **fresh** product-owner and/or ux-consultant
+(same subagent_type + fallback chains) with the adjustment text, pointing each at the current
+round-2 artifacts to revise in place (`requirements-round2.md` / `implementation-spec-round2.md` /
+`screens/`) — never rely on `SendMessage`. One pass only: the gate re-presents after this; if the
+Developer rejects again, the EC-5 branch applies (abort cleanly, no files written).
 
 After the adjustment pass:
 - Re-run the EC-7 self-containment check on the updated screens

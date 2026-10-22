@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.18.1] - 2026-10-23
+
+### Fixed
+- **`/mock-requirements` now gates requirements before mocking.** A new requirements-approval gate
+  runs after the product-owner's Round 1 and before the ux-consultant is dispatched — the UX agent
+  never works from un-approved requirements. The final persist gate is unchanged, so a run now has
+  two gates (requirements → persist).
+- **The ux-consultant now matches the platform's design system.** The UX dispatch resolves the
+  `role: frontend` repo from `config.json`, passes its path, and instructs the agent to read the
+  repo's `DESIGN_SYSTEM.md` + existing feature patterns and visually approximate them (inlined, since
+  the mock is self-contained), naming the real design-system components in the `IMPLEMENTATION_SPEC`
+  so `/deliver --from-mock` Phase 5b builds with them. Previously the skill passed no repo and gave
+  no design-system instruction, so mocks drifted to generic styling.
+- **Mock screens now simulate the flow.** Screens remain separate self-contained files (the
+  canonical unit `/deliver` maps 1:1 to components), but are now wired into a clickable walkthrough
+  via review-only relative `.html` links following the flow, with the entry screen named and the
+  ordered transitions documented in the `IMPLEMENTATION_SPEC`'s FLOW section. Local relative `.html`
+  links are an explicit exception to the self-containment rule; `/deliver`'s implementer ignores the
+  nav (the real app routes itself).
+- **Round 2 (and retries / adjust / EC-7 fix) no longer rely on `SendMessage`.** Every re-engagement
+  now dispatches a **fresh** agent and passes prior-round artifacts by path, fixing the mid-run
+  failure where a dropped `pipecrew:ux-consultant` (or any non-continuable agent) aborted Round 2.
+  The ux-consultant dispatch also gained the same `general-purpose` + `agents/ux-consultant.md`
+  fallback the product-owner dispatch already had, so a missing plugin-namespaced agent degrades
+  gracefully instead of 404-ing.
+
 ## [1.18.0] - 2026-10-23
 
 ### Added

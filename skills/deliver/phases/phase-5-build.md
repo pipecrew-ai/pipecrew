@@ -89,6 +89,33 @@ Dispatch one `Agent` call per affected service. All of them go in the same assis
 
 Phase 5b runs in two steps: UX consultant first (output gated on user approval), then feature implementer.
 
+### --from-mock Phase-5b guard (check scratchpad before dispatching ux-consultant)
+
+Read the scratchpad Run Info `from_mock_valid` field:
+
+- **`from_mock_valid: true`** → **Attempt to skip the ux-consultant dispatch.** Instead:
+  1. Run: `node {plugin_dir}/scripts/extract-block.js {from_mock_source}/implementation-spec.md IMPLEMENTATION_SPEC --raw`
+     to extract the spec verbatim.
+  2. Verify the extract succeeded: `extract-block.js` exits non-zero (2) on stderr when the
+     `IMPLEMENTATION_SPEC` delimiters are absent, and produces empty stdout. Treat **non-zero
+     exit OR empty stdout** as a failure → fall to the EC-8 branch below.
+  3. Verify that every screen named in the IMPLEMENTATION_SPEC has a corresponding HTML file
+     under `{from_mock_source}/screens/`. If any screen is absent → fall to the EC-8 branch
+     below (EC-8).
+  4. Inject the extracted spec into the frontend task file (the same location the live Phase-5b
+     ux-consultant would have written it — see Step 3 below for the append format).
+  5. Log in chat: `[phase 5b ↩] IMPLEMENTATION_SPEC injected from mock artifact \`{slug}\` — ux-consultant dispatch skipped.`
+  6. Proceed directly to Step 2.5 (refine frontend sub-tasks) and then Step 3 (feature implementer).
+
+- **EC-8 branch** — `from_mock_valid: true` but spec extract empty OR screens missing:
+  Print: `"⚠ Mock artifact '{slug}' has valid index but IMPLEMENTATION_SPEC is inconsistent (missing screens or unextractable spec). Running ux-consultant normally."`
+  Then dispatch ux-consultant via the existing Phase 5b Step 2 instructions below.
+
+- **`from_mock_valid: false` or `null`** → No action. Dispatch ux-consultant via existing
+  instructions below.
+
+---
+
 **Step 1: Extract context** from the scratchpad output files.
 
 Read `outputs/phase-1-requirements.md` and extract the frontend-relevant sections. **Do NOT `Read outputs/phase-2-architecture.md`** — pull the frontend-relevant blocks directly from `outputs/blocks/`:

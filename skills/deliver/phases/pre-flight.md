@@ -42,6 +42,9 @@ The scratchpad lives at `{run_dir}/scratchpad.md` where `{run_dir}` = `{workspac
 - **Started**: {date}
 - **Current Phase**: {phase name}
 - **Status**: IN_PROGRESS | INTERRUPTED | COMPLETED | FAILED
+- **from_mock_source**: {absolute path or "none"}
+- **from_mock_valid**: true | false | null
+- **from_mock_defect**: {defect string or null}
 
 ---
 
@@ -264,6 +267,32 @@ Branch on the CLI:
 | No `--from-deferred` flag AND zero pending files | Silent. Continue. |
 
 When a deferred file is loaded (either branch), the new `run_id` is still computed in Step 2 from the deferred file's `feature` field (not a new slug from the user's typed description, which may have been ignored). The new run is a fresh run dir; the source deferred file's `source_run_id` is just a back-reference, not the run identity.
+
+**Step 1.8: Check for `--from-mock` artifact.**
+
+This step decides whether to load a pre-approved `/mock-requirements` artifact to skip Phase 1
+(product-owner) and Phase 5b (ux-consultant). It runs immediately after Step 1.7 and before
+Step 2 (run_id computation), so an interactive slug-pick can still influence the feature slug.
+
+Branch on the CLI:
+
+| Condition | Action |
+|---|---|
+| `--from-mock=<slug>` passed with a value AND the dir `{ws}/mocks/<slug>/` does NOT exist | **Hard stop (EC-2).** Print: `"✗ No mock artifact found at {ws}/mocks/<slug>/. Run /mock-requirements <feature> first, or omit --from-mock."` Do NOT silently fall back to Phase 1. |
+| `--from-mock=<slug>` passed with a value AND dir exists | Run `node {plugin_dir}/scripts/mock-artifact.js --validate=<slug> --mocks-dir={ws}/mocks`. Exit 0 → record `from_mock_source: {ws}/mocks/<slug>`, `from_mock_valid: true`, `from_mock_defect: null` in scratchpad Run Info. The new `run_id` (Step 2) is computed from this validated `<slug>` (the same slug-derivation rule as `--from-deferred` uses its file's `feature` field) so the mock artifact and the run share the same slug identity. Exit 1 → record `from_mock_source: {ws}/mocks/<slug>`, `from_mock_valid: false`, `from_mock_defect: {defect string from the helper's JSON output}` in scratchpad; print: `"⚠ Mock artifact '<slug>' present but invalid ({defect}). Falling back to normal Phase 1 + Phase 5b."` Continue pipeline. |
+| `--from-mock` passed WITHOUT a value AND ≥1 slug exists | Run `node {plugin_dir}/scripts/mock-artifact.js --list --mocks-dir={ws}/mocks`; display the slugs; prompt: `"Pick a slug to use with --from-mock, or 'c' to cancel."` On selection: treat as `--from-mock=<selected>` and re-run the validation branch above. On `c`: stop the pipeline. |
+| `--from-mock` passed WITHOUT a value AND zero slugs exist | Stop: `"--from-mock passed but no mock artifacts found under {ws}/mocks/. Run /mock-requirements first."` |
+| No `--from-mock` flag | **Silent. No lookup, no warning, no mention of mocks.** (EC-3) Continue. |
+
+Scratchpad fields written by this step (consumed by Phase 1 and Phase 5b guards):
+```
+from_mock_source: {absolute path} | "none"
+from_mock_valid:  true | false | null   (null = --from-mock not passed)
+from_mock_defect: {defect string} | null
+```
+
+Add these three fields to the scratchpad Run Info section. When `--from-mock` was not passed,
+set all three to `null` (or omit them — the Phase guards treat absent as null).
 
 **Step 2: Compute `run_id`.**
 

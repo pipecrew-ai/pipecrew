@@ -35,6 +35,7 @@ The full pipeline is one command — but **every capability is also a standalone
 | Skill | Purpose |
 |-------|---------|
 | `/deliver` | End-to-end feature pipeline — the full eight-phase run |
+| `/mock-requirements` | Before `/deliver` — author a feature's requirements + HTML mock screens in a capped PO↔UX session; artifact reused by `/deliver --from-mock` |
 | `/patch` | Lightweight memory-backed fixes — audit findings, codemods, migrations via reusable recipes |
 | `/review` | Standalone per-repo code review against the contract |
 | `/assess` | Cross-repo integration check on a branch + live in-browser verification |
@@ -144,6 +145,7 @@ needed to skip irrelevant work.
 | `--with-pr` | Publish draft PRs at Phase 8 (`--publish-despite-blockers` to override the assess gate) |
 | `--auto-approve` | Hands-off run — a hook auto-approves safe tool calls, never risky ones |
 | `--resume` | Resume an interrupted pipeline |
+| `--from-mock[=<slug>]` | Reuse a pre-approved `/mock-requirements` artifact — skips Phase 1 (product-owner) and injects the IMPLEMENTATION_SPEC into Phase 5b. With a value, uses `{ws}/mocks/<slug>/` directly. Without a value, lists available slugs. |
 
 ## Supported tech stacks
 

@@ -40,6 +40,7 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 | `--no-feedback-prompt` | Phase 8 skips the end-of-run feedback prompt (CI-friendly) |
 | `--resume` | Resume interrupted pipeline (asks which if multiple) |
 | `--from-deferred[=<feature-slug>]` | Resume work the user previously chose to defer at a Phase 4.5 "Minimum only" gate. With a value, loads `{workspace_root}/{slug}/deferred/<feature-slug>.md` directly. Without a value, lists pending deferred files and prompts to pick one. Different from `--resume` (which picks up an INTERRUPTED in-flight pipeline) — `--from-deferred` starts a NEW run from a deferred follow-up file. |
+| `--from-mock[=<feature-slug>]` | Reuse a pre-approved `/mock-requirements` artifact for this feature. Skips Phase 1 (product-owner) and injects the artifact's IMPLEMENTATION_SPEC into Phase 5b. With a value, loads `{workspace_root}/{slug}/mocks/<feature-slug>/` directly. Without a value, lists available slugs under `{workspace_root}/{slug}/mocks/` and prompts to pick one. |
 | `--no-worktrees` | Skip worktree creation for Phase 3 + Phase 5. Work in-place on the current branch of each repo. Use only for small interactive fixes where isolation is not needed. Default is to create one worktree per repo touched. |
 | `--auto-approve` | Cut Claude Code's per-tool-call permission prompts during the run. Writes an opt-in marker (`scripts/autoapprove-marker.js on`) that the plugin's `deliver-autoapprove-hook.js` reads to **auto-approve only clearly-safe tool calls** — file edits (`Edit`/`Write`) plus `Bash` whose every segment is a known build/test/local-git/read verb. **Dangerous or unclassifiable commands (rm, git push, deploys, publish, sudo, shell substitution, redirects, unknown binaries) still prompt.** The marker is removed at run end / interruption and self-expires ~6h after the run goes idle. This is NOT `bypassPermissions` — it never auto-approves the risky stuff. See `docs/permissions.md`. Requires a `claude` restart after plugin upgrade for the hook to load. |
 
@@ -52,6 +53,8 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
 /deliver --resume --workspace=my-saas
 /deliver --from-deferred=publishers-choose-contract-type    # resume the deferred slice from a previous "Minimum only" run
 /deliver --from-deferred                                     # list pending deferred items and prompt to pick one
+/deliver "add bulk status change" --from-mock=bulk-status-change   # skip Phase 1 using a /mock-requirements artifact
+/deliver "add bulk status change" --from-mock               # list available mock artifacts and prompt to pick one
 ```
 
 ## Instructions
@@ -273,6 +276,7 @@ Each pipeline phase lives in its own file under `phases/`. The orchestrator load
 | `--no-browser-verify` | Phase 6 Step 6.5 | Skips live browser verification even on frontend impact |
 | `--auto-fix-mechanical` | — | Per-repo Phase 5.5 routing: all-`mechanical` repos pipeline their fix round (no gate, dispatched as the reviewer finishes); repos with `architectural` criticals still gate |
 | `--from-deferred[=<slug>]` | — | Loads a previous run's deferred follow-up file as the feature input. Phase 1 (product-owner) and Phase 2 (architect) still run — they refine the deferred items against current state. Phase 7 Step 7.5 marks the source file as `consumed` on success. |
+| `--from-mock[=<slug>]` | Skips Phase 1 (product-owner) when artifact is FR-8-valid; skips Phase 5b (ux-consultant) when artifact is FR-8-valid AND the EC-8 consistency check passes (all IMPLEMENTATION_SPEC screens present as HTML files) | Phase 1 seeded from artifact's requirements.md; Phase 5b IMPLEMENTATION_SPEC injected from artifact when both FR-8 validity and EC-8 screen check pass. Falls back to running both normally when artifact is invalid (FR-8/EC-1) or EC-8 check fails. Missing slug dir → hard stop (EC-2). |
 | `--with-pr` | — | Phase 8 publishes one draft PR per repo with cross-repo linking |
 | `--publish-despite-blockers` | — | Phase 8 PR publish ignores Phase 6 blocker gate |
 | `--no-feedback-prompt` | Phase 8 Step 8.6 | Phase 8 skips end-of-run feedback prompt |

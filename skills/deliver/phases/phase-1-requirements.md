@@ -1,5 +1,32 @@
 ### Phase 1: Requirements (product-owner)
 
+### --from-mock guard (check scratchpad before dispatching the product-owner)
+
+Read the scratchpad Run Info `from_mock_valid` field:
+
+- **`from_mock_valid: true`** → **Skip the product-owner dispatch entirely.**
+  1. Copy `{from_mock_source}/requirements.md` to `{run_dir}/outputs/phase-1-requirements.md`.
+  2. Run `node {plugin_dir}/scripts/split-design.js {run_dir}/outputs/phase-1-requirements.md` to
+     materialise `outputs/blocks/requirements-index.json`.
+  3. Verify the index exists and has `requirements[].length >= 1` (the artifact was pre-validated,
+     but verify defensively — an inconsistency here should not silently propagate). If this
+     check fails, **discard the seed** and run Phase 1 normally with a warning:
+     `"⚠ Mock artifact '{slug}' passed pre-flight validation but produced an empty requirements
+     index after copy. Falling back to product-owner dispatch."` (Same fail-safe as the
+     `from_mock_valid: false` branch.)
+  4. Update scratchpad Phase 1 Status to `COMPLETED (skipped — seeded from mock artifact {slug})`.
+  5. Log in chat: `[phase 1 ↩] requirements seeded from mock artifact \`{slug}\` — product-owner dispatch skipped.`
+  6. Proceed directly to Phase 2.
+
+- **`from_mock_valid: false`** → **Run Phase 1 normally AND emit a warning** (EC-1):
+  Print: `"⚠ Mock artifact '{slug}' present but invalid ({from_mock_defect}). Running product-owner normally."`
+  Then continue with the dispatch instructions below.
+
+- **`from_mock_valid: null`** (flag not passed, or field absent) → No action. Continue with the
+  dispatch instructions below.
+
+---
+
 Launch the workspace's product-owner agent. Onboarding published it to the harness user-level agents dir as `{slug}-product-owner.md` (`~/.claude/agents/` under Claude Code, `~/.cursor/agents/` under Cursor — see onboard Phase C Step 3 "Publish to user-level agents directory"), so it is directly resolvable as a `subagent_type`.
 
 **Tool**: `Agent`

@@ -129,6 +129,7 @@ exist for.
 | A greenfield project scaffolded from an idea | `/scaffold` |
 | Your project onboarded | `/discover` |
 | A feature shipped end-to-end across repos | `/deliver "<description>"` |
+| Requirements + HTML mock screens authored before delivery | `/mock-requirements "<description>"` |
 | A small, well-specified mechanical change | `/patch` |
 | A branch or PR reviewed in one repo | `/review` |
 | A feature branch verified across repos | `/assess` |

@@ -16,6 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.18.0] - 2026-10-23
+
+### Added
+- **`/mock-requirements` — a pre-delivery skill that produces a feature's requirements and mock
+  screens together.** Runs a capped 2-round product-owner ↔ ux-consultant collaboration: the
+  product-owner produces the complete FR/EC (plus the `REQUIREMENTS_INDEX` block) at full scope,
+  and the ux-consultant produces a static HTML render per screen plus a structured
+  `IMPLEMENTATION_SPEC`. Draft → user gate → persist, modeled on `/design-tests`. The approved
+  artifact is written to `{workspace}/mocks/{feature-slug}/` with a `MOCKS_INDEX.md`. Zero new
+  dependencies. Design: ADR-002.
+- **`/deliver --from-mock[=<slug>]`** — reuse a `/mock-requirements` artifact. When passed with a
+  valid artifact, `/deliver` **skips Phase 1** (seeding `phase-1-requirements.md` from the
+  artifact's requirements — downstream `split-design.js` and consumers are unchanged) and
+  **reuses the UX `IMPLEMENTATION_SPEC` in Phase 5b** instead of re-consulting the ux-consultant.
+  No value lists available slugs and prompts; a missing slug dir stops with the checked path.
+  There is **no silent auto-detection** — the reuse happens only when the flag is passed, and both
+  hooks **fail safe** (an invalid/stale artifact, or screens named in the spec that lack HTML
+  files, fall back to a normal run with a warning). New pre-flight Step 1.8 mirrors the
+  `--from-deferred` Step 1.7.
+- **`scripts/mock-artifact.js`** (+ tests) — zero-dependency `--list` / `--validate=<slug>` helper
+  enforcing the artifact-validity rule used by the Phase-1 skip gate.
+
 ## [1.17.1] - 2026-10-14
 
 ### Changed

@@ -109,13 +109,17 @@ Release ritual (semver — feature → minor, fix → patch):
    `plugin.json` versions must match across ecosystems, or Cursor users drift behind Claude Code
    ones; `eval/tests/07-cursor-manifest.js` fails the build if they diverge.
 2. **Update `CHANGELOG.md`** with the new version's Added/Fixed notes.
-3. **Tag and publish a GitHub Release:**
+   > **Implementer note:** do NOT bump the `version` or touch `CHANGELOG.md` during a `/deliver` run.
+   > The bump + CHANGELOG are a dedicated release-prep commit, made only when the user says "release".
+3. **Squash-merge the feature PR, then publish a GitHub Release in one step:**
    ```bash
-   git tag -a vX.Y.Z -m "PipeCrew vX.Y.Z" && git push origin vX.Y.Z
-   gh release create vX.Y.Z --title "vX.Y.Z" --notes "…"   # reuse the CHANGELOG entry
+   gh pr merge <n> --repo pipecrew-ai/pipecrew --squash --delete-branch
+   gh release create vX.Y.Z --repo pipecrew-ai/pipecrew --target main --title "vX.Y.Z" --notes "…"
    ```
+   `gh release create --target main` creates the git tag at `main`'s HEAD **and** the GitHub Release
+   in one step — no separate `git tag` / `git push` is needed. Prior tags v1.13.0…v1.18.0 all follow this.
 
-Tag `main` at the release commit, after the work is merged. Once the Release is published,
+Once the Release is published,
 `releases/latest` returns the new tag, which drives:
 
 - the once-a-day, fail-silent **update-notify hook** (`scripts/update-check-hook.js`, wired as a

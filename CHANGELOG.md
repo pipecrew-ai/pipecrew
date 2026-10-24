@@ -16,6 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.18.2] - 2026-10-24
+
+### Changed
+- **`/deliver --from-mock` now treats the approved mocks as authoritative UX.** Phase 2 (the
+  solution-architect) previously had no `--from-mock` awareness — it never saw the approved screens.
+  It now reads the approved `requirements.md` + `implementation-spec.md` + `screens/` and must design
+  the technical solution to **realize** that approved UX: screens, components, and the screen-to-screen
+  flow are fixed (no re-deciding page-vs-modal, no dropping/adding/reordering screens). The architect
+  still owns all the HOW the mocks don't specify (backend, contracts, data model, routing/state
+  plumbing). If an approved screen is genuinely infeasible, the architect raises a `### Mock conflict`
+  under `ARCHITECTURE_DECISION` instead of silently changing it, and the Phase 2 gate surfaces it for
+  the human to accept or send back to `/mock-requirements` — the stakeholder-approved UX is never
+  overridden without explicit sign-off.
+- **`/mock-requirements` documents that its output is binding.** The Notes now state the approved
+  mocks are the real, authoritative UX that `/deliver --from-mock` honors — reinforcing why the mock
+  must match the platform design system and simulate the real flow (added in 1.18.1): downstream, it
+  is a constraint, not a suggestion.
+
 ## [1.18.1] - 2026-10-23
 
 ### Fixed

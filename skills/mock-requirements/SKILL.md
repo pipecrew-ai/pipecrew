@@ -469,6 +469,14 @@ No mock artifacts yet — run `/mock-requirements <feature>` to create one.
   `implementation-spec.md` with IMPLEMENTATION_SPEC delimiters, `MOCKS_INDEX.md`) is the exact
   layout `/deliver` validates with `scripts/mock-artifact.js`. Contract changes here must be
   mirrored there.
+- **The approved mocks ARE the authoritative UX.** These screens and the flow between them are the
+  real UX, approved by a human (often a stakeholder) — not a throwaway sketch. When `/deliver
+  --from-mock` runs, the solution-architect (Phase 2) must **design the technical solution to realize
+  this approved UX**, treating the screens / components / flow as fixed; it owns the HOW (backend,
+  contracts, data model, routing/state plumbing) but does NOT re-decide the UX. If the architect
+  finds an approved screen genuinely infeasible, it raises a `### Mock conflict` that the Phase 2
+  gate surfaces for the human — the approved UX is never silently overridden. This is why the UX here
+  must match the platform design system and simulate the real flow: downstream, it is binding.
 - **Structural parallel to `/design-tests`**: this skill is modeled on `/design-tests` — same
   draft → gate → persist flow, same read-isolation invariant, same `{ws}/mocks/` privacy contract.
   The key differences: two agents (PO + UX) vs one (`test-designer`); per-feature subdirectory

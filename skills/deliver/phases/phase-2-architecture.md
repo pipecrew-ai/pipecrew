@@ -37,6 +37,27 @@ FRONTEND REPOS (read CLAUDE.md for conventions):
 {for each repo with role "frontend":}
   - {repo.key}: {repo.path}
 
+{if scratchpad Run Info `from_mock_valid: true`:}
+APPROVED MOCKS — AUTHORITATIVE UX (read these; they are a binding constraint, not a suggestion):
+  - Requirements:          {from_mock_source}/requirements.md
+  - UX IMPLEMENTATION_SPEC: {from_mock_source}/implementation-spec.md
+  - Approved screens:       {from_mock_source}/screens/   (open the entry screen and walk the flow)
+  This feature was delivered with `--from-mock`: a human (often a stakeholder) already approved
+  these screens and the flow between them as the REAL UX. You MUST design the technical solution
+  to REALIZE this approved UX — not to re-decide it. Specifically:
+  - Treat the approved screens, their components, and the screen-to-screen flow as FIXED. Do NOT
+    redesign a screen, change page-vs-modal, drop/add/reorder screens, or substitute components.
+    Your `FRONTEND_ARCHITECTURE` must map the approved screens to routes/components/state and the
+    `IMPLEMENTATION_SPEC` is reused verbatim downstream (Phase 5b) — align to it, do not supersede it.
+  - You still own ALL the HOW the mocks do not: backend, API contracts, data model, cross-repo
+    integration, and the technical plumbing (routing/state wiring) that makes the approved UX work.
+  - If — and only if — an approved screen is genuinely INFEASIBLE as drawn (it needs data the system
+    cannot provide, or it contradicts a hard platform constraint), do NOT silently change it: add a
+    `### Mock conflict` subsection under `ARCHITECTURE_DECISION` naming the screen, the exact
+    conflict, and the minimal change you propose. The orchestrator surfaces this at the Phase 2 gate
+    for the human to accept or send back to `/mock-requirements` — the approved UX is never
+    overridden without that explicit sign-off.
+
 {if any repo has role "infrastructure":}
 INFRA REPOS:
 {for each repo with role "infrastructure":}
@@ -69,6 +90,8 @@ node {plugin_dir}/scripts/gate.js open --run-dir={run_dir} --phase=2 --gate=appr
 # … present the design, wait for the user's decision …
 node {plugin_dir}/scripts/gate.js close --run-dir={run_dir}
 ```
+
+**If this run used `--from-mock`** (`from_mock_valid: true`): before presenting, extract any mock-conflict the architect raised (`node {plugin_dir}/scripts/extract-block.js {run_dir}/outputs/phase-2-architecture.md ARCHITECTURE_DECISION` and look for the `### Mock conflict` subsection). If present, surface it at the TOP of the gate presentation as a **⚠ Mock conflict** — name the approved screen, the conflict, and the architect's proposed minimal change — and make the gate question explicit that approving accepts a change to the stakeholder-approved UX (the alternative is to reject and re-run `/mock-requirements` to re-approve the screen). If no `### Mock conflict` subsection exists, state in one line that the design honors the approved mocks as-is.
 
 **ADR gate** (after user approves): ask once:
 

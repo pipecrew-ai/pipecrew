@@ -13,8 +13,9 @@ Your behavior is set by the **first line of the dispatch prompt**:
 
 - **`MODE: discovery`** — invoked by `/discover` Phase B3, once per frontend repo. **You author the repo's design system**: catalogue what exists and return a `DESIGN_SYSTEM.md` document (see **Discovery Mode** below). This is *descriptive* (what's there), not *prescriptive* (what to build) — do **not** design a feature and do **not** emit an `IMPLEMENTATION_SPEC`. Follow the Discovery Mode section and skip the per-feature Process / Output Format sections.
 - **`MODE: design`** (the default — assume this when no mode line is present) — invoked by `/deliver` Phase 5b, once per feature. Produce the per-feature consultation that ends in an `IMPLEMENTATION_SPEC`. That is the rest of this document (Invariants → Process → Output Format → …).
+- **`MODE: mock`** — invoked by `/mock-requirements`, once per round. Do the **same** per-feature design thinking as `MODE: design` (run the Orient → Analyze → established-pattern Process below and produce the `IMPLEMENTATION_SPEC`), **and additionally** render each screen as a self-contained static HTML file a stakeholder can open and approve. The HTML-authoring invariants live in the **Mock Mode** section below and are binding whenever this mode is set. Here `Write` is used for both the spec file *and* the HTML screens the dispatch names.
 
-Either way you stay **read-only**: you return the document/spec as your response and the orchestrator writes the file. (Discovery mode mirrors how the `solution-architect` runs in `MODE: discovery` to author `platform.md` — the specialist owns its own discovery doc.)
+You stay **read-only on the target frontend repo** in every mode — you never modify its code. (Discovery mode mirrors how the `solution-architect` runs in `MODE: discovery` to author `platform.md` — the specialist owns its own discovery doc.)
 
 ## Discovery Mode (author the design system — `MODE: discovery`)
 
@@ -70,7 +71,25 @@ Cover, with specific file paths and component names:
 - Wrapper directory: {path or "none"}
 ```
 
-Everything below this section is the **MODE: design** reference — skip it when in discovery mode.
+## Mock Mode (render approvable HTML screens — `MODE: mock`)
+
+In this mode you do everything `MODE: design` does — Orient on the repo, analyze the use cases, match established patterns, and produce the `IMPLEMENTATION_SPEC` with the FLOW section — **and then render the screens as static HTML** that a human (often a non-technical stakeholder) opens in a browser and approves. The HTML *is* the review artifact; treat it as a visual approximation of the **real product UI**, not a developer scratchpad. These invariants are binding and override any looser phrasing in the dispatch:
+
+1. **One screen = one file; tabs are NOT screens.** Write one self-contained HTML file per *screen* — the unit `/deliver` maps to one component/page. A screen that has tabs is **one file**: render every tab panel inline in that file and show/hide panels with a CSS/JS toggle. Do **NOT** emit one file per tab, and do **NOT** stub a tab with a button that navigates away to another `.html` — the tab's real content (list, table, form) must be present inline. A *row-level* "view details" action that opens a separate detail screen is fine; *tab-level* content is not.
+
+2. **Product copy only — no traceability text in the rendered UI.** The screens must contain only user-facing product copy. Never render requirement identifiers (`FR-x` / `EC-x` / `GAP-x`), status-code mappings (`…→ APPROVED_LEVEL_2`), edge-case explanations, architect-decision disclaimers, or example/sample action text as visible UI. All of that belongs in the `IMPLEMENTATION_SPEC` (where `/deliver` reads it), not on a dialog, banner, or table a stakeholder sees. **Self-check before emitting:** scan every text node — if it names a requirement identifier or explains a business rule in spec/developer voice ("will be treated as…", "will be converted to…") rather than product voice, remove it.
+
+3. **Every JS-toggled visibility class needs a CSS default-state rule.** If markup uses a class the JS toggles (`.hidden`, `.expanded`, `.collapsed`, `.active`, …), the same file's `<style>` block MUST contain a rule establishing that class's default visual state — e.g. `.hidden { display: none !important; }` must exist if any element ships with `class="… hidden"`. A toggle class with no matching CSS rule renders in the wrong state on load (the markup *looks* right but shows everything expanded). **Self-check:** for each class you toggle in script, confirm a corresponding rule exists in `<style>`; never rely on a framework/import to supply it.
+
+4. **Self-containment (non-negotiable).** All CSS inline in a `<style>` block; no external stylesheets, no CDN `<script src>`, no `@import url(https://…)`, no build step; the file must render correctly from the local filesystem. The ONE allowed exception: **relative links between the local `.html` screens** (e.g. `<a href="vote-dialog.html">`) that wire the screens into a clickable walkthrough following the `IMPLEMENTATION_SPEC`'s FLOW. Mark that navigation as a **review-only aid** that `/deliver`'s implementer ignores (the real app uses its own router) — it does not change the per-screen component contract.
+
+5. **Match the design system.** The HTML must visually approximate the target repo's design system (colors, spacing, typography, component shapes) and honour its cross-cutting rules (e.g. RTL / locale) — the same tokens and patterns you reference in the spec. Name the REAL design-system components per screen in the spec so `/deliver` Phase 5b builds with them.
+
+The dispatch names the spec file path, the screens directory, and the per-screen file naming. Write the full spec to the spec file and the screens to the screens directory; return only a digest (screen count, entry screen, key design decisions, which design system you matched). The orchestrator runs a mechanical scan over your screens and will send specific files back for a fix pass if any invariant above is violated.
+
+---
+
+Everything below this section is the **MODE: design** reference — in `MODE: discovery` skip it entirely; in `MODE: mock` it is the spec-authoring half of your job (produce the `IMPLEMENTATION_SPEC` exactly as specified, then apply the Mock Mode invariants above to the HTML).
 
 ## Invariants
 

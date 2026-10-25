@@ -43,6 +43,11 @@ description: "Author a feature's requirements + static HTML mock screens in a ca
    requirements would propagate downstream unseen.
 5. **Reject means no files written.** If the Developer rejects the draft at the gate without
    requesting an adjustment, zero bytes are written or overwritten under `{ws}/mocks/`.
+6. **Screens are the real product UI, not a scratchpad.** The HTML a stakeholder approves must
+   look and behave like the shipped product: one screen = one file (tab panels inline, never one
+   file per tab), product copy only (no `FR-/EC-/GAP-`, status-mapping, or developer-voice text in
+   the UI), and visibility toggles that actually work on load. These are binding invariants of the
+   ux-consultant's `MODE: mock` and are backstopped by the Step-4a scan.
 
 ---
 
@@ -199,13 +204,19 @@ to use clean, neutral styling (and say so in the spec).
 Fallback: if `pipecrew:ux-consultant` is not in the harness agent registry (plugin-namespaced
 agents can drop out mid-session), fall back to `general-purpose` with the preamble `"Read and
 behave as the agent defined at {plugin_dir}/agents/ux-consultant.md, then:"`. **Apply this same
-fallback to every ux-consultant dispatch below** (Round 2, adjust pass, EC-7 fix).
+fallback to every ux-consultant dispatch below** (Round 2, adjust pass, Step-4a scan-fix pass).
 
-Prompt:
+Prompt (the `MODE: mock` first line triggers the agent's **Mock Mode** — spec + self-contained
+approvable HTML screens; its binding HTML-authoring invariants live in `agents/ux-consultant.md`):
 
 ```
+MODE: mock
+
 Produce a structured IMPLEMENTATION_SPEC and a set of self-contained static HTML screens that
-together simulate the feature's flow, based on the requirements below.
+together simulate the feature's flow, based on the requirements below. Follow every Mock Mode
+invariant in your system prompt (one screen = one file with tab panels inline, product copy only
+— no FR/EC/GAP or status-mapping text in the UI, a CSS default-state rule for every JS-toggled
+class, self-containment, design-system match).
 
 REQUIREMENTS:
 {content of {draft_dir}/requirements-round1.md}
@@ -213,38 +224,18 @@ REQUIREMENTS:
 TARGET FRONTEND REPO: {frontend_repo_path}   (or "none — use neutral styling")
 DESIGN SYSTEM: read this repo's DESIGN_SYSTEM.md (resolve via config.repos[*].design_system_path,
 else probe agent-context*/common/DESIGN_SYSTEM.md, docs/DESIGN_SYSTEM.md, DESIGN_SYSTEM.md) and
-study 1–2 existing feature screens for established layout/component patterns. The mock must
-VISUALLY APPROXIMATE this design system — colors, spacing, typography, component shapes, and any
-cross-cutting rules (e.g. RTL / locale) the platform uses. Name the REAL design-system components
-(the actual table / card / button / dialog components) per screen in the IMPLEMENTATION_SPEC so
-/deliver Phase 5b builds with them.
+study 1–2 existing feature screens for established layout/component patterns. Name the REAL
+design-system components (the actual table / card / button / dialog components) per screen in the
+IMPLEMENTATION_SPEC so /deliver Phase 5b builds with them.
 
 IMPLEMENTATION_SPEC FILE: {draft_dir}/implementation-spec-round1.md
-SCREENS DIR: {draft_dir}/screens/
+SCREENS DIR: {draft_dir}/screens/   (write ONE file per screen as {screen-name}.html)
 
 Output format for the spec file:
 <!-- BEGIN IMPLEMENTATION_SPEC -->
 {structured spec — screens list with the REAL component names per screen, per-screen states, and
 an explicit FLOW section: the entry screen and the ordered screen-to-screen transitions}
 <!-- END IMPLEMENTATION_SPEC -->
-
-Write ONE self-contained HTML file per screen to {draft_dir}/screens/{screen-name}.html. Each file
-is the canonical unit /deliver maps to one component/page — keep them SEPARATE (do NOT merge the
-flow into a single file).
-
-SELF-CONTAINMENT RULE (non-negotiable):
-- ALL CSS must be in an inline <style> block — no external stylesheets
-- No CDN script tags (no <script src="https://...">)
-- No external font imports (@import url(https://...))
-- No framework build steps
-- The HTML must render correctly from the local filesystem.
-
-FLOW SIMULATION (review aid): wire the separate screens into a clickable walkthrough using
-RELATIVE links between the local files (e.g. <a href="vote-dialog.html">) and/or buttons that
-navigate to the next local .html, following the flow in the requirements. Local relative .html
-links ARE allowed — they are the ONE exception to "no external resources". Name the entry screen.
-Mark this navigation clearly as a REVIEW-ONLY aid that /deliver's implementer ignores (the real
-app uses its own router); it does not change the per-screen component contract.
 
 Write the full spec to the IMPLEMENTATION_SPEC FILE. Return only a digest: screen count, the entry
 screen, key design decisions, and which design system you matched.
@@ -281,8 +272,12 @@ Re-run the split on `requirements-round2.md` and confirm the index still materia
 dispatch.
 
 ```
+MODE: mock
+
 You are finalizing mock screens drafted for this feature. Incorporate the product-owner's round-2
-coverage review.
+coverage review. Every Mock Mode invariant in your system prompt still applies (one screen = one
+file with tab panels inline, product copy only — no FR/EC/GAP/status-mapping text in the UI, a CSS
+default-state rule for every JS-toggled class, self-containment, design-system match).
 
 PO COVERAGE REVIEW: {PO's round-2 response summary}
 ROUND-1 SPEC:    {draft_dir}/implementation-spec-round1.md    (read this file)
@@ -301,26 +296,50 @@ in the draft (Step 4). Do NOT dispatch a third round.
 
 ---
 
-### Step 4: EC-7 self-containment check + draft presentation + gate
+### Step 4: pre-gate screen scan + draft presentation + gate
 
-#### 4a: EC-7 self-containment check (BEFORE the gate)
+#### 4a: pre-gate screen scan (BEFORE the gate)
 
-For each `*.html` file in `{draft_dir}/screens/`, scan for external resource patterns:
+Run three mechanical scans over each `*.html` file in `{draft_dir}/screens/`. Scans **B** and **C**
+look only at rendered markup — ignore matches inside `<!-- -->` comments and `<script>` bodies.
+
+**Scan A — self-containment (EC-7).** External-resource patterns:
 - `src="http` or `src="//`
 - `href="http` or `href="//`
 - `<link rel=` pointing outside the file
 - `@import url(http`
 
-If any match is found: flag the specific file and pattern in the draft with a
-`[SELF-CONTAINMENT VIOLATION]` marker, then dispatch a **fresh** ux-consultant (same subagent_type
-+ fallback) with the violation list and `"Inline these external resources (CSS into <style>, small
-SVG/icon inline) in the named files under {draft_dir}/screens/ — read the files and fix them in
-place. Relative links between local .html screens are allowed and must NOT be removed."` Re-check
-after it responds. If the violation persists after one fix attempt, surface it in the draft as an
-unresolved warning — do not loop. (Note: relative `.html` links between screens are the review-only
-flow aid — they are NOT violations; the scan above only flags `http`/`//` and external `<link>`.)
+(Relative `.html` links between screens are the review-only flow aid — NOT violations; this scan
+only flags `http`/`//` and external `<link>`.)
 
-The gate MUST NOT open on an HTML file with unresolved external resource references.
+**Scan B — product copy only (no traceability text in the UI).** In visible text nodes, flag any:
+- requirement identifiers: `FR-\d`, `EC-\d`, `GAP-\d`
+- status-code mapping artifacts: `_LEVEL_`, or `→`/`->` between ALL-CAPS status tokens
+- developer-voice phrases: `will be treated as`, `will be converted to`, `additive-only`,
+  `deduplication`/`dedup`, or a sample/"example" action line baked into a panel
+
+Any hit in rendered text is a defect — that text belongs in the IMPLEMENTATION_SPEC, not on screen.
+
+**Scan C — JS-toggled class has a CSS default-state rule.** For every class the file toggles in
+script or ships in markup as a visibility utility (`hidden`, `expanded`, `collapsed`, `active`,
+`open`, `show`), confirm the file's `<style>` block has a rule establishing that class's default
+state (e.g. `.hidden` is used ⇒ a `.hidden { display: none … }` rule must exist). A used-but-unstyled
+toggle class is the defect (it renders in the wrong state on load).
+
+**If any scan matches:** flag the specific file + pattern in the draft (`[SELF-CONTAINMENT
+VIOLATION]` for A, `[PRODUCT-COPY VIOLATION]` for B, `[TOGGLE-STATE VIOLATION]` for C), then dispatch
+ONE **fresh** ux-consultant (same subagent_type + fallback) in `MODE: mock` with the combined
+violation list and: `"Fix the named files under {draft_dir}/screens/ in place — read each file
+first. A: inline external resources (CSS into <style>, small SVG/icon inline); keep relative .html
+links between screens. B: remove the flagged traceability/developer-voice text, replacing it with
+user-facing product copy (move the detail to the IMPLEMENTATION_SPEC if it isn't already there).
+C: add the missing CSS default-state rule for each flagged toggle class."` Re-run the scans after it
+responds. If a violation persists after one fix attempt, surface it in the draft as an unresolved
+warning — do not loop.
+
+The gate MUST NOT open on an HTML file with an unresolved **Scan A** (self-containment) violation.
+Unresolved Scan B / Scan C violations do not hard-block the gate (the scans are heuristic) but MUST
+be surfaced prominently in the draft so the Developer can `adjust` or `reject`.
 
 #### 4b: Draft render
 
@@ -382,13 +401,14 @@ No artifact persisted. The draft is available at {draft_dir} for reference.
 #### 4f: Adjust branch (FR-5 — one pass only)
 
 Collect the Developer's pushback verbatim. Dispatch a **fresh** product-owner and/or ux-consultant
-(same subagent_type + fallback chains) with the adjustment text, pointing each at the current
-round-2 artifacts to revise in place (`requirements-round2.md` / `implementation-spec-round2.md` /
-`screens/`) — never rely on `SendMessage`. One pass only: the gate re-presents after this; if the
-Developer rejects again, the EC-5 branch applies (abort cleanly, no files written).
+(same subagent_type + fallback chains; dispatch the ux-consultant in `MODE: mock` so its HTML
+invariants still bind) with the adjustment text, pointing each at the current round-2 artifacts to
+revise in place (`requirements-round2.md` / `implementation-spec-round2.md` / `screens/`) — never
+rely on `SendMessage`. One pass only: the gate re-presents after this; if the Developer rejects
+again, the EC-5 branch applies (abort cleanly, no files written).
 
 After the adjustment pass:
-- Re-run the EC-7 self-containment check on the updated screens
+- Re-run the pre-gate screen scan (Step 4a — all three scans)
 - Re-render the draft (Step 4b)
 - Re-open the gate (Step 4c) — showing only `approve` and `reject` (no second adjust)
 

@@ -16,6 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.18.3] - 2026-10-25
+
+### Fixed
+- **`/mock-requirements` screens now render like the real product, not a spec scratchpad.** Three
+  authoring defects seen on a real multi-surface run are fixed by giving the ux-consultant a new
+  `MODE: mock` whose HTML-authoring rules are binding invariants (in `agents/ux-consultant.md`),
+  plus a mechanical pre-gate scan that backstops them:
+  - **No traceability text in the UI.** Requirement identifiers (`FR-/EC-/GAP-`), status-code
+    mappings (`→ APPROVED_LEVEL_2`), edge-case explanations, and developer-voice copy no longer
+    leak onto dialogs, banners, and tables a stakeholder sees — that detail stays in the
+    `IMPLEMENTATION_SPEC`. Step-4a Scan B flags any hit in rendered text.
+  - **Tabbed screens are one file, not one file per tab.** The "one self-contained HTML file per
+    screen" rule was being read as one file per tab, with the parent tab hollowed out to a button
+    that navigated away. A screen with tabs is now ONE file with all tab panels rendered inline and
+    toggled by CSS/JS; only row-level "view details" may open a separate screen.
+  - **JS-toggled visibility classes ship with a CSS default-state rule.** A class like `hidden`
+    toggled in script must have a matching `.hidden { display: none … }` rule in the same `<style>`
+    block, so drill-down rows start collapsed instead of rendering expanded on load. Step-4a Scan C
+    flags a used-but-unstyled toggle class.
+- **ux-consultant HTML-mock authoring is now a first-class mode.** `/mock-requirements` previously
+  bolted "write HTML" onto the shared ux-consultant purely through the dispatch prompt; the agent's
+  own system prompt had no HTML-authoring rules. The new `MODE: mock` makes those rules permanent
+  agent invariants (shared by the native dispatch and the `general-purpose` fallback), and the skill
+  dispatch is slimmed to set the mode. No new agent, no extra dispatch per round.
+
 ## [1.18.2] - 2026-10-24
 
 ### Changed

@@ -48,6 +48,14 @@ description: "Author a feature's requirements + static HTML mock screens in a ca
    file per tab), product copy only (no `FR-/EC-/GAP-`, status-mapping, or developer-voice text in
    the UI), and visibility toggles that actually work on load. These are binding invariants of the
    ux-consultant's `MODE: mock` and are backstopped by the Step-4a scan.
+7. **The three artifacts are one coherent set.** `requirements.md`, `implementation-spec.md`, and
+   `screens/` describe the same feature and MUST agree: every screen in `screens/` is named in the
+   spec's `IMPLEMENTATION_SPEC` (and FLOW) section, and the requirements cover exactly the screens
+   that exist. Any change to one — at the adjust pass (4f) or a later re-run — requires bringing the
+   other two into agreement **before persist**. There is no partial/incremental edit of a persisted
+   artifact (see rule 3): to change a finished mock, re-run the skill, which regenerates all three
+   together. The post-persist validator enforces the structural half of this (spec present with
+   delimiters, screens non-empty) and warns on spec↔screens drift.
 
 ---
 
@@ -407,6 +415,18 @@ revise in place (`requirements-round2.md` / `implementation-spec-round2.md` / `s
 rely on `SendMessage`. One pass only: the gate re-presents after this; if the Developer rejects
 again, the EC-5 branch applies (abort cleanly, no files written).
 
+**Keep the three artifacts coherent (see CRITICAL RULE 7).** The adjustment almost always changes
+more than one artifact, and you MUST close the loop so `requirements-round2.md` /
+`implementation-spec-round2.md` / `screens/` still agree before re-gating:
+- If the change touches the **screens or the spec** (a new / removed / reworked screen, a changed
+  state or flow), re-dispatch the **product-owner** to re-validate FR/EC coverage against the
+  revised screens and update `requirements-round2.md` + its `REQUIREMENTS_INDEX` to match — do NOT
+  leave requirements describing a screen that no longer exists, or omitting one that was added.
+- If the change touches the **requirements** (a new / changed FR or EC), re-dispatch the
+  **ux-consultant** (`MODE: mock`) to reflect it in the spec + screens.
+- Either way the `IMPLEMENTATION_SPEC` FLOW section and the set of files in `screens/` must still
+  name the same screens — the Step-4a re-scan and the post-persist validator both check this.
+
 After the adjustment pass:
 - Re-run the pre-gate screen scan (Step 4a — all three scans)
 - Re-render the draft (Step 4b)
@@ -452,7 +472,10 @@ node {plugin_dir}/scripts/mock-artifact.js --validate={feature-slug} --mocks-dir
 If the validator exits non-zero, warn the Developer — the artifact is physically present but
 invalid per FR-8. Describe the specific defect from the validator's JSON output. This should
 not happen if the above steps completed correctly, but the check makes the writer/reader
-contract testable in-skill.
+contract testable in-skill. If the validator exits zero but its JSON `warnings[]` is non-empty
+(spec↔screens drift — e.g. a screen not named in the spec, or the spec referencing a screen file
+that isn't there), surface those lines too: the artifact is reusable but the spec and screens may
+have fallen out of sync during an adjustment — a re-run is the clean fix.
 
 Print:
 ```
@@ -486,8 +509,12 @@ No mock artifacts yet — run `/mock-requirements <feature>` to create one.
 
 - **Relationship to `/deliver --from-mock`**: this skill is the writer; `/deliver --from-mock`
   is the reader. The artifact layout this skill persists (`requirements.md` with REQUIREMENTS_INDEX,
-  `implementation-spec.md` with IMPLEMENTATION_SPEC delimiters, `MOCKS_INDEX.md`) is the exact
-  layout `/deliver` validates with `scripts/mock-artifact.js`. Contract changes here must be
+  `implementation-spec.md` with IMPLEMENTATION_SPEC delimiters, a non-empty `screens/`, and
+  `MOCKS_INDEX.md`) is the exact layout `/deliver` validates with `scripts/mock-artifact.js`. That
+  validator is the single source of truth for FR-8 validity: it hard-fails a missing/undelimited
+  spec or an empty `screens/` (so a drifted artifact can't silently reach the reader) and warns on
+  spec↔screens mismatch. A validation failure makes `/deliver --from-mock` fall back to running
+  Phase 1 / Phase 5b normally rather than consuming a broken artifact. Contract changes here must be
   mirrored there.
 - **The approved mocks ARE the authoritative UX.** These screens and the flow between them are the
   real UX, approved by a human (often a stakeholder) — not a throwaway sketch. When `/deliver

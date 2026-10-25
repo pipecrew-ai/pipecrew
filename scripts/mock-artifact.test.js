@@ -92,6 +92,32 @@ function makeArtifact(baseDir, slug, opts = {}) {
     ].join('\n'));
   }
 
+  // implementation-spec.md (names the default screen so there is no drift)
+  if (opts.noSpec) {
+    // don't create it
+  } else if (opts.noSpecDelims) {
+    fs.writeFileSync(path.join(dir, 'implementation-spec.md'),
+      '# Spec\n\nJust prose, no IMPLEMENTATION_SPEC delimiters.\n');
+  } else {
+    fs.writeFileSync(path.join(dir, 'implementation-spec.md'), [
+      '# Spec',
+      '',
+      '<!-- BEGIN IMPLEMENTATION_SPEC -->',
+      '### Implementation Specification',
+      'Screens: main-screen. FLOW: entry = main-screen.',
+      '<!-- END IMPLEMENTATION_SPEC -->',
+    ].join('\n'));
+  }
+
+  // screens/ — one html by default; opts.noScreens leaves it empty;
+  // opts.driftScreen adds a second screen the spec does not name
+  if (!opts.noScreens) {
+    fs.writeFileSync(path.join(dir, 'screens', 'main-screen.html'), '<!doctype html><title>Main</title>');
+  }
+  if (opts.driftScreen) {
+    fs.writeFileSync(path.join(dir, 'screens', 'orphan-screen.html'), '<!doctype html><title>Orphan</title>');
+  }
+
   return dir;
 }
 
@@ -200,6 +226,50 @@ test('--validate: malformed JSON in REQUIREMENTS_INDEX → exit 1, invalid', () 
   const result = JSON.parse(r.stdout.trim());
   assert(result.valid === false, 'expected valid: false');
   assert(result.defect && result.defect.includes('malformed'), `defect should mention malformed: ${result.defect}`);
+});
+
+test('--validate: implementation-spec.md absent → exit 1, invalid', () => {
+  makeArtifact(validateDir, 'no-spec', { noSpec: true });
+  const r = run('--validate=no-spec', `--mocks-dir=${validateDir}`);
+  assert(r.exitCode === 1, `expected exit 1, got ${r.exitCode}`);
+  const result = JSON.parse(r.stdout.trim());
+  assert(result.valid === false, 'expected valid: false');
+  assert(result.defect && result.defect.includes('implementation-spec.md'), `defect should mention implementation-spec.md: ${result.defect}`);
+});
+
+test('--validate: spec without IMPLEMENTATION_SPEC delimiters → exit 1, invalid', () => {
+  makeArtifact(validateDir, 'no-spec-delims', { noSpecDelims: true });
+  const r = run('--validate=no-spec-delims', `--mocks-dir=${validateDir}`);
+  assert(r.exitCode === 1, `expected exit 1, got ${r.exitCode}`);
+  const result = JSON.parse(r.stdout.trim());
+  assert(result.valid === false, 'expected valid: false');
+  assert(result.defect && result.defect.includes('IMPLEMENTATION_SPEC'), `defect should mention IMPLEMENTATION_SPEC: ${result.defect}`);
+});
+
+test('--validate: empty screens/ → exit 1, invalid', () => {
+  makeArtifact(validateDir, 'no-screens', { noScreens: true });
+  const r = run('--validate=no-screens', `--mocks-dir=${validateDir}`);
+  assert(r.exitCode === 1, `expected exit 1, got ${r.exitCode}`);
+  const result = JSON.parse(r.stdout.trim());
+  assert(result.valid === false, 'expected valid: false');
+  assert(result.defect && result.defect.includes('screens'), `defect should mention screens: ${result.defect}`);
+});
+
+test('--validate: spec<->screens drift → exit 0 valid, with a warning', () => {
+  makeArtifact(validateDir, 'drift', { driftScreen: true });
+  const r = run('--validate=drift', `--mocks-dir=${validateDir}`);
+  assert(r.exitCode === 0, `expected exit 0 (warnings do not fail), got ${r.exitCode}; stderr: ${r.stderr}`);
+  const result = JSON.parse(r.stdout.trim());
+  assert(result.valid === true, `expected valid: true, got ${JSON.stringify(result)}`);
+  assert(Array.isArray(result.warnings) && result.warnings.some(w => w.includes('orphan-screen.html')),
+    `expected a drift warning for orphan-screen.html, got ${JSON.stringify(result.warnings)}`);
+});
+
+test('--validate: well-formed artifact has empty warnings[]', () => {
+  const r = run('--validate=well-formed', `--mocks-dir=${validateDir}`);
+  assert(r.exitCode === 0, `expected exit 0, got ${r.exitCode}`);
+  const result = JSON.parse(r.stdout.trim());
+  assert(Array.isArray(result.warnings) && result.warnings.length === 0, `expected no warnings, got ${JSON.stringify(result.warnings)}`);
 });
 
 test('--validate: result JSON includes path field', () => {

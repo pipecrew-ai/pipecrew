@@ -18,6 +18,15 @@
  *   (b) {mocks_dir}/{slug}/requirements.md — must contain a
  *       <!-- BEGIN REQUIREMENTS_INDEX --> block whose fenced ```json body
  *       parses as valid JSON with a top-level requirements[] of length >= 1
+ *   (c) {mocks_dir}/{slug}/implementation-spec.md — must be present and contain
+ *       <!-- BEGIN IMPLEMENTATION_SPEC --> / <!-- END IMPLEMENTATION_SPEC --> delimiters
+ *       (the reader, /deliver --from-mock Phase 5b, extracts the spec by these markers)
+ *   (d) {mocks_dir}/{slug}/screens/ — must exist and contain at least one *.html file
+ *
+ * Soft drift warnings (reported in result.warnings[]; do NOT fail validity): an
+ * implementation-spec.md that references a `*.html` not present in screens/, or a
+ * screen file whose name never appears in implementation-spec.md — either direction
+ * signals the spec and the screens may have drifted out of sync after a mock change.
  *
  * Zero dependencies — pure Node stdlib.
  */
@@ -82,26 +91,27 @@ function resolveMocksDir() {
 // ---------------------------------------------------------------------------
 /**
  * Validate one artifact slug.
- * Returns { valid: bool, defect: string|null }
+ * Returns { valid: bool, defect: string|null, warnings: string[] }
  */
 function validateArtifact(mDir, slug) {
   const artifactDir = path.join(mDir, slug);
+  const warnings = [];
 
   // (a) MOCKS_INDEX.md must be present and non-empty
   const indexPath = path.join(artifactDir, 'MOCKS_INDEX.md');
   if (!fs.existsSync(indexPath)) {
-    return { valid: false, defect: 'MOCKS_INDEX.md is missing' };
+    return { valid: false, defect: 'MOCKS_INDEX.md is missing', warnings };
   }
   const indexStat = fs.statSync(indexPath);
   if (indexStat.size === 0) {
-    return { valid: false, defect: 'MOCKS_INDEX.md is empty' };
+    return { valid: false, defect: 'MOCKS_INDEX.md is empty', warnings };
   }
 
   // (b) requirements.md must contain a <!-- BEGIN REQUIREMENTS_INDEX --> block
   //     with a fenced ```json body that parses as valid JSON with requirements[].length >= 1
   const reqPath = path.join(artifactDir, 'requirements.md');
   if (!fs.existsSync(reqPath)) {
-    return { valid: false, defect: 'requirements.md is missing' };
+    return { valid: false, defect: 'requirements.md is missing', warnings };
   }
 
   const reqContent = fs.readFileSync(reqPath, 'utf8');
@@ -113,7 +123,7 @@ function validateArtifact(mDir, slug) {
   const endIdx   = reqContent.indexOf(endMarker);
 
   if (beginIdx === -1 || endIdx === -1 || endIdx < beginIdx) {
-    return { valid: false, defect: 'requirements.md missing <!-- BEGIN REQUIREMENTS_INDEX --> / <!-- END REQUIREMENTS_INDEX --> delimiters' };
+    return { valid: false, defect: 'requirements.md missing <!-- BEGIN REQUIREMENTS_INDEX --> / <!-- END REQUIREMENTS_INDEX --> delimiters', warnings };
   }
 
   const blockBody = reqContent.slice(beginIdx + beginMarker.length, endIdx);
@@ -122,7 +132,7 @@ function validateArtifact(mDir, slug) {
   const fenceStart = blockBody.indexOf('```json');
   const fenceEnd   = blockBody.lastIndexOf('```');
   if (fenceStart === -1 || fenceEnd <= fenceStart) {
-    return { valid: false, defect: 'REQUIREMENTS_INDEX block has no valid ```json fence' };
+    return { valid: false, defect: 'REQUIREMENTS_INDEX block has no valid ```json fence', warnings };
   }
 
   const jsonSrc = blockBody.slice(fenceStart + '```json'.length, fenceEnd).trim();
@@ -130,14 +140,52 @@ function validateArtifact(mDir, slug) {
   try {
     parsed = JSON.parse(jsonSrc);
   } catch (e) {
-    return { valid: false, defect: `REQUIREMENTS_INDEX JSON is malformed: ${e.message}` };
+    return { valid: false, defect: `REQUIREMENTS_INDEX JSON is malformed: ${e.message}`, warnings };
   }
 
   if (!Array.isArray(parsed.requirements) || parsed.requirements.length < 1) {
-    return { valid: false, defect: 'REQUIREMENTS_INDEX requirements[] is absent or empty' };
+    return { valid: false, defect: 'REQUIREMENTS_INDEX requirements[] is absent or empty', warnings };
   }
 
-  return { valid: true, defect: null };
+  // (c) implementation-spec.md must be present with IMPLEMENTATION_SPEC delimiters
+  const specPath = path.join(artifactDir, 'implementation-spec.md');
+  if (!fs.existsSync(specPath)) {
+    return { valid: false, defect: 'implementation-spec.md is missing', warnings };
+  }
+  const specContent = fs.readFileSync(specPath, 'utf8');
+  if (!specContent.includes('<!-- BEGIN IMPLEMENTATION_SPEC -->') ||
+      !specContent.includes('<!-- END IMPLEMENTATION_SPEC -->')) {
+    return { valid: false, defect: 'implementation-spec.md missing <!-- BEGIN IMPLEMENTATION_SPEC --> / <!-- END IMPLEMENTATION_SPEC --> delimiters', warnings };
+  }
+
+  // (d) screens/ must exist and contain at least one *.html file
+  const screensDir = path.join(artifactDir, 'screens');
+  const screenFiles = fs.existsSync(screensDir)
+    ? fs.readdirSync(screensDir).filter(f => f.toLowerCase().endsWith('.html'))
+    : [];
+  if (screenFiles.length < 1) {
+    return { valid: false, defect: 'screens/ is missing or contains no .html files', warnings };
+  }
+
+  // (e) soft drift warnings — spec <-> screens agreement, both directions (heuristic)
+  const screenSet = new Set(screenFiles.map(f => f.toLowerCase()));
+  const specHtmlRefs = (specContent.match(/[\w./-]+\.html/gi) || [])
+    .map(s => s.split('/').pop().toLowerCase());
+  for (const ref of new Set(specHtmlRefs)) {
+    if (!screenSet.has(ref)) {
+      warnings.push(`implementation-spec.md references "${ref}" which is not a file in screens/`);
+    }
+  }
+  const specLower = specContent.toLowerCase();
+  for (const f of screenFiles) {
+    const base   = f.replace(/\.html$/i, '').toLowerCase();
+    const spaced = base.replace(/[-_]+/g, ' ');
+    if (!specLower.includes(base) && !specLower.includes(spaced)) {
+      warnings.push(`screen "${f}" is not referenced in implementation-spec.md (possible drift between spec and screens)`);
+    }
+  }
+
+  return { valid: true, defect: null, warnings };
 }
 
 // ---------------------------------------------------------------------------
@@ -164,13 +212,13 @@ if (validateSlug) {
 
   // Exit 2 when the directory is absent (typo'd slug — hard stop for EC-2)
   if (!fs.existsSync(artifactDir)) {
-    const result = { valid: false, defect: `artifact directory not found: ${artifactDir}`, exit_code: 2 };
+    const result = { valid: false, defect: `artifact directory not found: ${artifactDir}`, warnings: [], exit_code: 2 };
     console.log(JSON.stringify(result));
     process.exit(2);
   }
 
-  const { valid, defect } = validateArtifact(resolvedMocksDir, validateSlug);
-  const result = { valid, defect: defect || null, path: artifactDir };
+  const { valid, defect, warnings } = validateArtifact(resolvedMocksDir, validateSlug);
+  const result = { valid, defect: defect || null, warnings: warnings || [], path: artifactDir };
   console.log(JSON.stringify(result));
   process.exit(valid ? 0 : 1);
 }

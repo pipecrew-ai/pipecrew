@@ -16,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.18.4] - 2026-10-25
+
+### Fixed
+- **`/mock-requirements` keeps requirements, spec, and screens coherent when a mock changes.** An
+  adjustment at the gate (or a later re-run) could update the screens while leaving `requirements.md`
+  / `implementation-spec.md` stale, and nothing caught it — `/deliver --from-mock` would then consume
+  a mismatched artifact. The adjust pass now has an explicit consistency rule: a change touching the
+  screens/spec re-dispatches the product-owner to re-validate FR/EC coverage and update the
+  requirements (and vice versa), and a new CRITICAL RULE states the three artifacts are one coherent
+  set brought into agreement before persist. There is still no partial edit of a persisted artifact —
+  re-running regenerates all three together.
+- **The FR-8 artifact validator now catches drift instead of rubber-stamping it.**
+  `scripts/mock-artifact.js --validate` previously checked only `MOCKS_INDEX.md` + a parseable
+  `REQUIREMENTS_INDEX`; an artifact missing its `implementation-spec.md` or its screens still passed.
+  It now hard-fails a missing/undelimited `implementation-spec.md` and an empty `screens/`, and emits
+  `warnings[]` when the spec and the screen files have drifted apart (a screen not named in the spec,
+  or the spec referencing a screen file that isn't there). A validation failure makes
+  `/deliver --from-mock` fall back to running Phase 1 / 5b normally. New contract cases added to
+  `scripts/mock-artifact.test.js`.
+
 ## [1.18.3] - 2026-10-25
 
 ### Fixed

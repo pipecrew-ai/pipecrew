@@ -117,16 +117,20 @@ ESTABLISHED PATTERNS (load as a review checklist — Invariant 8):
 NEAREST-SIBLING DESIGN DIFF (from Phase 2 — verify HC-2):
 {paste the `### Nearest-sibling design diff` sub-section from the architect's ARCHITECTURE_DECISION block, or "none recorded" if the architect omitted it}
 
+RECIPE DETECTORS (workspace lint — Invariant 10; a missing or empty directory is a silent no-op):
+{workspace_root}/{slug}/context/recipes/   (run each applicable recipe's match pattern against the diff per your system prompt's recipe detector pass — load match metadata only, never a recipe's fix body)
+
 INSTRUCTIONS:
 1. Read {service_worktree_path}/CLAUDE.md and the agent-context docs it points to (conventions, error-handling, database, and for workers: event handling / idempotency), AND the workspace `platform.md § Established Patterns`. Build a checklist from the applicable established patterns + repo conventions (Invariant 8) — freshly-learned conventions are first-class rules — and confirm the diff complies with each in your pattern-adherence pass.
 2. Apply the contract compliance pass from your system prompt — the directive matching `spec_policy` above tells you exactly what to walk and what to flag. Then apply the two Hard checks from `reviewer-common.md`: **HC-1** (any schema-affecting ORM/`@Entity` change MUST have a matching migration in the diff — non-droppable, cite the existing changeset by file:line if you claim none is needed) and **HC-2** (a contract-shape divergence from the nearest sibling above with no recorded justification is a finding).
 3. Read the diff: it is pre-computed at {run_dir}/review/{repo}.diff (DIFF FILE). Read that file — it is the complete set of changes to review. You have no Bash and never run git yourself; use Read/Glob/Grep over the worktree for any surrounding context a hunk needs.
 4. Walk each FR/EC and identify its enforcement point; flag any that are not enforced as Critical.
 5. Run the craft, security, and test passes described in your system prompt.
-6. **Verify each bullet in the task file's `## Known Anti-Patterns` section was actively avoided.** Treat the section as a checklist: for each anti-pattern, either cite the file:line where the implementation handled it, or flag the bullet as a Critical or Non-critical finding depending on severity. If the section is missing, flag that itself as a process issue.
-7. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
-8. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
-9. Write the full report (Output Format from your system prompt) to the REPORT FILE above, then return only the digest: report path + overall verdict + 2–3 sentences + the FINDINGS_SUMMARY and FINDINGS blocks (byte-identical to the file). Every finding must have file:line and a citation.
+6. **Recipe detector pass** — per your system prompt's Invariant 10 / Step 5b: run each applicable recipe's match pattern (Grep, with its globs) over the files in the diff. New-line hits are findings citing `context/recipes/<name>.yml`; pre-existing-only hits become one `/patch --recipe=<name>` Suggestion per recipe.
+7. **Verify each bullet in the task file's `## Known Anti-Patterns` section was actively avoided.** Treat the section as a checklist: for each anti-pattern, either cite the file:line where the implementation handled it, or flag the bullet as a Critical or Non-critical finding depending on severity. If the section is missing, flag that itself as a process issue.
+8. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
+9. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
+10. Write the full report (Output Format from your system prompt) to the REPORT FILE above, then return only the digest: report path + overall verdict + 2–3 sentences + the FINDINGS_SUMMARY and FINDINGS blocks (byte-identical to the file). Every finding must have file:line and a citation.
 
 Do not fix anything. Your report is what the orchestrator will pass to an implementer for fix dispatch if needed.
 
@@ -137,6 +141,7 @@ CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgo
 - **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
 - **Hard checks are non-droppable.** HC-1 (modified ORM model / `@Entity` ⇒ matching migration in the diff) and HC-2 (unjustified contract-shape divergence from the nearest sibling) MUST NOT be downgraded to a false positive on a hunch. For HC-1 the only valid "no migration needed" outcome is citing the existing changeset by file:line; when uncertain, raise the Critical.
 - **Established patterns are a checklist, not background reading.** Confirm the diff complies with each applicable rule in `platform.md § Established Patterns` and the repo conventions — a convention the team taught the pipeline via `/learn` is as binding as any older one.
+- **Recipe detectors are part of the review.** Run the recipe detector pass (Invariant 10 / Step 5b) against the diff. New-line hits are findings citing `context/recipes/<name>.yml` (Critical when tagged security/secret/credential); pre-existing-only hits become one `/patch --recipe=<name>` Suggestion per recipe. Load only `match` metadata — NEVER a recipe's `fix` body. Absent/empty recipes dir ⇒ skip silently.
 - **Apply only your system-prompt passes.** Contract / craft / security / test / scope-drift are defined in your agent system prompt. Do not invent additional checks. Do not flag findings the prompt didn't authorize.
 - **Read-only on the code.** Your tool grant is `Read, Glob, Grep, Write`: no `Bash`, no `Edit`. `Write` is for the REPORT FILE only — never write inside the worktree, never apply a fix, never run git or a formatter/build. (The orchestrator re-checks the worktree is clean after you return and reverts any change.)
 
@@ -178,6 +183,9 @@ ESTABLISHED PATTERNS (load as a review checklist — Invariant 8):
 NEAREST-SIBLING DESIGN DIFF (from Phase 2 — verify HC-2):
 {paste the `### Nearest-sibling design diff` sub-section from the architect's ARCHITECTURE_DECISION block, or "none recorded" if the architect omitted it}
 
+RECIPE DETECTORS (workspace lint — Invariant 10; a missing or empty directory is a silent no-op):
+{workspace_root}/{slug}/context/recipes/   (run each applicable recipe's match pattern against the diff per your system prompt's recipe detector pass — load match metadata only, never a recipe's fix body)
+
 INSTRUCTIONS:
 1. Read {frontend_worktree_path}/CLAUDE.md and the design-system + conventions + feature docs it points to, AND the workspace `platform.md § Established Patterns`. Build a checklist from the applicable established patterns + repo conventions (Invariant 8) — freshly-learned conventions are first-class rules — and confirm the diff complies with each in your pattern-adherence pass. Apply **HC-2**: a contract-shape divergence from the nearest sibling above (e.g. the client round-tripping an id the backend resolves server-side for the analogous feature) with no recorded justification is a finding.
 2. Read the OpenAPI specs for every endpoint listed above — note the exact request/response field names, nullability, and enum values.
@@ -185,9 +193,10 @@ INSTRUCTIONS:
 4. Walk every new typed model field-by-field against its spec schema. Flag any drift as Critical.
 5. Walk each FR/EC and identify its implementation point; flag any that are missing as Critical.
 6. Run the framework-specific passes (typing, data fetching, routing, i18n/RTL, accessibility, tests) described in your system prompt.
-7. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
-8. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
-9. Write the full report (Output Format from your system prompt) to the REPORT FILE above, then return only the digest: report path + overall verdict + 2–3 sentences + the FINDINGS_SUMMARY and FINDINGS blocks (byte-identical to the file). Every finding must have file:line and a citation.
+7. **Recipe detector pass** — per your system prompt's Invariant 10 / Step 5b: run each applicable recipe's match pattern (Grep, with its globs) over the files in the diff. New-line hits are findings citing `context/recipes/<name>.yml`; pre-existing-only hits become one `/patch --recipe=<name>` Suggestion per recipe.
+8. **Scope-drift check** — per your system prompt's scope-drift step: emit `## Scope findings` and add `scope` rows to the FINDINGS block.
+9. **Classify every Critical finding** as `mechanical` or `architectural` — per your system prompt's classification step: add `**Classification**:` to each Critical prose entry and a 5th pipe field on every `critical` FINDINGS row.
+10. Write the full report (Output Format from your system prompt) to the REPORT FILE above, then return only the digest: report path + overall verdict + 2–3 sentences + the FINDINGS_SUMMARY and FINDINGS blocks (byte-identical to the file). Every finding must have file:line and a citation.
 
 Do not fix anything. Your report is what the orchestrator will pass to an implementer for fix dispatch if needed.
 
@@ -198,6 +207,7 @@ CRITICAL FOR THIS DISPATCH (do not skip — these are the rules most often forgo
 - **Self-consistency.** FINDINGS_SUMMARY counts must equal actual rows in FINDINGS: `critical_mechanical + critical_architectural == critical_total`; `non_critical_total` == non-critical rows; `scope_total` == scope rows.
 - **Spec field-name fidelity.** Frontend types must match the OpenAPI spec field names byte-for-byte. Renaming a spec field (e.g., `bookId` → `id`) is a Critical type-drift finding. Walk every typed model field-by-field.
 - **Established patterns are a checklist + HC-2 applies.** Confirm the diff complies with each applicable rule in `platform.md § Established Patterns` and the repo conventions (a `/learn`-taught convention is as binding as any older one), and flag an unjustified contract-shape divergence from the nearest sibling (HC-2).
+- **Recipe detectors are part of the review.** Run the recipe detector pass (Invariant 10 / Step 5b) against the diff. New-line hits are findings citing `context/recipes/<name>.yml` (Critical when tagged security/secret/credential); pre-existing-only hits become one `/patch --recipe=<name>` Suggestion per recipe. Load only `match` metadata — NEVER a recipe's `fix` body. Absent/empty recipes dir ⇒ skip silently.
 - **Apply only your system-prompt passes.** Typing / data-fetching / routing / i18n / RTL / accessibility / tests / scope-drift are defined in your agent system prompt. Do not invent additional checks.
 - **Read-only on the code.** Your tool grant is `Read, Glob, Grep, Write`: no `Bash`, no `Edit`. `Write` is for the REPORT FILE only — never write inside the worktree, never apply a fix, never run git or a formatter/build. (The orchestrator re-checks the worktree is clean after you return and reverts any change.)
 
@@ -323,6 +333,8 @@ Step 3 is invoked **per repo**, always for one repo at a time, from Step 2: imme
 
 1. **Build the fix list per repo.** Read every task file under `{run_dir}/tasks/` whose frontmatter has `phase: "5.5"`, `status: "todo"`, and `repo: <this repo>`. Collect them into an ordered list (criticals first, then scope, then non-criticals).
 
+   **Recipe-cited findings carry their fix directive.** For any finding whose Problem cites a recipe (`context/recipes/<name>.yml`), Read that recipe's `fix` field and append it verbatim to the fix-list entry (see the template below). This is the ONLY authorized use of a recipe's fix template outside `/patch` — it is safe here because the hit is on the feature's own new/changed lines (the reviewer routed pre-existing hits to `/patch` as Suggestions; they never become task files), and the recipe's `fix` is the team's already-decided design for this class.
+
 2. **Re-dispatch the original implementer.** Look up the implementer's `subagent_type` via the `TYPE_TO_AGENT` table in `dispatch-rules.md` (the same lookup Phase 5 used). Use this prompt template:
 
 ```
@@ -333,6 +345,8 @@ The code reviewer flagged the following issues. Apply each fix, then re-test.
 FIX LIST (from {reviewer_agent}):
 {for each review-task-file in this repo's list:}
 - [{severity}{ - classification if critical}] {file}:{line} — {one-line-problem} (task: {run_dir}/tasks/{task-id}.md)
+{if the finding cites a recipe, append on the same entry:}
+  FIX PER RECIPE `{recipe-name}` (the team's decided fix for this class — follow it verbatim): {the recipe's `fix` field, pasted verbatim}
 
 INSTRUCTIONS:
 1. For each fix-list entry, Read the corresponding task file for the full reviewer context (Problem, Target, link to the review report).

@@ -4,6 +4,13 @@ A **recipe** crystallizes one decision about how to fix a class of problem into 
 artifact. It is BOTH a fix template (the `fix` directive an implementer follows) AND a detector
 (the `match` pattern that finds its own work in `--sweep` mode).
 
+The two halves have different audiences. The **detector** (`match`) is shared review lint:
+code reviewers run it against every diff (see `rules/reviewer-common.md` Invariant 10 /
+Step 5b) — new-line hits become findings citing the recipe; pre-existing hits route back
+here as "run `/patch --recipe=<name>`" suggestions. The **fix template** (`fix`) stays
+`/patch`-exclusive — the one exception is a `/deliver` fix round, where the orchestrator
+pastes the `fix` text into the fix list for hits on the feature's own new lines.
+
 Recipes are **workspace-scoped** — they live only at
 `{workspace_root}/{slug}/context/recipes/*.yml` (one file per recipe, `name` == filename stem).
 A recipe encodes a team's convention (and usually cites a workspace ADR), so it belongs to the
@@ -28,6 +35,9 @@ follow_up:                       # optional — non-code actions to surface in t
   - "<ops / security / human action this fix implies>"
 decided_in: ADR-NNN              # optional — the ADR that backs this decision
 applies_to: [spring-boot, cdk]   # optional — repo types this is valid for
+review_lint: true                # optional, default true — set false to keep this detector
+                                 # out of code reviews (reviewers run `match` as a diff lint;
+                                 # /patch --sweep is unaffected by this flag)
 seen_in: []                      # appended to by /patch each time the recipe is applied
 non_goals: >                     # optional — what this recipe must NOT do (scope guard)
   <e.g. "do not touch dev profiles", "do not introduce new constructs">
@@ -37,7 +47,9 @@ non_goals: >                     # optional — what this recipe must NOT do (sc
 - `fix` is the load-bearing field. Be specific enough that an implementer needs no further design.
   Bake in the lessons (fix every copy, fail-closed, lazy not module-load, etc.).
 - `match.pattern` must be precise enough that a `--sweep` doesn't flag false positives. Prefer the
-  literal/symbol over a broad regex.
+  literal/symbol over a broad regex. This matters doubly now: reviewers run `match` as a diff lint
+  on every code review, so a sloppy pattern surfaces noise in every review, not just in `--sweep`.
+  If a pattern cannot be made precise, set `review_lint: false` and keep it sweep-only.
 - `verify` checks are READ-ONLY. Never put a mutating command in `verify`.
 - Keep one recipe per *class*. If two problems need different fixes, they're two recipes.
 

@@ -16,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.20.0] - 2026-11-01
+
+### Added
+- **Workspace rule extensions — always-on team rules for implementation and review.**
+  Two reserved user-owned files, `context/extended-rules/implementer.md` and
+  `context/extended-rules/reviewer.md`, are loaded-if-present by the shipped
+  `rules/{implementer,reviewer}-common.md` and applied ON TOP of them on every
+  dispatch. Strict extension-never-override contract: additive only, the shipped file
+  wins on any conflict (the agent reports the ignored item), absent or comment-only
+  file is a no-op. The directory is deliberately named `extended-rules` (not `rules`)
+  so it cannot be confused with the plugin's shipped rules. `/discover` scaffolds both
+  files as comment-only stubs that state the contract in place; `/context-refresh`
+  recreates missing stubs (never touches existing ones) and its audit warns on truly
+  blank files; `/learn` can target them for phase-scoped always-on conventions.
+  Reviewer findings that cite a team rule name the file, so findings stay traceable.
+  Both files ride memory-sync via the existing `context/` allow-list. Complements the
+  v1.19.0 Extended Context Index: index = lazy + topic-hooked, rule extensions =
+  always-on + phase-hooked; the docs carry the four-row decision table.
+
 ## [1.19.0] - 2026-11-01
 
 ### Added

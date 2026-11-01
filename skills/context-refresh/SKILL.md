@@ -162,6 +162,12 @@ Run concern-specific checks against `platform.md`:
   These checks run in audit mode and in refresh mode (as an audit sub-pass before the
   refresh agent runs). The section itself is never modified by the audit — it is
   user-owned.
+- **Workspace rule extensions** (`context/extended-rules/implementer.md` + `reviewer.md`) —
+  user-owned files applied by every implementer/reviewer dispatch. A comment-only stub
+  (the scaffolded default) is the healthy state — never warn on it. WARN only when a
+  file exists but is truly blank (zero comment header — a hand-truncated file has lost
+  its self-documentation): `⚠ extended-rules/{role}.md is blank — restore the stub
+  header or add items`. The audit never modifies these files.
 
 **`design_system_path` config field drift** (every frontend repo in the config):
 - If `config.repos[repo-name].design_system_path` is set, verify the file exists at `{repo.path}/{design_system_path}`. Missing file → flag as `design-system path drift` with the suggested fix (move the file, update the config, or run `/discover --resume` to re-bootstrap).
@@ -194,6 +200,14 @@ regenerate, never prune rows. If the section is absent (workspace onboarded befo
 feature), append the empty stub from the template at the end of the file so the workspace
 is brought up to the current template without touching any existing content (EC-1/EC-2).
 
+**Workspace rule extension stubs are recreated, never rewritten.** The files under
+`{workspace_root}/{slug}/context/extended-rules/` are user-owned: refresh never
+regenerates or prunes their content. If the directory or either stub
+(`implementer.md` / `reviewer.md`) is missing — a pre-feature workspace, or the user
+deleted it — recreate the comment-only stub exactly as specified in
+`skills/discover/phases/phase-b2-architect-synthesis.md` ("After the architect returns",
+step 1). A file that exists is left byte-untouched, whatever it contains.
+
 **Tool**: `Agent`
 **subagent_type**: `general-purpose`
 **description**: `"Refresh platform.md — {slug}"`
@@ -215,8 +229,14 @@ For each finding, update the specific section named, based on what the current c
 1. Read the current file — note which sections exist and their current content.
 2. For each stale section: re-scan the relevant repos (grep, read configs, parse package manifests), determine the current state, and update the section in place.
 3. **Never delete or rewrite sections that are not stale** — the audit lists what to update; leave the rest alone. Hand-curated text in a non-stale section stays verbatim.
-4. Update the `Last Updated` date at the top of the file.
-5. If the audit identified a "reference file that no longer exists" (e.g., in the Service Map), replace it with the nearest still-existing analog — don't leave a broken reference.
+4. **HARD EXCLUSIONS — user-owned, never yours to edit:** the `## Architect Guidance`
+   and `## Extended Context Index` sections of platform.md, and EVERY file under
+   {workspace_root}/{slug}/context/extended-rules/. Do not edit, rewrite, reformat,
+   or "clean up" any of these, no matter what the audit findings say — if a finding
+   appears to point into one of them, skip it and note the skip in your report.
+   Your Edit scope is platform.md's generated sections only.
+5. Update the `Last Updated` date at the top of the file.
+6. If the audit identified a "reference file that no longer exists" (e.g., in the Service Map), replace it with the nearest still-existing analog — don't leave a broken reference.
 
 Output: write the updated file using the Edit tool — surgical edits, not whole-file rewrites. Report which sections you updated.
 ```

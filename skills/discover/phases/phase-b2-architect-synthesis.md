@@ -170,6 +170,25 @@ For the `## Extended Context Index` section, write EXACTLY this stub content:
 
 **After the architect returns**:
 1. Save the architect's **full raw output** (the platform.md sections PLUS the `<!-- BEGIN/END architecture-overview.mmd -->` block) to `{run_dir}/outputs/phase-b2-architect-output.md`. This makes the extraction below deterministic and re-runnable on `--resume`. Then write `platform.md` (everything except the `.mmd` block) to `{workspace_root}/{slug}/context/platform.md`, and `mkdir -p {workspace_root}/{slug}/context/diagrams`.
+
+   Also scaffold the **workspace rule extension stubs** (skip any that already exist —
+   re-runs and incremental mode never overwrite them): create
+   `{workspace_root}/{slug}/context/extended-rules/implementer.md` and
+   `{workspace_root}/{slug}/context/extended-rules/reviewer.md`, each containing ONLY
+   this comment block (swap the role word, and `reviewers` → `implementers` / the file
+   name accordingly):
+
+   ```markdown
+   <!-- USER-OWNED workspace rule extensions — applied by every REVIEWER dispatch
+        in this workspace, in addition to the plugin's shipped rules.
+        Contract: ADDITIVE ONLY. Nothing here can relax or override a shipped rule;
+        on any conflict the shipped rule wins. Add one item per line below this
+        comment; delete items freely but keep the file. Items here sync to your
+        teammates via memory-sync.
+        Example (uncomment to activate):
+        - Every new endpoint must emit an audit-log event (see context/audit-logging.md)
+   -->
+   ```
 2. **Extract the diagram deterministically with `extract-block.js --unfence`** — it pulls the `<!-- BEGIN/END {name} -->` body AND strips the inner ```` ```mermaid ``` ```` fence in one step, so there is no hand fence-stripping to get wrong. For `architecture-overview.mmd`:
    - **Target doesn't exist yet** → extract straight to it:
      ```bash

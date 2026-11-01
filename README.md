@@ -96,7 +96,10 @@ auto-update once via `/plugin` → Marketplaces → pipecrew, or see [updating](
 Scans the repos, detects tech stacks, asks a few domain questions, and writes the durable layer
 beside your code: workspace config, a `platform.md` map of your domain, per-repo `AGENTS.md`
 (the tool-agnostic standard — Claude Code, Cursor, Codex and 30+ agents read it natively), and
-domain-specialized agents. Not sure *what* to build yet? Start with `/brainstorm` instead.
+domain-specialized agents. `platform.md` is extendable: its **Extended Context Index** section
+lets you list your own docs (ADRs, runbooks, conventions) under `context/` with a one-line
+"read when…" hook — agents pull them in lazily, only when the task matches, and they sync to
+your team automatically. Not sure *what* to build yet? Start with `/brainstorm` instead.
 
 **2. Deliver:**
 

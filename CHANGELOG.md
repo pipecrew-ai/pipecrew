@@ -16,6 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.19.0] - 2026-11-01
+
+### Added
+- **`platform.md` Extended Context Index — user-extendable lazy index of supplementary docs.**
+  Users can now add a `## Extended Context Index` section to `platform.md` listing ADRs,
+  runbooks, and conventions under `context/`. Agents read a linked file only when the
+  current task matches its "Read when" hook (lazy contract) — the always-loaded
+  `platform.md` stays lean. Key properties:
+  - `/discover` emits the section as an empty user-owned stub (mirrors the existing
+    `## Architect Guidance` slot); no content is populated from discovery.
+  - Incremental `/discover` merges and `/context-refresh` refresh passes preserve the
+    section verbatim — never regenerate, never prune rows.
+  - `/context-refresh` audit mode gains three new checks on the index: missing files
+    (WARN), paths that leave `context/` (portability WARN), and hook-less rows (WARN).
+    Old workspaces without the section get the empty stub appended on the next refresh.
+  - `/learn` MAY propose (never auto-add) one index row when it creates a new sidecar
+    doc under `context/`; the user approves it like any other finding.
+  - Listed files ride memory-sync automatically — `context/` is already in the
+    `sync-memory.js` allow-list.
+  - Documented in `docs/design/github-memory.md` including the open relationship to
+    the domain-durable-memory Q3 (`share_scope`) — flagged not-yet-decided.
+
 ## [1.18.4] - 2026-10-25
 
 ### Fixed

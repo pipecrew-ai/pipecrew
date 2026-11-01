@@ -175,6 +175,38 @@ A workspace may declare known upstreams as a top-level array:
 
 **Carry-through**: like `domain.id`, the array deep-clones into `config.portable.json` for free and flows to teammates.
 
+## Extended Context Index — lazy supplementary docs
+
+`platform.md` is the always-loaded workspace context; it must stay lean. The
+`## Extended Context Index` section (a user-owned stub emitted by `/discover`) is a
+two-column table of supplementary docs a user has placed under `context/`:
+
+| Doc | Read when… |
+|-----|-----------|
+| `adrs/0012-caching.md` | designing a caching layer or evaluating cache eviction |
+| `runbooks/incident-response.md` | investigating a production incident |
+
+**Lazy contract.** Agents read a linked file ONLY when the current task matches the
+row's "Read when" hook. The index is never bulk-loaded. This keeps the always-loaded
+`platform.md` lean while making supplementary docs discoverable.
+
+**User-owned semantics.** The section is a human-edited stub. Generation emits it
+empty; `/discover` incremental merges, `/context-refresh` refresh passes, and
+`/learn` never overwrite or auto-populate it. `/learn` MAY propose (never auto-add)
+one new index row when it creates a new sidecar doc — the user approves it like any
+other finding.
+
+**Rides memory-sync automatically.** The `context/` directory is already in
+`sync-memory.js`'s allow-list; every file listed in the index is committed and shared
+with the team by the normal memory-sync flow — no extra configuration required.
+
+**Open relationship to domain-durable-memory (Q3).** The index rows are a CANDIDATE
+answer to the domain-durable-memory Q3 question — how to declare which supplementary
+docs are shared per `share_scope` across workspaces. This relationship is flagged here
+as not-yet-decided; no share semantics are implemented. When Q3 is resolved the index
+format may be extended (e.g. a third column), but existing two-column rows will remain
+valid.
+
 ## Non-goals
 
 - Not auto-public. `visibility: private` is required; bootstrap refuses `public`.

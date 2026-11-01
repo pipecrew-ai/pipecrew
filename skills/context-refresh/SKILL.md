@@ -150,6 +150,18 @@ Run concern-specific checks against `platform.md`:
 - **Service Map** — does each row's spec path still exist on disk?
 - **Established Patterns** — are the cited versions / libraries / config formats still accurate per repo `pom.xml` / `package.json` / `application.*` / `pyproject.toml`? (Cross-cutting workspace patterns live here, not in a separate per-stack doc.)
 - **Known Constraints** — any entries explicitly dated > 90 days old?
+- **Extended Context Index** — for every `Doc` path in the index table, resolve it
+  relative to `{workspace_root}/{slug}/context/`. Check:
+  - Missing file → staleness WARN naming the row (e.g. `⚠ Extended Context Index row
+    "adrs/0012-caching.md" — file not found under context/`). House posture: warn, never
+    block.
+  - Path that starts with `/` or contains `../` (leaves `context/`) → WARN
+    `portability: path leaves context/ — it will not ride memory-sync`.
+  - Row where the "Read when" cell is empty or contains only whitespace →  WARN
+    `hook-less row defeats lazy loading`.
+  These checks run in audit mode and in refresh mode (as an audit sub-pass before the
+  refresh agent runs). The section itself is never modified by the audit — it is
+  user-owned.
 
 **`design_system_path` config field drift** (every frontend repo in the config):
 - If `config.repos[repo-name].design_system_path` is set, verify the file exists at `{repo.path}/{design_system_path}`. Missing file → flag as `design-system path drift` with the suggested fix (move the file, update the config, or run `/discover --resume` to re-bootstrap).
@@ -175,6 +187,12 @@ If `--mode=audit`, stop here and present the report. Done.
 #### Step 2b: Refresh pass (if `--mode=refresh`)
 
 Dispatch a scanning agent for `platform.md` in **refresh semantics — never overwrite hand-curated content; only update stale sections**.
+
+**User-owned sections are never regenerated.** `## Architect Guidance` and
+`## Extended Context Index` are human-edited stubs — carry them over verbatim; never
+regenerate, never prune rows. If the section is absent (workspace onboarded before this
+feature), append the empty stub from the template at the end of the file so the workspace
+is brought up to the current template without touching any existing content (EC-1/EC-2).
 
 **Tool**: `Agent`
 **subagent_type**: `general-purpose`

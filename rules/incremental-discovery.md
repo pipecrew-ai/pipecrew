@@ -149,6 +149,11 @@ Dispatch `solution-architect` with `MODE: discovery-incremental` (instead of
   now talks to). Add a short dated `> Added in this run: {repo list}` note under
   the Service Map so the delta is visible. Don't restate or reshuffle existing
   rows.
+- **User-owned sections are never regenerated.** `## Architect Guidance` and
+  `## Extended Context Index` are human-edited stubs; carry them over verbatim
+  on every incremental merge. This list is illustrative — the principle is that
+  any section the user owns (hand-marked or structurally user-owned per the
+  template) is never regenerated, overwritten, or pruned by an automated pass.
 - **Diagrams**: regenerate both `.mmd` files from `all_repos` (existing +
   new), applying the existing keep/merge/overwrite gate in the diagram step.
   The new nodes/edges must appear; existing layout choices in a hand-edited

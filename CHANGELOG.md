@@ -16,6 +16,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.21.0] - 2026-11-01
+
+### Added
+- **Recipe detectors as shared review lint — recipes consumed beyond `/patch`.**
+  Each recipe (`context/recipes/*.yml`) is a detector (`match`) plus a fix template
+  (`fix`); the halves now have different audiences. Code reviewers run every
+  applicable recipe's `match` pattern against the diff on every review
+  (`rules/reviewer-common.md` new Invariant 10 + Step 5b, wired into the Phase 5.5
+  dispatch prompts and standalone `/review`): hits on new/changed lines become
+  findings citing the recipe (Critical when tagged security/secret/credential);
+  hits on pre-existing lines become one "run `/patch --recipe=<name>`" Suggestion
+  per recipe — detection routes work to `/patch`, never bypasses it. Fix templates
+  stay `/patch`-exclusive, with one carve-out: a `/deliver` fix round pastes the
+  recipe's `fix` text into the fix list for recipe-cited findings on the feature's
+  own new lines. Reviewers load `match` metadata only (never `fix` bodies), run
+  patterns via the Grep tool (no Bash), filter by `applies_to`, and detector
+  findings are droppable with cited justification (unlike HC-1/HC-2). New optional
+  schema field `review_lint: false` keeps a noisy detector sweep-only. `/learn`
+  gains the promotion rung: a repeatedly-firing recipe's convention can be promoted
+  into `context/extended-rules/implementer.md` or the clustering repo's `AGENTS.md`
+  (prevention — the recipe stays). Absent/empty recipes directory is a no-op
+  everywhere; the Phase 6 assessor and the architect deliberately do not consume
+  recipes.
+
 ## [1.20.0] - 2026-11-01
 
 ### Added

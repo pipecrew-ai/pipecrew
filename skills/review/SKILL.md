@@ -87,8 +87,15 @@ git yourself; use Read/Glob/Grep over the repo for any surrounding context.
 Review the diff against the repo's conventions and any OpenAPI spec
 at {spec_file} (if applicable).
 
+{include this block ONLY when a workspace is known (repo resolved via config in Step 1):}
+RECIPE DETECTORS (workspace lint — Invariant 10; a missing or empty directory is a silent no-op):
+{workspace_root}/{workspace}/context/recipes/   (run each applicable recipe's match pattern against the diff per your system prompt's recipe detector pass — load match metadata only, never a recipe's fix body)
+
 Produce your full report in the Output Format from your system prompt.
 ```
+
+In repo-path mode (no workspace config), omit the RECIPE DETECTORS block — the
+recipes path cannot resolve, and the reviewer's recipe pass no-ops by design.
 
 ### Step 5: Backstop + present the report
 

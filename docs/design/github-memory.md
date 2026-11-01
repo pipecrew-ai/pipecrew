@@ -242,9 +242,37 @@ audit warns only on a truly blank file. Both files ride memory-sync via the exis
 | Always-on rule for a phase (implement / review), any topic | `context/extended-rules/{role}.md` |
 | Short cross-repo fact every agent must know | `platform.md § Established Patterns` |
 | Topic-scoped document, loaded only when relevant | `context/` file + an Extended Context Index row |
+| Mechanical fix class with a detectable code pattern | `context/recipes/*.yml` — detected in every review, fixed via `/patch` |
 
 Possible follow-up (not built): extension files for other roles (architect,
 product-owner, ux, security) if the implementer/reviewer pair proves the pattern.
+
+## Recipes — procedural memory with a split audience
+
+Recipes (`context/recipes/*.yml`, schema in `skills/patch/recipe-schema.md`) are the
+procedural tier of workspace memory: each one crystallizes a team decision about how a
+class of problem gets fixed. Their two halves have different consumers:
+
+- **Detector (`match`) — shared review lint.** Every code reviewer runs each applicable
+  recipe's pattern against the diff (`rules/reviewer-common.md` Invariant 10 / Step 5b).
+  Hits on new lines are findings citing the recipe; hits on pre-existing lines become
+  "run `/patch --recipe=<name>`" suggestions. `applies_to` and `review_lint: false`
+  filter what reviews run; detection is read-only and droppable with justification.
+- **Fix template (`fix`) — `/patch`-exclusive.** Fix templates are applied only under
+  `/patch`'s scope discipline and verify rules. Single carve-out: a `/deliver` fix round
+  pastes the `fix` text into the fix list for recipe-cited findings on the feature's own
+  new lines (pre-existing hits never enter a fix round — they were routed to `/patch`).
+
+The maturity ladder: a recipe is born in `/patch` → its detector catches regressions in
+review → when it keeps firing, `/learn` proposes promoting its one-line convention into
+`context/extended-rules/implementer.md` or the clustering repo's `AGENTS.md` (prevention)
+— the recipe stays, and the detector goes quiet. Recipes ride memory-sync via the
+`context/` allow-list like everything else in this table.
+
+Deliberately out: the Phase 6 assessor (its charter forbids per-file craft re-review —
+Phase 5.5 already covers every modified repo), the architect (ADRs are the design-altitude
+artifact; recipes are their mechanization), and the Extended Context Index (recipe
+consumption is always-on + phase-hooked — rules territory, not lazy-index territory).
 
 ## Non-goals
 

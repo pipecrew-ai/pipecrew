@@ -229,8 +229,14 @@ For each finding, update the specific section named, based on what the current c
 1. Read the current file — note which sections exist and their current content.
 2. For each stale section: re-scan the relevant repos (grep, read configs, parse package manifests), determine the current state, and update the section in place.
 3. **Never delete or rewrite sections that are not stale** — the audit lists what to update; leave the rest alone. Hand-curated text in a non-stale section stays verbatim.
-4. Update the `Last Updated` date at the top of the file.
-5. If the audit identified a "reference file that no longer exists" (e.g., in the Service Map), replace it with the nearest still-existing analog — don't leave a broken reference.
+4. **HARD EXCLUSIONS — user-owned, never yours to edit:** the `## Architect Guidance`
+   and `## Extended Context Index` sections of platform.md, and EVERY file under
+   {workspace_root}/{slug}/context/extended-rules/. Do not edit, rewrite, reformat,
+   or "clean up" any of these, no matter what the audit findings say — if a finding
+   appears to point into one of them, skip it and note the skip in your report.
+   Your Edit scope is platform.md's generated sections only.
+5. Update the `Last Updated` date at the top of the file.
+6. If the audit identified a "reference file that no longer exists" (e.g., in the Service Map), replace it with the nearest still-existing analog — don't leave a broken reference.
 
 Output: write the updated file using the Edit tool — surgical edits, not whole-file rewrites. Report which sections you updated.
 ```

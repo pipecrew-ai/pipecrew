@@ -16,6 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.22.0] - 2026-11-01
+
+### Added
+- **Root dispatcher documents the adhoc task-file lane.** The generated root
+  `AGENTS.md` (`templates/root-AGENTS.md.template`) now describes a third lane next
+  to `/deliver` and `/patch`: small specced meta-tasks — design in conversation,
+  spec as a task file under `{workspace}/runs/adhoc/{date}-{slug}/` (FR/EC/
+  Out-of-scope/Verification/Work-log shape, every touched file named), implement
+  from the spec (workspace implementer agent or inline), merge/publish only on the
+  user's explicit word — plus the lane picker (bounce to `/deliver` if the task
+  grows requirements or contract changes). New workspace roots get the section at
+  generation; existing root files are user-owned outside the workspaces markers and
+  are deliberately not retrofitted.
+
 ## [1.21.0] - 2026-11-01
 
 ### Added

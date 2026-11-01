@@ -31,6 +31,17 @@ Before working on a repo, read its workspace's `context/platform.md` (domain + a
 | A teammate onboarded onto an existing workspace | `/pipecrew:join <memory-repo-url>` |
 | Shared team memory inspected or synced now | `/pipecrew:memory-sync status \| pull \| sync` |
 
+## The adhoc task-file lane (small specced tasks without the full pipeline)
+
+Besides the skills above, a third lane fits **meta-work and micro-tasks** — changes to workspace tooling, docs, or other small work where the full pipeline would be disproportionate, but freestyling would lose the spec and the audit trail:
+
+1. **Design in conversation** until the user approves the shape (for bigger design questions, consult `pipecrew:solution-architect` with `MODE: brainstorm`).
+2. **Spec it as a task file** at `{workspace}/runs/adhoc/{YYYY-MM-DD}-{slug}/task-NN-{slug}.md` — same shape as a `/deliver` task file: Context (the decisions and the *why*), `## Functional requirements` (FR-N — name every file the change touches, producers and consumers), `## Edge cases` (EC-N), `## Out of scope (do NOT build)`, `## Verification`, and an empty `## Work log`. `status: pending` in the header.
+3. **Implement from the spec** — dispatch a matching workspace implementer agent, or implement inline in the orchestrating session. Fill the Work log (files touched, EC coverage, verification results, deviations) and flip `status: done`.
+4. **Merge / publish only on the user's explicit word** — the lane has no automatic gates, so the user's go is the gate.
+
+Lane picker: product feature across repos → `/deliver`. Known mechanical fix class → `/patch` (recipes). Small specced meta-task → this lane. If an adhoc task grows product requirements or cross-repo contract changes, bounce it to `/deliver`.
+
 ## Dispatching agents directly (without a skill)
 
 Skills orchestrate multi-agent pipelines; for a single consultation, analysis, or report, dispatch the agent itself with the Agent tool (`subagent_type` below). The `<slug>-*` agents are the workspace's own — use the concrete names listed in each workspace block above.

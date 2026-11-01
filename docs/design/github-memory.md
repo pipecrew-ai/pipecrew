@@ -207,6 +207,45 @@ as not-yet-decided; no share semantics are implemented. When Q3 is resolved the 
 format may be extended (e.g. a third column), but existing two-column rows will remain
 valid.
 
+## Workspace rule extensions — always-on team rules
+
+Two reserved, user-owned files let a team add conventions that **every** implementer
+and reviewer dispatch applies, without touching plugin-shipped files:
+
+- `{workspace_root}/{slug}/context/extended-rules/implementer.md`
+- `{workspace_root}/{slug}/context/extended-rules/reviewer.md`
+
+The directory is deliberately named `extended-rules` — never `rules` — so it cannot be
+confused with the plugin's shipped `rules/` directory: the path alone signals ownership
+(workspace) and semantics (additive extension).
+
+**Contract — extension, never override.** The shipped
+`rules/{implementer,reviewer}-common.md` load these files if present and apply their
+items *in addition* to the shipped rules. Additive only: nothing in a workspace file
+can relax, disable, or reinterpret a shipped rule; **on any conflict the shipped file
+wins**, and the agent notes the ignored item in its report so the team learns it is
+dead. A missing file — or one containing only comments (the scaffolded default) — is a
+no-op. Reviewer findings that cite a team rule name the file
+(`context/extended-rules/reviewer.md § <item>`) so every finding is traceable.
+
+**Scaffolding.** `/discover` creates both files as comment-only stubs that state this
+contract in place (discoverability: an existing stub tells the team the seam exists).
+`/context-refresh` recreates a missing stub and never touches an existing one; its
+audit warns only on a truly blank file. Both files ride memory-sync via the existing
+`context/` allow-list — team rules reach every teammate automatically.
+
+**Where a convention belongs** (decision table):
+
+| Convention shape | Home |
+|---|---|
+| Applies to one repo | that repo's `AGENTS.md` / `agent-context/` |
+| Always-on rule for a phase (implement / review), any topic | `context/extended-rules/{role}.md` |
+| Short cross-repo fact every agent must know | `platform.md § Established Patterns` |
+| Topic-scoped document, loaded only when relevant | `context/` file + an Extended Context Index row |
+
+Possible follow-up (not built): extension files for other roles (architect,
+product-owner, ux, security) if the implementer/reviewer pair proves the pattern.
+
 ## Non-goals
 
 - Not auto-public. `visibility: private` is required; bootstrap refuses `public`.

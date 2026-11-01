@@ -81,6 +81,7 @@ TEMPLATE SECTIONS:
 ## Known Constraints
 ## Open Questions / Evolving Decisions
 ## Architect Guidance
+## Extended Context Index
 
 For the `## Architecture Diagram` section in platform.md, write EXACTLY this pointer content:
 
@@ -147,6 +148,24 @@ For the `## Architect Guidance` section, write EXACTLY this stub content (replac
       tool (Liquibase / Flyway / Alembic) changeset explicitly.
 
     (Empty by default. Fill in during or after onboarding.)
+
+The `## Extended Context Index` section is also a STUB — emit it exactly as specified below. Do not populate it from discovery; it is a user-owned slot. The section is generated empty and preserved verbatim on every re-run or refresh.
+
+For the `## Extended Context Index` section, write EXACTLY this stub content:
+
+    <!-- USER-EDITABLE: add one row per supplementary doc you want agents to load
+         lazily. Paths are relative to context/. Files listed here ride memory-sync
+         automatically (the context/ directory is already in the allow-list).
+         Generation never fills this section; re-runs and /context-refresh preserve
+         it verbatim. -->
+
+    > **For agents:** the rows below are lazy references. Read a linked file ONLY
+    > when the current task matches its "Read when" hook. Never bulk-load this list;
+    > never read a file whose hook does not match the task at hand.
+
+    | Doc | Read when… |
+    |-----|-----------|
+    | *(no entries yet)* | |
 ```
 
 **After the architect returns**:

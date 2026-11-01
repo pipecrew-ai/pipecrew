@@ -15,6 +15,11 @@ WORKSPACE CONFIG (read for service map and domain context):
 
 PLATFORM CONTEXT (read for architecture patterns and constraints):
 {workspace_root}/{slug}/context/platform.md
+While reading it, check its `## Extended Context Index` (if present): for every row
+whose "Read when…" hook matches this feature, Read the linked file (relative to
+{workspace_root}/{slug}/context/) before writing the design — those docs carry
+workspace conventions deliberately kept out of the always-loaded context. Skip rows
+whose hook does not match.
 
 SERVICE SPECS (read each to understand current API surface):
 {for each service in config.services where spec_policy != "no-api" AND spec_file is set:}

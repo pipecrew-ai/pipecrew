@@ -16,6 +16,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.23.0] - 2026-11-05
+
+### Changed
+- **Phase 4.5 task-planner `persist` assembles task files deterministically.** The
+  planner no longer regenerates each task file's verbatim sections through the LLM
+  (FR/EC bodies, architecture context, Contract Reference, Worktree path,
+  Out-of-Scope, the audit-findings half of Known Anti-Patterns) — the dominant cost
+  of `persist`. A new zero-dependency helper, `scripts/assemble-task-file.js`, reads
+  those pure-copy sources itself and writes each self-contained task file; the
+  planner now computes only the two sections that need judgment (the sub-task
+  checklist and the stack-specific anti-pattern selection) and passes them in. The
+  emitted task files are section-structure-equivalent to before, so Phase 5
+  implementers see no change. `draft` and `adjust` modes are untouched. Measured
+  against 32 real task files from two past runs, this cuts planner **output** tokens
+  in `persist` by **~73%** (~94.8K → ~26K; ~2,150 tokens saved per task file; char/4
+  proxy — output only, wall-clock gain tracks model speed).
+- **Frontend component/route/api membership is now a lookup, not inference.** Every
+  `FRONTEND_ARCHITECTURE` entry carries a stable `id`, and each frontend
+  `TASK_SKELETON` sub-task carries `fe_refs` naming the component/route/api ids it
+  delivers. The planner selects per-sub-task frontend surfaces by id instead of
+  inferring them from the summary prose — removing a latent correctness gap where
+  the planner could disagree with the architect's own decomposition. Backward
+  compatible: skeletons without `fe_refs` fall back to the prior inference path with
+  a deprecation warning.
+
+### Added
+- `scripts/assemble-task-file.js` (+ `assemble-task-file.test.js`) — the deterministic
+  task-file assembler described above. Fails loud on an unknown `fr_ref`, an unknown
+  `fe_ref` id, an FR/EC body it can't find in `phase-1-requirements.md`, or a missing
+  `risks.json`.
+- `templates/blocks/block-schemas.md` § `TASK_SKELETON` — the skeleton block now has a
+  proper schema entry (previously referenced but undocumented), including the new
+  `fe_refs` field; `FRONTEND_ARCHITECTURE` gains the `id` field on all three arrays.
+
 ## [1.22.0] - 2026-11-01
 
 ### Added

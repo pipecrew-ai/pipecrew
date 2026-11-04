@@ -1,5 +1,5 @@
 {
-  "_comment": "Canonical example for the TASK_SKELETON block emitted by the solution-architect inside outputs/phase-2-architecture.md. The skeleton is a per-repo, sub-task-shaped projection of AFFECTED_SERVICES + RISKS — what labor is required, how it splits across repos, and which sub-tasks are Minimum (M) vs Deferrable (D). Phase 4.5's task-planner consumes it and hydrates each sub-task into a per-task markdown file, adding workspace-shaped material (anti-patterns, audit-findings, Contract Reference) the architect did not have. Field reference and consumer list live in block-schemas.md. The _comment field is illustrative only — strip it from real output.",
+  "_comment": "Canonical example for the TASK_SKELETON block emitted by the solution-architect inside outputs/phase-2-architecture.md. The skeleton is a per-repo, sub-task-shaped projection of AFFECTED_SERVICES + RISKS — what labor is required, how it splits across repos, and which sub-tasks are Minimum (M) vs Deferrable (D). Phase 4.5's task-planner consumes it and hydrates each sub-task into a per-task markdown file, adding workspace-shaped material (anti-patterns, audit-findings, Contract Reference) the architect did not have. Frontend sub_tasks additionally carry `fe_refs` — the ids of the FRONTEND_ARCHITECTURE components/routes/api_integration entries THIS sub-task delivers — so the task-planner filters by id (a lookup) instead of inferring membership from the summary prose. The union of all frontend sub_tasks' fe_refs must cover every FRONTEND_ARCHITECTURE entry. Field reference and consumer list live in block-schemas.md. The _comment field is illustrative only — strip it from real output.",
   "feature_summary": "publishers choose contract type when requesting",
   "tasks": [
     {
@@ -62,35 +62,40 @@
           "title": "API layer",
           "tier": "M",
           "fr_refs": ["FR-1", "FR-2"],
-          "summary": "types + service methods + error classes"
+          "summary": "types + service methods + error classes",
+          "fe_refs": { "component_ids": [], "route_ids": [], "api_ids": ["a-list-contracts", "a-create-contract"] }
         },
         {
           "id_hint": "fe-hooks",
           "title": "React Query hooks",
           "tier": "M",
           "fr_refs": ["FR-1", "FR-2"],
-          "summary": "useContracts, useContract"
+          "summary": "useContracts, useContract",
+          "fe_refs": { "component_ids": ["c-use-contracts"], "route_ids": [], "api_ids": [] }
         },
         {
           "id_hint": "fe-page",
           "title": "Page + routing",
           "tier": "M",
           "fr_refs": ["FR-2"],
-          "summary": "/contracts page + role-guarded route"
+          "summary": "/contracts page + role-guarded route",
+          "fe_refs": { "component_ids": ["c-contracts-page", "c-contract-list"], "route_ids": ["r-contracts"], "api_ids": [] }
         },
         {
           "id_hint": "fe-i18n",
           "title": "i18n keys",
           "tier": "M",
           "fr_refs": ["FR-2"],
-          "summary": "every workspace language"
+          "summary": "every workspace language",
+          "fe_refs": { "component_ids": [], "route_ids": [], "api_ids": [] }
         },
         {
           "id_hint": "fe-tests",
           "title": "Tests",
           "tier": "M",
           "fr_refs": ["FR-1", "FR-2"],
-          "summary": "unit + integration for the M slice"
+          "summary": "unit + integration for the M slice",
+          "fe_refs": { "component_ids": [], "route_ids": [], "api_ids": [] }
         },
         {
           "id_hint": "fe-detail",
@@ -98,7 +103,8 @@
           "tier": "D",
           "fr_refs": ["FR-5"],
           "summary": "rich detail view with edit affordance",
-          "deferral_reason": "RISKS §3 — v2 enhancement"
+          "deferral_reason": "RISKS §3 — v2 enhancement",
+          "fe_refs": { "component_ids": ["c-contract-detail-dialog"], "route_ids": [], "api_ids": [] }
         }
       ]
     },

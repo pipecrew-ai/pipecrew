@@ -1,7 +1,8 @@
 {
-  "_comment": "Canonical example for the FRONTEND_ARCHITECTURE block emitted by the solution-architect inside outputs/phase-2-architecture.md. The JSON is the structured INDEX downstream consumers (Phase 5b react-implementer / nextjs-implementer — via the task-planner's Architecture context) extract via `node {plugin_dir}/scripts/extract-block.js {this-file} FRONTEND_ARCHITECTURE`. Three arrays enumerate what the implementer must build: `components[]` (every page/component/hook/provider to create or modify), `routes[]` (URL routes added/modified/removed), `api_integration[]` (service functions in the frontend's api layer that bind to backend endpoints from API_DESIGN). The prose under the JSON carries state-management strategy (query keys, contexts, form approach), i18n key additions, and styling notes — material that doesn't fit a uniform schema. Field reference and consumer list live in block-schemas.md. When the feature has no frontend involvement (`frontend_required: false` in AFFECTED_SERVICES), emit `{\"components\": [], \"routes\": [], \"api_integration\": []}` rather than omitting the block — the planner's skip-decision reads `components.length`. Strip the _comment field from real output.",
+  "_comment": "Canonical example for the FRONTEND_ARCHITECTURE block emitted by the solution-architect inside outputs/phase-2-architecture.md. The JSON is the structured INDEX downstream consumers (Phase 5b react-implementer / nextjs-implementer — via the task-planner's Architecture context) extract via `node {plugin_dir}/scripts/extract-block.js {this-file} FRONTEND_ARCHITECTURE`. Three arrays enumerate what the implementer must build: `components[]` (every page/component/hook/provider to create or modify), `routes[]` (URL routes added/modified/removed), `api_integration[]` (service functions in the frontend's api layer that bind to backend endpoints from API_DESIGN). Every entry carries a stable `id` (c-* for components, r-* for routes, a-* for api_integration) so TASK_SKELETON frontend sub-tasks can reference exactly the entries they deliver via `fe_refs` — the task-planner filters by id (a lookup, not inference). The prose under the JSON carries state-management strategy (query keys, contexts, form approach), i18n key additions, and styling notes — material that doesn't fit a uniform schema. Field reference and consumer list live in block-schemas.md. When the feature has no frontend involvement (`frontend_required: false` in AFFECTED_SERVICES), emit `{\"components\": [], \"routes\": [], \"api_integration\": []}` rather than omitting the block — the planner's skip-decision reads `components.length`. Strip the _comment field from real output.",
   "components": [
     {
+      "id": "c-bulk-upload-page",
       "name": "BulkUploadPage",
       "path": "src/pages/BulkUploadPage.tsx",
       "kind": "page",
@@ -10,6 +11,7 @@
       "children": ["UploadDropzone", "UploadQueue", "BatchSummary"]
     },
     {
+      "id": "c-upload-dropzone",
       "name": "UploadDropzone",
       "path": "src/features/bulk-upload/UploadDropzone.tsx",
       "kind": "component",
@@ -18,6 +20,7 @@
       "children": []
     },
     {
+      "id": "c-upload-queue",
       "name": "UploadQueue",
       "path": "src/features/bulk-upload/UploadQueue.tsx",
       "kind": "component",
@@ -26,6 +29,7 @@
       "children": ["FileListItem"]
     },
     {
+      "id": "c-file-list-item",
       "name": "FileListItem",
       "path": "src/features/bulk-upload/FileListItem.tsx",
       "kind": "component",
@@ -34,6 +38,7 @@
       "children": []
     },
     {
+      "id": "c-use-bulk-upload",
       "name": "useBulkUpload",
       "path": "src/features/bulk-upload/useBulkUpload.ts",
       "kind": "hook",
@@ -44,6 +49,7 @@
   ],
   "routes": [
     {
+      "id": "r-bulk-upload",
       "path": "/publisher/books/bulk-upload",
       "change_kind": "added",
       "page_component": "BulkUploadPage",
@@ -52,6 +58,7 @@
   ],
   "api_integration": [
     {
+      "id": "a-upload-book-batch",
       "service_function": "uploadBookBatch",
       "file": "src/api/books.ts",
       "endpoint": "POST /api/v1/books/bulk",

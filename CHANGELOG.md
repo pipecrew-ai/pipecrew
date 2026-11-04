@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.23.1] - 2026-11-05
+
+### Changed
+- **Documented two development conventions in `CLAUDE.md` § Conventions** (distilled by
+  `/pipecrew:learn` from the v1.23.0 session). (1) **Prompt files carry the WHAT, not the
+  WHY** — rationale, cost commentary, and meta-commentary belong in CHANGELOG / Work log /
+  design docs, not in prompt prose loaded on every dispatch. (2) **Generalized the
+  "prefer a deterministic script over an LLM" convention** from parsing structured data
+  *in* to also cover copying/assembling content *out*, stating the division of labor
+  (mechanical → script, judgment → LLM) with `assemble-task-file.js` as the exemplar.
+  Docs only — no behavior change.
+
 ## [1.23.0] - 2026-11-05
 
 ### Changed

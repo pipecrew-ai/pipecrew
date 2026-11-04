@@ -28,7 +28,10 @@ Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Wat
   planner now computes only the two sections that need judgment (the sub-task
   checklist and the stack-specific anti-pattern selection) and passes them in. The
   emitted task files are section-structure-equivalent to before, so Phase 5
-  implementers see no change. `draft` and `adjust` modes are untouched.
+  implementers see no change. `draft` and `adjust` modes are untouched. Measured
+  against 32 real task files from two past runs, this cuts planner **output** tokens
+  in `persist` by **~73%** (~94.8K → ~26K; ~2,150 tokens saved per task file; char/4
+  proxy — output only, wall-clock gain tracks model speed).
 - **Frontend component/route/api membership is now a lookup, not inference.** Every
   `FRONTEND_ARCHITECTURE` entry carries a stable `id`, and each frontend
   `TASK_SKELETON` sub-task carries `fe_refs` naming the component/route/api ids it

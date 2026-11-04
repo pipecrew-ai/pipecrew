@@ -71,8 +71,15 @@ node scripts/<name>.test.js # a single unit test
 ## Conventions
 
 - **Scripts are zero-dependency, pure Node stdlib.** Prefer a small deterministic script over
-  asking an LLM to parse — and give it an offline test hook (`--input=<file>`) like
-  `collect-pr-feedback.js` / `collect-session-feedback.js`.
+  asking an LLM to do mechanical work — parsing structured data IN *or* copying/assembling
+  content OUT. Reserve the LLM for the parts that need judgment; an LLM regenerating verbatim
+  content it could copy is pure token cost (see the Phase 4.5 `assemble-task-file.js` split —
+  pure-copy sections → script, checklist + anti-pattern selection → the planner). Give each
+  script an offline test hook (`--input=<file>`) like `collect-pr-feedback.js`.
+- **Prompt files carry the WHAT, not the WHY.** Agent and skill prompt files (in `agents/`,
+  `skills/`, `phases/`, `rules/`) should contain instructions — what the agent must do. Rationale,
+  cost commentary, methodology notes, and meta-commentary belong in CHANGELOG, Work log, or design
+  docs, not in prompt prose. Text that doesn't change behavior is token tax loaded on every dispatch.
 - **Checkpoints (`rules/observability.md`) are authoritative.** Anything that reads run state
   (site-view, reporter) consumes `checkpoints.jsonl`; the schema is
   `templates/checkpoints-event.schema.json` and the validator is `scripts/validate-checkpoints.js`

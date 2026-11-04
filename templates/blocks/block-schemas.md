@@ -179,6 +179,7 @@ If no infra repo is affected, the producer emits `{"infra_changes": []}` rather 
 | Field | Type | Notes |
 |-------|------|-------|
 | `components[]` | array | One entry per page / component / hook / provider / layout the implementer must create or modify. Empty `[]` when the feature has no frontend involvement (NOT omitted — the planner's frontend-skip decision reads `components.length`). |
+| `components[].id` | string | Stable id, `c-{kebab-name}` (e.g., `c-bulk-upload-page`). Unique within `components[]`. The `TASK_SKELETON` frontend sub-tasks reference these ids via `fe_refs.component_ids` so the task-planner selects per-sub-task components by lookup rather than inferring from the summary. |
 | `components[].name` | string | PascalCase component name. |
 | `components[].path` | string | Repo-relative file path (e.g., `src/pages/BulkUploadPage.tsx`). |
 | `components[].kind` | enum | `page` / `component` / `hook` / `provider` / `layout`. Defaults to `component` if omitted. |
@@ -186,11 +187,13 @@ If no infra repo is affected, the producer emits `{"infra_changes": []}` rather 
 | `components[].purpose` | string | One-line description of what this component does. |
 | `components[].children` | array of strings | Names of child components (must reference entries in `components[].name` or be widely-recognized library primitives). Used by the implementer to build the component tree. |
 | `routes[]` | array | URL routes added/modified/removed. Empty `[]` when no routing change. |
+| `routes[].id` | string | Stable id, `r-{kebab-path}` (e.g., `r-bulk-upload`). Unique within `routes[]`. Referenced by `TASK_SKELETON` `fe_refs.route_ids`. |
 | `routes[].path` | string | URL path with parameters (e.g., `/publisher/books/bulk-upload`). |
 | `routes[].change_kind` | enum | `added` / `modified` / `removed`. |
 | `routes[].page_component` | string | Name of the top-level page component for this route (must reference an entry in `components[].name`). |
 | `routes[].guard` | string \| null | Auth role or guard name (e.g., `publisher`, `admin`). `null` when the route is public. |
 | `api_integration[]` | array | Service functions in the frontend's API layer that bind to backend endpoints. Empty `[]` when the feature has no API integration (rare for a real feature). |
+| `api_integration[].id` | string | Stable id, `a-{kebab-function}` (e.g., `a-upload-book-batch`). Unique within `api_integration[]`. Referenced by `TASK_SKELETON` `fe_refs.api_ids`. |
 | `api_integration[].service_function` | string | Function name in the API layer (e.g., `uploadBookBatch`). |
 | `api_integration[].file` | string | Repo-relative path to the API-layer file where the function lives. |
 | `api_integration[].endpoint` | string | HTTP method + path matching an entry in `API_DESIGN.services[].endpoints[]` (byte-for-byte). |
@@ -325,6 +328,35 @@ The summary is pre-computed by the reviewer so the orchestrator's gate decision 
 | `runbooks.index` | string | Repo-relative path to the runbook index file (e.g., `docs/runbooks/README.md`). |
 
 If the workspace has no observability stack (toy or local-only), the producer emits `{"log_destinations": [], "trace": {}, "dashboards": [], "runbooks": {}}` rather than omitting the block — empty arrays preserve the contract for downstream consumers.
+
+---
+
+### `TASK_SKELETON`
+
+**Producer**: `solution-architect` (Phase 2 design output)
+**Consumers**: Phase 4.5 `task-planner` (all three modes — `draft` renders the plan summary, `adjust` applies gate pushback, `persist` hydrates each sub-task into a per-task markdown file via `scripts/assemble-task-file.js`).
+**File**: `{run_dir}/outputs/phase-2-architecture.md` (and `{run_dir}/outputs/blocks/task-skeleton.json` after `split-design.js`).
+**Canonical example**: [`templates/blocks/task-skeleton.example.json`](./task-skeleton.example.json) — single source of truth for the structure. Update that file when the schema changes; this doc only carries the field reference table below.
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `feature_summary` | string | One-line description of the feature, reused in the plan summary and task-file titles. |
+| `tasks[]` | array | One entry per repo touched. Order is significant — it drives the `{repo_index}` in the planner's `{repo_index}.{tier}.{seq}` sub-task numbering. |
+| `tasks[].repo_key` | string | Must resolve in `config.repos`. The planner stops if it doesn't. |
+| `tasks[].repo_role` | enum | `api-service` / `frontend` / `mock-server` / `worker` / `infrastructure`. Drives the architecture-context + Contract Reference branch in the assembler. |
+| `tasks[].spec_policy` | enum | `api-first` / `code-first` / `no-api` / `n/a`. `n/a` for frontend / mock / infra. |
+| `tasks[].sub_tasks[]` | array | The M/D-tiered unit of work. |
+| `tasks[].sub_tasks[].id_hint` | string | Human-readable hint (e.g., `be-dtos`); the planner mints the real task id. |
+| `tasks[].sub_tasks[].title` | string | Sub-task title (e.g., `DTOs / Models`). |
+| `tasks[].sub_tasks[].tier` | enum | `M` (minimum slice) / `D` (deferrable). |
+| `tasks[].sub_tasks[].fr_refs` | array of strings | FR/EC ids this sub-task enforces. Every id MUST exist in `requirements-index.json` — the assembler validates and fails loud otherwise. Never empty. |
+| `tasks[].sub_tasks[].summary` | string | One-line description of the sub-task's scope. |
+| `tasks[].sub_tasks[].deferral_reason` | string | Required for `tier: "D"` — cross-references a `RISKS` `deferred_items[].id`. |
+| `tasks[].sub_tasks[].fe_refs` | object | **Frontend sub-tasks only.** `{ component_ids[], route_ids[], api_ids[] }` — the ids of the `FRONTEND_ARCHITECTURE` entries THIS sub-task delivers. The task-planner's assembler filters the frontend-architecture arrays by these ids (a deterministic lookup) instead of inferring membership from `summary`. The union across all frontend sub_tasks MUST cover every `FRONTEND_ARCHITECTURE` entry; an entry covered by no sub-task is an architect self-check warning. Omit (or `{component_ids:[],route_ids:[],api_ids:[]}`) for a sub-task that delivers no UI surface (e.g., i18n-only, tests-only). |
+
+The skeleton is the source of truth for which sub-tasks exist, the M/D split, the per-sub-task FR/EC list, and (for frontend) the component/route/api membership. The planner never re-derives any of these — it hydrates. See `agents/task-planner.md` for the three modes and the assembler division of labor.
 
 ---
 

@@ -407,6 +407,8 @@ Split by service. For each affected service, look up its `spec_policy` in the wo
 
 When the feature has no frontend involvement (`frontend_required: false` in AFFECTED_SERVICES), emit `{"components": [], "routes": [], "api_integration": []}` — do NOT omit the block. The planner's frontend skip-decision reads `components.length`.
 
+**Every `components[]` / `routes[]` / `api_integration[]` entry MUST carry a stable `id`** (`c-{kebab-name}`, `r-{kebab-path}`, `a-{kebab-function}` — unique within its array). These ids are how the TASK_SKELETON frontend sub-tasks below say which entries each sub-task delivers (`fe_refs`), so the task-planner selects per-sub-task components by lookup instead of guessing from prose. You already know which component belongs to which sub-task — emit the mapping; don't make the planner re-derive it.
+
 ## Frontend Architecture — detail (prose)
 
 Use this prose section for the design content the JSON above cannot carry — `components` / `routes` / `api_integration` are the navigable index; the prose carries the *how*:
@@ -469,6 +471,7 @@ This block is a per-repo, sub-task-shaped projection of AFFECTED_SERVICES + RISK
 4. **`fr_refs` is required and non-empty for every sub-task.** Pull from AFFECTED_SERVICES `fr_ids` / `ec_ids`; if a sub-task supports an FR/EC the architect didn't yet trace to a service, add it here. The planner uses these to filter the FR list it pastes into each task file.
 5. **`summary` is one short sentence** — what the sub-task delivers, not a full description. The planner uses it as the row caption in the plan summary table.
 6. **No D items?** If RISKS `deferred_items[]` is empty, every sub-task is `M` and Phase 4.5's gate collapses to a 2-option form. That's fine — don't fabricate `D` items just to balance the slices.
+7. **Frontend sub-tasks carry `fe_refs`.** For every sub-task under a `repo_role: "frontend"` entry, add `fe_refs: { component_ids: [...], route_ids: [...], api_ids: [...] }` naming the FRONTEND_ARCHITECTURE entry ids (rule above) this sub-task delivers — e.g., the components sub-task gets the component ids, the page+routing sub-task gets the route ids, the API-layer sub-task gets the api ids. A sub-task with no UI surface (i18n-only, tests-only) gets empty arrays. **The union of every frontend sub-task's `fe_refs` MUST cover every FRONTEND_ARCHITECTURE entry** — an entry no sub-task claims will be dropped from every task file. This is the mapping the planner used to infer; emit it so it becomes a deterministic lookup.
 
 ```json
 { ... matches templates/blocks/task-skeleton.example.json ... }

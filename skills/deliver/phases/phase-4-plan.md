@@ -162,8 +162,15 @@ adjustments:
   - ...   (omit this block if no adjust rounds ran)
 phase_3_worktrees: {JSON map of repo_key → worktree_path from scratchpad's Architecture Flags — combine `contract_worktrees` + `spec_worktrees` if both exist}
 
-Read your system prompt's "persist" section. Apply adjustments deterministically, generate task IDs, write per-task markdown files under {run_dir}/tasks/, write the deferred follow-up file if approved_slice is "minimum-only", and return the PLANNER_RESULT JSON block.
+Read your system prompt's "persist" section. Apply adjustments deterministically, generate task IDs, compute each task's judgment payloads (checklist + stack anti-pattern bullets), invoke scripts/assemble-task-file.js to write the per-task markdown files under {run_dir}/tasks/, write the deferred follow-up file if approved_slice is "minimum-only", and return the PLANNER_RESULT JSON block.
 ```
+
+In `persist` the planner computes only the two judgment sections (sub-task checklist +
+stack-specific anti-pattern selection) and delegates assembly to
+`scripts/assemble-task-file.js`, which reads the pure-copy sources and writes each
+self-contained task file. Frontend component/route/api membership comes from the skeleton's
+per-sub-task `fe_refs` (id lookup), not inference. See `agents/task-planner.md` § "persist"
+and `templates/blocks/block-schemas.md` § TASK_SKELETON.
 
 Append a Dispatch Log row with phase `4.5-persist`, outcome `success`. Capture the planner's response.
 

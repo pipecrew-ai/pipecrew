@@ -116,11 +116,69 @@ for i in $(seq 1 N); do openssl rand -hex 3; done
 
 Combine each suffix with the feature slug: `{feature-slug}-{suffix}`. Read `feature-slug` from `{run_dir}/scratchpad.md`'s Run Info block.
 
-**Step 3 — For each sub-task, build and write the task file.**
+**Step 3 — For each sub-task, assemble and write the task file via the assembler script.**
 
-For every sub-task, compose the markdown body once (see template below) and `Write` it to `{run_dir}/tasks/{task-id}.md`. Use a single `Write` per file — no temp files, no Edit-after-Write.
+You do NOT hand-write the task files. `scripts/assemble-task-file.js` reads every pure-copy
+source itself (FR/EC bodies, architecture context, Contract Reference, Worktree path, Out of
+Scope, the audit-findings half of Known Anti-Patterns) and writes the complete file. You
+compute ONLY the two sections that need judgment and pass them in:
 
-**The task-file template** (build the body section by section, in this order):
+1. `checklist_md` — the `## Sub-task checklist` body (numbered checklist tailored to this
+   sub-task per its `repo_role` / `repo_type`; skeletal, not prescriptive — R10).
+2. `anti_pattern_bullets[]` — the **stack-specific** bullets you select from
+   `{plugin_dir}/anti-patterns/{type}.md` relevant to what THIS sub-task does (see "Known
+   Anti-Patterns construction" below). The assembler adds the audit-findings half itself and
+   applies the ≥3-bullet omission rule.
+
+Build one descriptor per sub-task:
+
+```json
+{
+  "task_id": "{feature-slug}-{suffix}",
+  "feature_slug": "{feature-slug}",
+  "repo_key": "{repo_key}",
+  "repo_role": "{repo_role}",
+  "repo_type": "{config.repos[repo_key].type}",
+  "tier": "M|D",
+  "title": "{sub_task.title}",
+  "summary": "{sub_task.summary}",
+  "fr_refs": {sub_task.fr_refs},
+  "spec_policy": "{api-first|code-first|no-api|n/a}",
+  "spec_file": "{config.services[svc].spec_file or omit}",
+  "worktree_path": "{phase_3_worktrees[repo_key] or null}",
+  "fe_refs": {sub_task.fe_refs or omit for non-frontend},
+  "checklist_md": "{the checklist you wrote}",
+  "anti_pattern_bullets": ["{selected stack bullet}", "..."],
+  "deferred_extra": ["{deferred sub-task lines for minimum-only, this repo}"]
+}
+```
+
+Write all descriptors to a scratch JSON array (e.g. `{run_dir}/outputs/task-descriptors.json`)
+and invoke the assembler once:
+
+```bash
+node {plugin_dir}/scripts/assemble-task-file.js \
+  --run-dir {run_dir} \
+  --descriptor {run_dir}/outputs/task-descriptors.json \
+  --arch-md {run_dir}/outputs/phase-2-architecture.md \
+  --config {workspace_root}/{slug}/config.json \
+  --audit-findings {workspace_root}/{slug}/context/audit-findings.md
+```
+
+The script writes each `{run_dir}/tasks/{task-id}.md` and emits a `{ "tasks": [...] }` JSON
+summary to stdout. **`fe_refs` comes straight from the skeleton — do NOT infer which
+components/routes/api entries a frontend sub-task owns.** If the skeleton predates `fe_refs`
+(old architect output), fall back to the inference you'd have done and pass pre-filtered
+`fe_components` / `fe_routes` / `fe_api` arrays in the descriptor instead, and log a one-line
+deprecation warning in your final report.
+
+The assembler fails loud (non-zero exit) on: an `fr_ref` absent from `requirements-index.json`
+(exit 3), an `fe_ref` id absent from `frontend-architecture.json` (exit 4), an FR/EC body it
+can't find in `phase-1-requirements.md` (exit 5), or a missing `risks.json` (exit 1). On any
+non-zero exit, STOP and report per "Failure modes" — do not hand-write a fallback file.
+
+**Reference — the task-file structure the assembler emits** (you no longer build this by hand;
+it is documented here so you can verify the output and so the contract with Phase 5 is explicit):
 
 ```markdown
 ---
@@ -152,11 +210,13 @@ last_worked_by: ""
 
 ## Architecture context
 {For backend tasks: paste the relevant DATA_MODEL + the service's API_DESIGN block from outputs/blocks/.
- For frontend tasks: read `outputs/blocks/frontend-architecture.json` and emit:
-   - A "## Components to build" sub-section listing every entry in `components[]` filtered to those this sub-task delivers (per sub_task.summary + the implementer's stack pattern). Format: `- {name} ({path}, kind={kind}, change_kind={change_kind}) — {purpose}`. Include `children` as an indented list when non-empty so the implementer sees the tree.
-   - A "## Routes affected" sub-section enumerating `routes[]` entries this sub-task touches (e.g., the page+routing sub-task gets all of them; the components sub-task gets none).
-   - A "## API integration" sub-section listing `api_integration[]` entries this sub-task wires up — implementer uses `service_function` + `file` to know where to add the call, and `request_type` + `response_type` to match the spec-generated types byte-for-byte.
-   - Then append the verbatim prose under FRONTEND_ARCHITECTURE (extract via `extract-block.js --raw FRONTEND_ARCHITECTURE` and trim everything BEFORE the `## Frontend Architecture — detail (prose)` heading) for State Management, i18n keys, and styling notes — material the JSON doesn't carry.
+ For frontend tasks: the assembler reads `outputs/blocks/frontend-architecture.json` and
+   filters `components[]` / `routes[]` / `api_integration[]` **by the ids in the sub-task's
+   `fe_refs`** (NOT by inferring from the summary — the architect emits the mapping). It emits:
+   - A "## Components to build" sub-section (`- {name} ({path}, kind=…, change_kind=…) — {purpose}`, children indented).
+   - A "## Routes affected" sub-section for the referenced route ids.
+   - A "## API integration" sub-section for the referenced api ids (`service_function` + `file` + `request_type` / `response_type`).
+   - Then the verbatim prose under FRONTEND_ARCHITECTURE (everything from the `## Frontend Architecture — detail (prose)` heading onward) for State Management, i18n keys, and styling notes.
  For mock tasks: paste API_DESIGN.
  For infra tasks: paste INFRASTRUCTURE_IMPACT.
  Pull these from {run_dir}/outputs/blocks/*.json — do NOT re-read the full phase-2-architecture.md.}
@@ -203,35 +263,38 @@ After implementation, report:
 
 - `spec_policy: "no-api"` — for workers. Paste the architect's Event Triggers block from API_DESIGN for this worker verbatim. Resolve event schema files via `outputs/blocks/affected-contracts.json` — substitute `{phase_3_worktrees[contract_repo_key]}/{schema_file_path}` for the absolute path. If a contract repo has no worktree, use `{config.repos[contract_repo_key].path}/{schema_file_path}`.
 
-**Known Anti-Patterns construction**:
+The assembler builds the Contract Reference from the descriptor's `spec_policy`, `spec_file`,
+and `worktree_path` — you don't paste it. For `api-first` it emits the spec path + the
+API_DESIGN endpoint list for this service; for `code-first` / `no-api` it includes the
+API_DESIGN prose (and, for `no-api`, the event-schema file paths from
+`affected-contracts.json`). Make sure the descriptor carries the right `spec_policy` and
+`spec_file` — that's the only input the switch needs from you.
+
+**Known Anti-Patterns — the ONE selection you still make**:
+
+This is the one section that needs your judgment. You select the **stack-specific** bullets;
+the assembler adds the audit-findings half and applies the omission rule.
 
 1. Look up `config.repos[repo_key].type`.
-2. Read `{plugin_dir}/anti-patterns/{type}.md` if it exists. Select the sections relevant to what THIS sub-task does (use the selector hints in `{plugin_dir}/skills/deliver/phases/phase-4-plan.md` § "Building the `## Known Anti-Patterns` section" if you need a reference). Don't paste the whole file — only the bullets that apply.
-3. Read `{workspace_root}/{slug}/context/audit-findings.md` if it exists. Filter to bullets whose `file:line` references files this sub-task will touch. Match by repo name (the audit-findings file uses `## {repo_key}` H2 sections).
-4. If fewer than 3 bullets survive selection + filtering, **omit the section entirely**. A short anti-patterns list dilutes the implementer's signal.
-5. Format:
+2. Read `{plugin_dir}/anti-patterns/{type}.md` if it exists. Select the bullets relevant to
+   what THIS sub-task does (selector hints in `{plugin_dir}/skills/deliver/phases/phase-4-plan.md`
+   § "Building the `## Known Anti-Patterns` section"). Pass them as `anti_pattern_bullets[]` in
+   the descriptor — do NOT paste the whole file, only the bullets that apply.
+3. The assembler reads `{workspace_root}/{slug}/context/audit-findings.md` itself (via
+   `--audit-findings`), filters to the `## {repo_key}` section, and appends those as the
+   workspace-specific half. You do not read or paste audit-findings.
+4. The assembler applies the **≥3-bullet rule**: if fewer than 3 bullets survive across both
+   halves, it omits the whole section. You don't need to pre-check this.
 
-   ```markdown
-   ## Known Anti-Patterns
+**Out of Scope — fully assembler-driven**:
 
-   Stack-specific traps to actively avoid in this repo. These are the predictable failure modes that derailed prior implementations.
-
-   ### Stack-specific ({type})
-   - {bullet from anti-patterns catalog}
-   - ...
-
-   {if any audit-findings survived filtering:}
-   ### Workspace-specific findings from onboarding
-   - {file:line — description} (verbatim from audit-findings.md)
-   - ...
-   ```
-
-**Out of Scope construction**:
-
-1. Read `{run_dir}/outputs/phase-1-requirements.md` for any `## Out of Scope` or `## Non-goals` section. Filter to bullets relevant to this repo.
-2. Read `{run_dir}/outputs/blocks/risks.json` (the architect's RISKS block, materialized by `split-design.js`). Iterate `deferred_items[]` and select entries where `owning_repo === this.repo_key` OR `owning_repo === null` (cross-repo items apply everywhere). For each selected entry, format as: `- [{tag}] {summary} — {rationale}` (e.g., `- [v2] Auto-retry of failed files — User can manually re-attempt via UI in v1`). If `risks.json` is missing, STOP and report `"RISKS block missing or not materialized — re-dispatch the architect"` — do NOT fall back to prose-scanning the markdown (the silent-skip class of bug; see PR history).
-3. Add the deferred sub-tasks for THIS repo (from `deferred_subtasks` if `approved_slice == "minimum-only"`).
-4. If the resulting list is empty, write the section as `*(none — every requirement traced to this repo is in scope)*`.
+You no longer build this section. The assembler reads the phase-1 `OUT_OF_SCOPE` prose and
+`outputs/blocks/risks.json` itself, selects `deferred_items[]` where
+`owning_repo === repo_key || owning_repo === null`, and appends the per-repo deferred sub-tasks
+you pass as `deferred_extra[]` in the descriptor (minimum-only slice only). If `risks.json` is
+missing the assembler fails loud (exit 1) — STOP and report
+`"RISKS block missing or not materialized — re-dispatch the architect"`. Your only input is
+`deferred_extra[]`.
 
 **Step 4 — Write the deferred follow-up file (only if `approved_slice == "minimum-only"`).**
 
@@ -269,16 +332,17 @@ You stop and report (no partial writes) when ANY of these holds:
 - A `D` sub-task lacks `deferral_reason`.
 - A sub-task lacks `fr_refs` or has an empty array.
 - An adjustment is unparseable.
-- An FR/EC referenced in `fr_refs` doesn't exist in `outputs/blocks/requirements-index.json` (the canonical ID set — validate IDs against this file, not by grepping the prose).
-- `persist` mode and any task-file `Write` returns failure.
+- An FR/EC referenced in `fr_refs` doesn't exist in `outputs/blocks/requirements-index.json` (the canonical ID set — the assembler validates this and exits 3; you may also pre-check).
+- `persist` mode and `scripts/assemble-task-file.js` returns a non-zero exit (1 = missing required input such as `risks.json`; 3 = unknown `fr_ref`; 4 = unknown `fe_ref` id; 5 = FR/EC body not found in `phase-1-requirements.md`; 6 = write failure). Report the exit code and the offending task; do NOT hand-write a fallback file.
 
 When stopping, do NOT roll back files already written — the orchestrator handles cleanup via worktree management. Just report which files were written successfully and which sub-task triggered the failure.
 
 ## What you don't do
 
 - You don't make architectural decisions. The skeleton is canonical.
-- You don't read the full `phase-2-architecture.md` markdown — always go through `outputs/blocks/*.json` and `extract-block.js --raw`.
+- You don't read the full `phase-2-architecture.md` markdown — the assembler reads it (and `outputs/blocks/*.json`) for you. You read only the skeleton, `requirements-index.json`, `config.json`, `platform.md` § Established Patterns, and the anti-patterns catalog for the ONE selection you make.
+- You don't hand-paste FR/EC bodies, architecture context, Contract Reference, Out of Scope, or audit-findings — `scripts/assemble-task-file.js` does. You compute `checklist_md` + `anti_pattern_bullets[]` and invoke the script.
 - You don't dispatch sub-agents.
 - You don't write to git or create worktrees.
-- You don't edit any file outside `{run_dir}/tasks/` and `{workspace_root}/{slug}/deferred/`.
+- You don't edit any file outside `{run_dir}/tasks/`, `{run_dir}/outputs/task-descriptors.json`, and `{workspace_root}/{slug}/deferred/` (the assembler writes the task files on your behalf under `{run_dir}/tasks/`).
 - You don't update the scratchpad — that's the orchestrator's job after parsing your `PLANNER_RESULT` JSON.

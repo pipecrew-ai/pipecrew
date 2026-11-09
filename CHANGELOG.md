@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.23.3] - 2026-11-10
+
+### Changed
+- **Task files no longer repeat the report format.** The `## Report format` section was
+  a static constant pasted into every assembled task file, but it already lives in
+  `rules/implementer-common.md` § "Final report delivery", which every implementer loads
+  on each dispatch. Removed it from `scripts/assemble-task-file.js` (the one bullet not
+  already covered there — Lint results — was added to `implementer-common.md` first). Trims
+  ~7 identical lines from every task file implementers read (and re-read on fix rounds).
+- **Design docs lead with an engineer-readable `## Summary`.** `phase-2-architecture.md`
+  is the durable artifact reviewers open later (PRs, run history, `/learn`, `/troubleshoot`),
+  but it opened with machine-index JSON before the decision. The solution-architect now
+  writes a plain-language `## Summary` TL;DR (decision, repos touched, key changes, top
+  risks) at the top — the same content as the gate digest, persisted. Marker-based block
+  extraction (`split-design.js` / `extract-block.js`) is unaffected.
+
 ## [1.23.2] - 2026-11-09
 
 ### Changed

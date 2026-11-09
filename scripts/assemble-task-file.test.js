@@ -115,7 +115,7 @@ test('backend api-first task: FR bodies pasted, contract reference built, writte
   assert(file.includes('**Spec policy**: `api-first`'), 'api-first header missing');
   assert(file.includes('openapi/spec.yaml'), 'spec path missing');
   assert(file.includes('POST /contracts'), 'endpoint missing');
-  assert(file.includes('## Report format'), 'report format missing');
+  assert(!file.includes('## Report format'), 'report format should NOT be pasted — it lives in implementer-common.md § Final report delivery');
   // Out of scope: DEF-1 (owned) + DEF-2 (null/cross-repo) both present.
   assert(file.includes('Bulk endpoint'), 'owned deferred item missing');
   assert(file.includes('Cross-repo audit log'), 'cross-repo deferred item missing');

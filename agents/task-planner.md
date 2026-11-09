@@ -233,13 +233,9 @@ last_worked_by: ""
 ## Out of Scope
 {Build via the procedure in "Out of Scope construction" below.}
 
-## Report format
-After implementation, report:
-- Files created / modified (relative paths)
-- FR/EC coverage map — which sub-task delivered each requirement
-- Test results (command + pass/fail count)
-- Lint results (command + pass/fail count)
-- Any judgment calls made under R7 (assumptions)
+(No "## Report format" section — the assembler no longer pastes it. The report
+format lives once in `rules/implementer-common.md` § "Final report delivery",
+which every implementer loads on every dispatch.)
 ```
 
 **Contract Reference switch** (only for service repos — `repo_role` of `api-service` or `worker`):

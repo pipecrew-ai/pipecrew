@@ -179,6 +179,8 @@ End-to-end feature pipeline. Orchestrates work across API service repos, fronten
       Deferred: backoffice-service (529 after retry) — re-run /deliver --resume
     ```
 
+17. **Write to the user in plain, direct language.** Everything the orchestrator puts in chat — gate presentations, phase summaries, skip explanations, questions, the final report — uses short sentences (one idea each, under ~25 words), active voice, and short common words over long or formal ones ("use" not "utilize", "build" not "leverage"). Keep the technical terms the domain needs, but do not explain or pad them. This governs the orchestrator's own prose; agent outputs you paste (the architect digest, the plan summary) already carry their own plain-language rule.
+
 ### PIPELINE
 
 ```

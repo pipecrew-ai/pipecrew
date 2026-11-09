@@ -16,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.23.2] - 2026-11-09
+
+### Changed
+- **Slimmer, plainer design + orchestrator output.** Added prose rules so the
+  solution-architect's technical design and the `/deliver` orchestrator's own
+  user-facing messages read clearly and stop repeating themselves:
+  - **Plain language** — the gate digest and all prose (ARCHITECTURE_DECISION,
+    RISKS, Notes) use short sentences, active voice, and plain words, while keeping
+    the technical terms engineers need (no term definitions). Applied to the
+    orchestrator too via a new CRITICAL RULE in `skills/deliver/SKILL.md`.
+  - **Prose is additive-only** — design-block prose no longer restates the JSON
+    index above it; `api-first` endpoints get one prose line (the spec is the
+    contract), `code-first` keeps its full inline contract.
+  - **No stray paths** — the architect no longer emits `worktree` / absolute repo
+    paths; downstream resolves them from config + the orchestrator's worktree map.
+  Instruction-only — no block markers, JSON schema, or block order changed, so
+  `split-design.js` / `extract-block.js` extraction is unaffected. Cuts the
+  architect's design output ~1,000 tokens/run and makes both the design doc and the
+  orchestrator's chat messages easier to read.
+
 ## [1.23.1] - 2026-11-05
 
 ### Changed

@@ -459,13 +459,9 @@ function outOfScopeSection(descriptor, reqMd) {
   return parts.join('\n');
 }
 
-const REPORT_FORMAT = `## Report format
-After implementation, report:
-- Files created / modified (relative paths)
-- FR/EC coverage map — which sub-task delivered each requirement
-- Test results (command + pass/fail count)
-- Lint results (command + pass/fail count)
-- Any judgment calls made under R7 (assumptions)`;
+// The report format is NOT pasted per task file — it lives once in
+// rules/implementer-common.md § "Final report delivery", which every implementer
+// loads on every dispatch. Duplicating it here was ~7 identical lines in every file.
 
 // ---------- assemble one task file ----------
 
@@ -492,8 +488,7 @@ function assembleOne(descriptor, ctx) {
   const anti = antiPatternsSection(descriptor, auditFindings);
   if (anti) sections.push('', anti);
 
-  sections.push('', outOfScopeSection(descriptor, ctx.reqMd));
-  sections.push('', REPORT_FORMAT, '');
+  sections.push('', outOfScopeSection(descriptor, ctx.reqMd), '');
 
   const body = sections.join('\n');
   const outPath = path.join(outDir, `${descriptor.task_id}.md`);

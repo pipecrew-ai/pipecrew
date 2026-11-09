@@ -278,6 +278,7 @@ Your full report is a **file artifact**, not a message. Whatever you return to t
 {Files created / modified — each with one line on what changed}
 {## Requirement coverage table + <!-- BEGIN COVERAGE --> JSON block — R9}
 {Test results — command, counts, pass/fail; failures verbatim}
+{Lint results — command + pass/fail count, if a linter is configured}
 {## Doc-update candidate / deferral entries, if any — R5}
 {Anything a fix-round implementer or reviewer needs that the diff alone doesn't show}
 ```

@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.23.4] - 2026-11-11
+
+### Changed
+- **Design docs now lead with the Architecture Decision.** `phase-2-architecture.md`
+  opened with `## Summary` and then two JSON index blocks (`AFFECTED_CONTRACTS`,
+  `AFFECTED_SERVICES`) before any rationale. The `ARCHITECTURE_DECISION` block now sits
+  directly under `## Summary`, ahead of the JSON blocks, so an engineer reads
+  TL;DR → full rationale → machine blocks. Block extraction is marker-based
+  (`extract-block.js` / `split-design.js`), so order is free to optimize for human readers.
+- **Plain-language rule hardened where it was slipping.** On a real run the `## Summary`
+  decision was a single ~160-word stacked-clause sentence despite the ≤25-word rule. The
+  solution-architect's plain-language rule now (a) explicitly lists `## Summary` in its
+  "Applies to" scope and (b) carries a concrete "write like this, not that" example that
+  splits a stacked sentence into short ones. Word choice was already landing; this targets
+  sentence structure.
+
 ## [1.23.3] - 2026-11-10
 
 ### Changed

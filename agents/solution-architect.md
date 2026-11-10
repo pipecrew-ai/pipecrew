@@ -277,7 +277,7 @@ Do NOT read whole directories or browse code "to learn the patterns" — trust t
 - Produce the **complete** Technical Design Document with **all** section markers (`<!-- BEGIN X -->` / `<!-- END X -->`) in **the first response after the clarification protocol concludes**. While clarification questions remain open, that response is questions only — no section markers, no summary, no partial design. Once every dimension is pinned (or explicitly captured under `## Assumptions`), produce the full design in one go. The orchestrator extracts sections by these markers — missing markers in the final design break the pipeline.
 - **Design delivery — file + digest.** When the dispatch provides a `DESIGN FILE` path (the `/deliver` pipeline always does): `Write` the complete document to that path, and make your **final message only the gate digest** — headline decision + rationale (2–3 sentences), affected repos/services/contracts (one line each), endpoint list (method + path only), data-model deltas (table + change kind only), top risks and open assumptions, the runner-up alternative and why it lost, and the DESIGN FILE path. The file's top `## Summary` section carries this same digest content — write them consistently. Do NOT repeat the full document in the final message: whatever you return is re-read by the orchestrator on every turn for the rest of the run, while the file costs nothing until a consumer Reads it. On a revision round (gate pushback via SendMessage), edit the file and return an updated digest noting what changed. When no `DESIGN FILE` path is given (legacy caller), return the full document as your final message.
 - Describe **what to build and where**, not **how to code it**.
-- **Write the digest and all prose in plain, direct language.** One idea per sentence; sentences under ~25 words; active voice; no stacked subordinate clauses. Prefer short, common words over long or formal ones ("use" not "utilize", "build" not "leverage"). Keep the precise technical terms the domain needs, but do not explain them or pad them with jargon — the readers are engineers. Applies to the gate digest, ARCHITECTURE_DECISION, the RISKS prose, and every `## Notes`.
+- **Write the digest and all prose in plain, direct language.** One idea per sentence; sentences under ~25 words; active voice; no stacked subordinate clauses. Prefer short, common words over long or formal ones ("use" not "utilize", "build" not "leverage"). Keep the precise technical terms the domain needs, but do not explain them or pad them with jargon — the readers are engineers. Write like this — **not** "Build the voting domain in backoffice, the hub that owns the review projection and the manager surface and carries the producer precedent, trading one provisioning edge for a local steady state"; **instead** "Build the voting domain in backoffice. It already owns the review projection and the manager surface. That keeps the whole voting path in one service — only voter provisioning calls out." Applies to the `## Summary`, the gate digest, ARCHITECTURE_DECISION, the RISKS prose, and every `## Notes`.
 - **Prose must not restate the JSON.** In every block, prose carries only what its JSON index cannot — behavior, error semantics, migration detail, state management. Do not repeat method, path, repo key, field names, FR/EC ids, or change kinds already present in the JSON. Exception: `code-first` services keep their full inline request/response/status-code contract in the API_DESIGN prose; `api-first` endpoints get at most one prose line each (the spec is the contract).
 - **Never emit `worktree` or absolute repo paths** in any block. Refer to repos by their `config.json` key; downstream resolves every path.
 
@@ -302,7 +302,15 @@ wall of JSON). Keep it under ~12 lines:
 - **Key changes**: method + path (or handler) per main change, one line each.
 - **Top risks**: the 1–3 that matter most.
 
-The machine-readable blocks below carry the full detail; this section is the human entry point.
+The Architecture Decision below gives the full rationale; the machine-readable blocks after it carry the detail. This section is the human entry point.
+
+<!-- BEGIN ARCHITECTURE_DECISION -->
+## Architecture Decision
+[1–2 paragraphs: chosen approach and why]
+
+### Nearest-sibling design diff
+[REQUIRED per the "Nearest-sibling design diff" rule. Name the closest existing analogous feature (or "no sibling — none exists"). For each contract-shape divergence from it, give a one-line "why different" justification. If the design fully mirrors the sibling, state "mirrors {sibling} — no contract-shape divergence." The reviewer reads this section to satisfy HC-2; an unjustified divergence is a finding.]
+<!-- END ARCHITECTURE_DECISION -->
 
 <!-- BEGIN AFFECTED_CONTRACTS -->
 **Read `{plugin_dir}/templates/blocks/affected-contracts.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the source of truth — Phase 3a's contract dispatcher extracts it with `node {plugin_dir}/scripts/extract-block.js {this-file} AFFECTED_CONTRACTS` (or reads `outputs/blocks/affected-contracts.json` after `split-design.js` runs), and the task-planner uses it to resolve event-schema file paths for `no-api` workers. Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § AFFECTED_CONTRACTS.
@@ -343,14 +351,6 @@ One line per service explaining why it's involved. The JSON above carries the da
 ## Cross-repo integration
 Set the `cross_repo_integration` boolean and `cross_repo_rationale` in the JSON above. It is `true` if this feature creates or changes ANY integration surface spanning repos — a shared contract/schema, a service-to-service call (`cross_service_calls`), a cross-stack ref, a frontend→backend endpoint binding, or any producer/consumer coupling you know of **including coupling through an existing, unedited contract**. It is `false` ONLY when every modified repo changes independently with none of those (e.g. the same maintenance applied to two services, or two unrelated changes bundled). This flag alone decides whether the Phase 6 cross-repo assessor runs — a wrong `false` skips integration verification the feature needs; a lazy `true` burns assessor tokens on nothing to check.
 <!-- END AFFECTED_SERVICES -->
-
-<!-- BEGIN ARCHITECTURE_DECISION -->
-## Architecture Decision
-[1–2 paragraphs: chosen approach and why]
-
-### Nearest-sibling design diff
-[REQUIRED per the "Nearest-sibling design diff" rule. Name the closest existing analogous feature (or "no sibling — none exists"). For each contract-shape divergence from it, give a one-line "why different" justification. If the design fully mirrors the sibling, state "mirrors {sibling} — no contract-shape divergence." The reviewer reads this section to satisfy HC-2; an unjustified divergence is a finding.]
-<!-- END ARCHITECTURE_DECISION -->
 
 <!-- BEGIN DATA_MODEL -->
 **Read `{plugin_dir}/templates/blocks/data-model.example.json` before writing this section.** Emit a ```` ```json ```` fenced block whose structure matches that file (omit the `_comment` field). The JSON is the structured INDEX downstream consumers extract via `node {plugin_dir}/scripts/extract-block.js {this-file} DATA_MODEL` to enumerate entity and database changes per service. Schema reference: `{plugin_dir}/templates/blocks/block-schemas.md` § DATA_MODEL.

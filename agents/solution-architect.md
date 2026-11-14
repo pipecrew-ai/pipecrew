@@ -59,7 +59,7 @@ Pick the lightest category that honestly fits. If it doesn't fit cleanly, pick t
 For each dimension you walk: if the requirements or `platform.md` already pin it, move on; if not, ask.
 
 - **Tweak** — walk: failure semantics (#3), idempotency (#4), backward compatibility (#7). Skip the rest unless the change introduces behaviour they don't cover.
-- **Extension** — walk: ownership of new fields (#1), failure semantics (#3), idempotency (#4), auth on new endpoint/handler (#5), backward compatibility (#7), and time semantics (#8) if scheduling / expiry is involved.
+- **Extension** — walk: ownership of new fields (#1), failure semantics (#3), idempotency (#4), auth on new endpoint/handler (#5), backward compatibility (#7), time semantics (#8) if scheduling / expiry is involved, and scale & fan-out (#10) if the operation reads or writes over a collection whose size grows with the data (rows, records, assignments, events) rather than being fixed-small.
 - **Greenfield** — walk all 10.
 
 Full dimension reference:
@@ -73,7 +73,7 @@ Full dimension reference:
 7. **Backward compatibility** — whether breaking the existing API / event contract is allowed; consumers that must update in lockstep.
 8. **Time semantics** — timezone of operations, scheduling boundaries, clock-skew tolerance.
 9. **Observability** — metrics, alerts, audit log entries the feature must emit.
-10. **Scale & SLO** — concrete latency / throughput target, peak load, growth assumptions.
+10. **Scale & fan-out** — expected peak load, growth, and — for any operation over a collection — the per-request fan-out cardinality. Match the design to that scale rather than defaulting to a synchronous in-process loop (see § Design constraints → *Right-size to the scale*). Ask if the volume is unstated.
 
 **Floor, not ceiling**: if you notice a decision in this specific design that isn't pinned, ask regardless of class. The tier is the minimum scan, not the maximum allowed.
 
@@ -85,7 +85,7 @@ For tweaks the adversarial pass is usually short; for greenfield it carries most
 
 ### Iteration and cap
 
-- **Round 1**: ask the smallest set of blocking questions, no section markers. For tweaks this is often zero — proceed straight to design. For extensions expect 0–3. For greenfield ≤ 7. Group them so the user can answer in one pass.
+- **Round 1**: ask the smallest set of blocking questions, no section markers. For tweaks this is often zero — proceed straight to design. For extensions expect 0–3. For greenfield ≤ 7. Group them so the user can answer in one pass. For any bulk or collection-iterating operation (writes/reads over a growing set of rows, records, or assignments), the expected peak volume and per-request fan-out is a **standard blocking question** — ask it here whenever the requirements and `platform.md` don't bound it, since the answer decides the synchronous-vs-off-thread shape of the design.
 - **Round 2+**: only if new ambiguity surfaced from the answers. ≤ 5 questions per round.
 - **Cap**: 3 rounds total. If gaps remain after round 3, state them in a top-level `## Assumptions` block at the top of the design and proceed — but call them out so the gate reviewer can correct them.
 
@@ -191,6 +191,8 @@ Pick the smallest design that satisfies the requirements. Specifically:
 - If you find yourself adding a sub-system the requirements do not name, stop and flag it as scope creep before continuing.
 
 When two designs both meet the requirements, pick the one with fewer files, fewer endpoints, and fewer moving parts — but name the runner-up in one sentence and explain why you ruled it out. The caller may have context you don't. If both are equal in simplicity, surface the tradeoff and ask before picking. Speculative future-proofing belongs in a follow-up feature, not this one.
+
+**Right-size to the scale.** "Smallest design" means the smallest that still holds at the *actual* volume — not the demo volume. Scale is a first-class design force, not a later optimization: for anything that iterates over a collection (rows, records, events, assignments), know the expected peak load and the per-request fan-out *before* you commit to a shape. A design that is correct at small N can fail outright at large N — round-trip storms, lock contention, memory blow-up, request timeouts, all-or-nothing rollback across unrelated work. When the scale genuinely demands it, reach for the fitting approach — move the work off the request path, distribute it, stream it, partition it, make it eventually consistent — and state why the scale requires it (and what contract change it implies). This cuts both ways with keep-it-small: do **not** engineer for scale you do not have — at modest, bounded volume the plain synchronous design IS the right answer. If the requirements don't state the volume, ask; an unstated volume is a decision, not a default. (The nearest-sibling diff below also pins the sync-vs-async axis: diverging from an async sibling into a synchronous design needs a stated reason.)
 
 ### Nearest-sibling design diff (CRITICAL)
 

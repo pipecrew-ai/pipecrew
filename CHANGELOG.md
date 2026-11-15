@@ -16,6 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.24.0] - 2026-11-15
+
+### Changed
+- **Solution-architect now treats scale & fan-out as a first-class design lens.** The
+  architect could ship a synchronous, in-process loop over an unbounded collection
+  without ever weighing volume: dimension #10 ("Scale") was walked only for *greenfield*
+  changes, so a bulk operation added as an *extension* (new endpoint on existing
+  patterns) skipped the scale question entirely — and the dimension itself was framed as
+  an SLO target rather than a fan-out cardinality. Four coordinated, workspace-agnostic
+  edits to `agents/solution-architect.md` close the gap:
+  - **Extension dimension-walk** now includes scale & fan-out (#10) when the operation
+    reads/writes over a collection whose size grows with the data.
+  - **Dimension #10** reframed from "Scale & SLO" to "Scale & fan-out" — peak load,
+    growth, and the per-request fan-out cardinality; match the design to that scale.
+  - **New design-constraint stance "Right-size to the scale"** — scale is a first-class
+    design force (reach for off-thread / distributed / streamed / partitioned shapes when
+    the volume demands it), balanced against keep-it-small (do NOT engineer for scale you
+    don't have).
+  - **Round-1 clarification** — the expected peak volume / per-request fan-out is a
+    standard blocking question for any bulk operation when requirements don't bound it.
+  Surfaced via `/learn` after an ALC voting feature shipped a synchronous assign that
+  later needed an async remediation.
+
 ## [1.23.4] - 2026-11-11
 
 ### Changed

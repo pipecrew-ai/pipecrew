@@ -16,6 +16,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.25.0] - 2026-11-18
+
+### Added
+- **`/learn` proposes a maintainer issue for plugin-level findings.** When a finding
+  should change PipeCrew itself (a skill, agent, rule or template), the feedback-learner
+  now writes a platform-agnostic `ISSUE_DRAFT` that names the plugin component to change
+  and never mentions the workspace, its repos, domain, code or people. The draft is
+  checked by a new deterministic leak gate, `scripts/check-plugin-issue.js`, which blocks:
+  - names from the workspace config (slug, repos, services, repo owners)
+  - local paths, emails, links to other GitHub owners, and secrets
+
+  Before filing, a duplicate search shows likely matching open issues, and each issue
+  needs explicit consent: `[f]` file / `[s]` save / `[e]` edit / `[v]` view / `[n]` skip.
+  `--apply-all`, `--auto-fix` and `--dry-run` never file. Without `gh` auth the draft
+  is saved and a prefilled new-issue link is printed. The learn-log records each
+  issue's outcome.
+- **Workspace-less `/learn`** (`--no-workspace`, or no workspace registered) for free-text
+  and session feedback about the plugin itself. It produces plugin-level findings only and
+  writes under `~/.claude/pipecrew/plugin-feedback/`.
+
+### Fixed
+- **`/learn` runs fully standalone.** Its run directory is now created up front for every
+  source mode. Before, it was used before being defined, and in `--run` mode it pointed
+  at the analysed /deliver run, so /learn's own files were written into that run.
+- **`/learn --run` reads `runs/deliver/`**, the path /deliver actually writes, with a
+  fallback to the legacy `runs/feature/`.
+
 ## [1.24.0] - 2026-11-15
 
 ### Changed

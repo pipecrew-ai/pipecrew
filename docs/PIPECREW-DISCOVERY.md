@@ -187,7 +187,7 @@ Every command operates against a **workspace** — a self-contained `{slug}/` fo
 ## Learning & ops
 | Skill | What it does |
 |---|---|
-| `/learn` | Read feedback from a merged PR / `/deliver` run / branch diff / free-form text; propose tier-classified doc updates; optionally dispatch implementers to bring the existing branch in line with the new convention |
+| `/learn` | Read feedback from a merged PR / `/deliver` run / branch diff / session / free-form text (standalone; plugin-level findings become a leak-checked maintainer issue); propose tier-classified doc updates; optionally dispatch implementers to bring the existing branch in line with the new convention |
 | `/troubleshoot` | Read-only cross-repo incident triage. Three layers of read-only enforcement: agent system prompt, `troubleshooter-bash-guard.js`, and a `PreToolUse` hook that self-gates on a marker file so it only activates during a live `/troubleshoot` run |
 
 ## UI
@@ -283,10 +283,11 @@ Cross-cutting rules:
 **`/learn`** pipeline:
 ```
 1. Resolve workspace
-2. Collect signal (--pr via gh / --run / --branch / free text)
+2. Collect signal (--pr via gh / --run / --branch / --session / free text) — standalone; --no-workspace for plugin-only feedback
 3. Dispatch feedback-learner (read-only)
 4. Present findings tier-classified: run-local / repo-durable / workspace-durable / plugin-level   ─── per-finding user gate
 5. Apply approved doc edits (Edit only, never full-file Write; never plugin-level)
+5b. Plugin-level findings → ISSUE_DRAFT → check-plugin-issue.js leak gate → duplicate search → per-issue consent → gh issue create (never auto-filed)
 6. Append to learn-log.md
 6.5. Optional fix-round — group findings by repo, resolve implementer + branch (refuses main/master/dev), per-repo confirmation gate, parallel dispatch
 7. One-line status + (if --run) update parent /deliver scratchpad row

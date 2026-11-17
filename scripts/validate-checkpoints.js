@@ -95,6 +95,9 @@ function validate(lines) {
           errors.push(`line ${lineNo}: run_end status "${ev.status}" not in ${[...ALLOWED_RUN_STATUS].join('|')}`);
         }
         checkNonNegInt(ev, 'duration_ms', lineNo, errors);
+        for (const k of ['plugin_issues_filed', 'plugin_issues_saved']) {
+          if (k in ev) checkNonNegInt(ev, k, lineNo, errors);
+        }
         break;
       case 'phase_start':
         require_(ev, ['phase', 'stage'], lineNo, errors);

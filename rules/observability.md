@@ -95,7 +95,7 @@ A `/deliver` run's phases group into six ordered chapters: **understand → cont
 }
 ```
 
-Extra fields: `workspace_slug` (always), `args` (CLI args passed), `session_id` (the value of `$CLAUDE_CODE_SESSION_ID` — records which Claude session ran the orchestrator so orchestrator-overhead tokens can be derived from its transcript; see `orch_checkpoint` below), `claude_code_version` (if detectable).
+Extra fields: `workspace_slug` (always), `args` (CLI args passed), `session_id` (the value of `$CLAUDE_CODE_SESSION_ID` — records which Claude session ran the orchestrator so orchestrator-overhead tokens can be derived from its transcript; see `orch_checkpoint` below), `claude_code_version` (if detectable). `workspace_slug` is the sentinel `_plugin-feedback` for a workspace-less `/learn` run (no workspace; run dir under `~/.claude/pipecrew/plugin-feedback/learn/`).
 
 #### `run_end` — last line of every log
 
@@ -110,7 +110,7 @@ Extra fields: `workspace_slug` (always), `args` (CLI args passed), `session_id` 
 }
 ```
 
-Extra fields: `status` (`completed` | `failed` | `aborted` | `resumed_later`), `duration_ms` (from `run_start`).
+Extra fields: `status` (`completed` | `failed` | `aborted` | `resumed_later`), `duration_ms` (from `run_start`). `/learn` only: optional integers `plugin_issues_filed`, `plugin_issues_saved` (plugin-level issue drafts filed via `gh` / saved without filing).
 
 #### `phase_start` — entering a phase (before any work in it)
 

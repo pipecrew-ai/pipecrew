@@ -281,5 +281,24 @@ test('malformed JSON line flagged', () => {
   assert(hasErr(r, 'invalid JSON'));
 });
 
+test('workspace-less /learn run (_plugin-feedback sentinel + plugin_issues_* counts) validates', () => {
+  const id = '2026-11-18-101500-text';
+  const r = validate(toLines([
+    { ts: '2026-11-18T10:15:00Z', event: 'run_start', skill: 'learn', run_id: id, workspace_slug: '_plugin-feedback' },
+    { ts: '2026-11-18T10:16:00Z', event: 'run_end', skill: 'learn', run_id: id, status: 'completed', duration_ms: 60000,
+      plugin_issues_filed: 1, plugin_issues_saved: 2 },
+  ]));
+  assert(r.errors.length === 0 && r.warnings.length === 0, r.errors.join('; ') + ' ' + r.warnings.join('; '));
+});
+
+test('run_end plugin_issues_filed must be a non-negative integer', () => {
+  const id = '2026-11-18-101500-text';
+  const r = validate(toLines([
+    { ts: '2026-11-18T10:15:00Z', event: 'run_start', skill: 'learn', run_id: id, workspace_slug: '_plugin-feedback' },
+    { ts: '2026-11-18T10:16:00Z', event: 'run_end', skill: 'learn', run_id: id, status: 'completed', duration_ms: 1, plugin_issues_filed: -1 },
+  ]));
+  assert(hasErr(r, 'plugin_issues_filed'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

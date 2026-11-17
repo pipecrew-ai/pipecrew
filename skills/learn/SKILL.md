@@ -1,11 +1,13 @@
 ---
 name: learn
-description: "Learn from user feedback — from a merged PR, a recorded /deliver run, a branch diff, a Claude Code session transcript, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md § Established Patterns, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to history/learn-log.md for institutional memory."
+description: "Learn from user feedback — from a merged PR, a recorded /deliver run, a branch diff, a Claude Code session transcript, or free-form text — and propose scoped updates to the workspace's durable context docs (platform.md § Established Patterns, repo CLAUDE.md / DESIGN_SYSTEM.md / agent-context/). Presents findings tier-classified (repo / workspace / plugin-level) with before/after diffs; user approves per finding; approved changes are applied. After the docs are saved the user can optionally dispatch the per-repo implementer agents to apply the same findings to an existing branch as a fix round (so the branch the feedback came from gets brought in line with the new conventions, not just future work). Every run is logged to history/learn-log.md for institutional memory. Runs standalone in every source mode; text/session feedback can also run workspace-less (--no-workspace) to produce plugin-level findings only. Plugin-level findings become a leak-checked, platform-agnostic GitHub issue draft for PipeCrew maintainers, filed only with per-issue consent."
 ---
 
 ## Description
 
 The learning loop for PipeCrew. Converts one feedback signal → scoped doc updates so the crew gets smarter about this workspace over time.
+
+Every source mode runs standalone — no `/deliver` run, session, or comment context required. Invocation from `/deliver` Phase 8 is one caller (see Step 7.5). `text` / `session` sources can also run **workspace-less** (`--no-workspace`): only `plugin-level`, `run-local`, `out-of-scope` findings are possible.
 
 **Sources accepted**:
 - Merged PR (GitHub via `gh` CLI) — reads review comments + post-plugin fix commits to learn from what humans had to correct
@@ -23,7 +25,7 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
   - **Always-on phase rules (rare — last resort)** → `{workspace_root}/{slug}/context/extended-rules/implementer.md` or `.../reviewer.md`. Target these ONLY for a convention that is genuinely **role-common**: it must apply on EVERY dispatch of that role, across ALL repos, stacks, and topics in the workspace. Gate before proposing — if the item names or implies a specific repo → repo `AGENTS.md`; a specific stack → the repo docs of that stack's repos; a specific topic/feature area → a `context/` doc + Extended Context Index row; a short cross-repo fact → `platform.md § Established Patterns`. Every dispatch pays for these files forever, so expect most `/learn` runs to add NOTHING here — an empty verdict is the normal outcome, not a missed opportunity. When an item does qualify, propose appending it below the file's stub comment block; user approval flow unchanged. These files are applied additively on top of the plugin's shipped `rules/{implementer,reviewer}-common.md` — never propose an item that relaxes or contradicts a shipped rule (the shipped file wins and the item would be dead on arrival).
   - **Recipe promotion (prevention rung).** When the analyzed signal shows a recipe's detector repeatedly firing in review findings — the same `context/recipes/<name>.yml` cited across runs, or a fast-growing `seen_in` — MAY propose promoting the recipe's one-line convention into `context/extended-rules/implementer.md` (the role-common gate above applies unchanged) or, when the hits cluster in a single repo, that repo's `AGENTS.md`. The proposal cites the recipe name and its `decided_in` ADR. The recipe itself stays — promotion is prevention, not replacement: the detector keeps catching regressions in review; the promoted rule stops implementers writing them in the first place. Same user-approval flow.
 - **Repo durable** → updates `{repo}/CLAUDE.md` or `{repo}/agent-context/*` or `DESIGN_SYSTEM.md` (frontend — path resolved via `config.repos[repo].design_system_path`, falling back to standard candidates)
-- **Plugin-level** → flagged in the log only (not auto-applied; requires maintainer review)
+- **Plugin-level** → never auto-applied. Each finding carries a platform-agnostic issue draft for the PipeCrew repo, gated by `{plugin_dir}/scripts/check-plugin-issue.js`, a duplicate search, and per-issue user consent (Step 4); the log records the outcome
 - **Run-local** → no propagation; already captured in the run's outputs, mentioned but not acted on
 
 **Design system path resolution**: when a finding targets a frontend repo's DESIGN_SYSTEM.md, resolve the path in this order:
@@ -37,8 +39,11 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 /pipecrew:learn --pr=<url> [--note="..."] [--workspace=<slug>]
 /pipecrew:learn --run=<run_id> [--workspace=<slug>]
 /pipecrew:learn --branch=<name> [--base=<main>] [--workspace=<slug>]
-/pipecrew:learn --session=<path|id|current> [--note="..."] --workspace=<slug>
-/pipecrew:learn "<free-form text>" [--workspace=<slug>]
+/pipecrew:learn --session=<path|id|current> [--note="..."] [--workspace=<slug> | --no-workspace]
+/pipecrew:learn "<free-form text>" [--workspace=<slug> | --no-workspace]
+
+# Workspace-less (text / session only): plugin-level findings only
+/pipecrew:learn "<free-form text>" --no-workspace
 
 # Optional fix-round flags (combine with any source mode above):
 /pipecrew:learn ... --fix-branch=<name>     # target a specific branch when dispatching the fix round
@@ -52,13 +57,14 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 |------|---------|
 | `--pr=<url>` | GitHub PR URL. Fetches review comments + commits via `gh`. |
 | `--note="..."` | Optional free-form annotation. Works with **any** source mode (`--pr`, `--run`, `--branch`, or as a stand-alone supplement to the positional text). The note is passed to the feedback-learner as an extra signal alongside the structured source — the learner considers it when partitioning observations, but does NOT skip tier-classification or per-finding approval. Useful for "the architect kept picking pattern X but we always do Y" type hints that aren't visible in the run output or PR diff. |
-| `--run=<run_id>` | A `/deliver` run directory name under `{workspace_root}/{slug}/runs/feature/`. Reads that run's `corrections.md` + outputs. |
+| `--run=<run_id>` | A `/deliver` run directory name under `{workspace_root}/{slug}/runs/deliver/` (legacy `runs/feature/` accepted as fallback). Reads that run's `corrections.md` + outputs. |
 | `--branch=<name>` | Branch name to diff (local). Base defaults to `main` or `dev` — whichever the workspace uses. |
 | `--base=<name>` | Override the base branch for `--branch` mode. |
-| `--session=<path\|id\|current>` | Learn from a Claude Code session. `current` = the live conversation (the orchestrator distills its salient feedback turns); a `.jsonl` path or a bare session id = a past transcript (collected via `collect-session-feedback.js`). Weakest signal class — see the source-reliability note. Composes with `--note` (that **is** the "free text + session" combination — no separate flag needed). Requires `--workspace` (no repo to auto-detect from). |
+| `--session=<path\|id\|current>` | Learn from a Claude Code session. `current` = the live conversation (the orchestrator distills its salient feedback turns); a `.jsonl` path or a bare session id = a past transcript (collected via `collect-session-feedback.js`). Weakest signal class — see the source-reliability note. Composes with `--note` (that **is** the "free text + session" combination — no separate flag needed). Requires `--workspace` or `--no-workspace` (no repo to auto-detect from). |
 | `--workspace=<slug>` | Which workspace's docs to update. Auto-detects if omitted (checks each registered workspace's `config.json` for repo paths that match the PR / branch). |
-| `--dry-run` | Show findings + proposed updates, but skip the apply step. Implies `--no-fix` (a dry run never dispatches implementers). |
-| `--apply-all` | Skip per-finding approval and apply every non-plugin-level finding. Does NOT imply `--auto-fix` — the fix-round prompt still runs after applies unless `--auto-fix` / `--no-fix` is also passed. |
+| `--no-workspace` | `text` / `session` sources only. Workspace-less run: only `plugin-level`, `run-local`, `out-of-scope` findings; writes under `~/.claude/pipecrew/plugin-feedback/`. Rejected with `--fix-branch`. |
+| `--dry-run` | Show findings + proposed updates, but skip the apply step. Implies `--no-fix` (a dry run never dispatches implementers). Writes nothing and never files plugin issues (drafts shown inline only). |
+| `--apply-all` | Skip per-finding approval and apply every non-plugin-level finding. Does NOT imply `--auto-fix` — the fix-round prompt still runs after applies unless `--auto-fix` / `--no-fix` is also passed. Never files plugin issues (drafts listed as "saved, not filed"). |
 | `--fix-branch=<name>` | Optional branch name to dispatch the fix round against. If omitted, the orchestrator uses each affected repo's currently checked-out branch and asks the user to confirm before dispatching. |
 | `--auto-fix` | Skip the post-apply confirmation prompt and dispatch implementers for every approved finding's affected repo. Use with care — implementers will modify code on the resolved branch. |
 | `--no-fix` | Skip the post-apply confirmation prompt and do NOT dispatch any implementers. Equivalent to answering "n" at the prompt. |
@@ -86,21 +92,23 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 ### CRITICAL RULES
 
 1. **Never silently rewrite workspace / repo docs.** Every proposed change is presented as a before/after diff; the user approves per finding or rejects. `--apply-all` still shows a summary and requires one confirmation.
-2. **Never auto-apply plugin-level findings.** The target would be the plugin's own prompts/templates, which are shared across all workspaces. Plugin-level findings are logged with the flag `plugin-level-review-needed` so the maintainer can assess.
+2. **Never auto-apply plugin-level findings.** The target would be the plugin's own prompts/templates, which are shared across all workspaces. Plugin-level findings are logged with the flag `plugin-level-review-needed` and handled through the Step 4 issue-draft flow.
 3. **Tier classification is the first filter.** Run-local findings are visible in the summary but don't become proposals. Only repo-scope, workspace-scope, and plugin-scope findings become actionable items.
-4. **Log every invocation.** Append to `{workspace_root}/{slug}/history/learn-log.md` — even if every finding was rejected. The record matters.
+4. **Log every invocation.** Append to `{learn_log_path}` — even if every finding was rejected. The record matters.
 5. **Be explicit about source reliability.** PR review comments from a human reviewer are strong signal. Post-merge fix commits are strong signal (the truth shipped). Free-form user text is strong signal but filtered through the user's recall. Run corrections are moderate signal (may have been one-off decisions). **A Claude Code session is the weakest signal** — exploratory, mostly normal work, lots of dead ends; treat it the same class as free-form text and default to recommending no change unless a structural, repeatable convention clearly emerges.
 6. **Never dispatch a fix-round implementer without explicit user consent.** The fix round modifies real code on a real branch — it is the only step in `/learn` that touches anything outside the workspace docs. Default behavior is to ask the user (per repo, with the resolved branch named) before each dispatch. Only `--auto-fix` skips that gate, and only after the standard per-finding doc-approval gate has already run. `--dry-run` always implies `--no-fix`. Plugin-level findings never become fix-round dispatches (their target is the plugin, not workspace code).
+7. **Never file a plugin issue without per-issue explicit consent, and never while leak-check hits are outstanding** (only a user's explicit edit + confirm overrides a hit — EC-4). `--apply-all`, `--auto-fix`, `--dry-run` never file. `--dry-run` writes nothing.
 
 ---
 
 ### PIPELINE
 
 ```
-1. Resolve workspace ──────────── (from --workspace or auto-detect)
-2. Collect signal ─────────────── (based on source mode — pr / run / branch / text)
+1. Resolve workspace ──────────── (from --workspace or auto-detect; or workspace-less; defines {learn_run_dir})
+2. Collect signal ─────────────── (based on source mode — pr / run / branch / session / text)
 3. Dispatch feedback-learner ──── (agent analyzes signal vs current tier-1 docs)
 4. Present findings ──────────── (tier-classified, per-finding approval UX)         <- user gate
+   plugin-level → issue draft → leak check → duplicate search → consent → gh issue create
 5. Apply approved updates ─────── (file edits to the target tier)
 6. Write learn-log entry ─────── (durable record in the workspace)
 6.5. Optional fix round ──────── (per-repo implementer dispatch on the affected branch)  <- user gate
@@ -111,7 +119,9 @@ The learning loop for PipeCrew. Converts one feedback signal → scoped doc upda
 
 ### Step 1: Resolve the workspace
 
-**Step 1.0 — resolve `{workspace_root}`**: run `node {plugin_dir}/scripts/workspace-root.js --get` to capture the user's configured workspaces root (the same resolution `/deliver` and `/discover` use). Use `{workspace_root}` everywhere the steps below reference workspace paths. If the script exits non-zero (root never configured), tell the user to run `/discover` first — feedback has nothing to learn against without an onboarded workspace.
+**Step 1.0 — resolve `{workspace_root}`**: run `node {plugin_dir}/scripts/workspace-root.js --get` to capture the user's configured workspaces root (the same resolution `/deliver` and `/discover` use). Use `{workspace_root}` everywhere the steps below reference workspace paths. If the script exits non-zero (root never configured): for a `text` / `session` source, offer workspace-less mode (below); otherwise tell the user to run `/discover` first.
+
+**Workspace-less mode** activates only for a `text` / `session` source AND (`--no-workspace` was passed, OR the user answers "none — plugin feedback only" when asked which workspace, OR no workspace is registered / the root is unconfigured). `pr` / `run` / `branch` without a resolvable workspace halt as above. In workspace-less mode: set `{workspace_mode}` = `none`; skip config validation, Step 1.5, Step 5, Step 6.5, Step 7.4, Step 7.5; reject `--fix-branch` with "fix round needs a workspace". Otherwise `{workspace_mode}` = `workspace`.
 
 If `--workspace=<slug>` is provided, resolve it via
 `node {plugin_dir}/scripts/workspace-registry.js --resolve --workspace=<slug> --json`
@@ -120,12 +130,20 @@ registered workspaces with `node {plugin_dir}/scripts/workspace-registry.js --li
 and match:
 
 - For `--pr` / `--branch`: extract the repo path from the PR URL or current working directory. Read each registered workspace's `{path}/config.json` and find the one whose `repos.*.path` matches. If exactly one matches, use it. If multiple, ask the user.
-- For `--run`: the run ID contains the workspace slug inherently — match it against the registry's slugs (`{path}/runs/feature/{run_id}/` for the matching workspace).
-- For `--session` and free-form text: no repo to auto-detect from. If `--workspace` is omitted, ask.
+- For `--run`: the run ID contains the workspace slug inherently — match it against the registry's slugs (`{path}/runs/deliver/{run_id}/` for the matching workspace; legacy `{path}/runs/feature/{run_id}/` as fallback).
+- For `--session` and free-form text: no repo to auto-detect from. If `--workspace` is omitted (and `--no-workspace` was not passed), ask — offering "none — plugin feedback only" as an option.
 
-Validate the resolved config via `node {plugin_dir}/scripts/validate-config.js {config-path}`. Halt on errors.
+Validate the resolved config via `node {plugin_dir}/scripts/validate-config.js {config-path}`. Halt on errors. (Skipped in workspace-less mode.)
 
-**Step 1.5 — pull shared memory** (only if `config.workspace.memory.enabled`): before comparing the signal against the workspace's durable docs, read the team's latest so findings are proposed against current canon — `node {plugin_dir}/scripts/sync-memory.js pull {workspace_root}/{slug}`. Warn-only (dirty tree / fetch failure → uses local copy, never blocks `/learn`). Skip silently when memory is off.
+**Step 1.5 — pull shared memory** (only if `config.workspace.memory.enabled`): before comparing the signal against the workspace's durable docs, read the team's latest so findings are proposed against current canon — `node {plugin_dir}/scripts/sync-memory.js pull {workspace_root}/{slug}`. Warn-only (dirty tree / fetch failure → uses local copy, never blocks `/learn`). Skip silently when memory is off or in workspace-less mode.
+
+**Step 1.6 — define `{learn_run_dir}`, `{learn_log_path}`, `{plugin_repo}` (every mode, before any collection).** Compute `{run_id}` = `{YYYY-MM-DD-HHMMSS}-{source-slug}` (`source-slug` = `pr-31`, `run-2026-04-16-xxx`, `branch-fix-foo`, `session-current` or `session-{id-prefix}` (first 8 chars of the session id), or `text` (truncated first 24 chars of text)). Then create the directory:
+
+- Workspace mode: `{learn_run_dir}` = `{workspace_root}/{slug}/runs/learn/{run_id}/`; `{learn_log_path}` = `{workspace_root}/{slug}/history/learn-log.md`.
+- Workspace-less: `{learn_run_dir}` = `~/.claude/pipecrew/plugin-feedback/learn/{run_id}/`; `{learn_log_path}` = `~/.claude/pipecrew/plugin-feedback/learn-log.md`.
+- `{plugin_repo}` = `owner/repo` parsed from `{plugin_dir}/.claude-plugin/plugin.json` `repository` (fallback `homepage`). Unparseable → `[f]` (file now) is unavailable in Step 4; drafts are saved only.
+
+`{learn_run_dir}` is /learn's own output dir in every mode: `signal/`, `plugin-issues/`, and `learner-output.md` all go there. A `--run` source is read-only input under `{source_run_dir}` (Step 2b).
 
 ### Step 2: Collect the signal
 
@@ -136,10 +154,10 @@ Branch on the source mode. Each produces the same output shape: a `signal` bundl
 **Comments — use the canonical collector, do NOT hand-parse `gh` JSON.** Run the predefined script; it paginates fully, strips bot/CI noise, normalizes inline + conversation + review-summary comments into one list, and assigns **stable `C-n` ids** the learner's inventory adopts verbatim. Hand-parsing paginated JSON is the exact path by which a comment goes un-enumerated before the coverage guard can see it.
 
 ```bash
-node {plugin_dir}/scripts/collect-pr-feedback.js --pr={pr-url} --out={run_dir}/signal/pr-comments.json
+node {plugin_dir}/scripts/collect-pr-feedback.js --pr={pr-url} --out={learn_run_dir}/signal/pr-comments.json
 ```
 
-Exit codes: `0` ok · `1` usage / bad URL · `2` `gh` unavailable / not authenticated / network (tell the user to `gh auth login`) · `3` unparseable `gh` output. The script prints only a one-line count to stdout — the comment bodies stay in the file, out of your context. Pass `{run_dir}/signal/pr-comments.json` to the learner (Step 3); the learner Reads it and builds its `C-n` inventory from the ids the script already assigned.
+Exit codes: `0` ok · `1` usage / bad URL · `2` `gh` unavailable / not authenticated / network (tell the user to `gh auth login`) · `3` unparseable `gh` output. The script prints only a one-line count to stdout — the comment bodies stay in the file, out of your context. Pass `{learn_run_dir}/signal/pr-comments.json` to the learner (Step 3); the learner Reads it and builds its `C-n` inventory from the ids the script already assigned.
 
 **Commits — fetch separately for the plugin-vs-human partition** (the collector deliberately handles comments only, not the commit-authorship heuristic):
 
@@ -153,29 +171,31 @@ From this, compute:
 - **Plugin commits vs human commits**: partition the commits by heuristics in order:
   1. `PipeCrew-Run-Id:` trailer in the commit message (definitive — stamped on every pipeline-created commit since v1.15, alongside `PipeCrew-Version:` which tells you which plugin build made it). A commit WITHOUT the trailer in a PR that HAS trailered commits is presumptively human.
   2. `Co-Authored-By: Claude` trailer (weak fallback for pre-trailer history only — ANY Claude-Code-assisted commit carries it, including the user's own hand fixes, so it cannot distinguish pipeline from human-with-Claude).
-  3. Timestamp overlap with a `/deliver` run in `{workspace_root}/{slug}/runs/feature/*/checkpoints.jsonl` — commits made within the run's start–end window are presumptively plugin commits.
+  3. Timestamp overlap with a `/deliver` run in `{workspace_root}/{slug}/runs/deliver/*/checkpoints.jsonl` — commits made within the run's start–end window are presumptively plugin commits.
   4. Ask the user to confirm the partition before proceeding if heuristics are ambiguous.
 
 - **Post-plugin fixes**: the diff between the last plugin commit and the final merged SHA — this is what humans had to add/fix to make the feature ship-worthy. The richest single signal.
 
-- **Review comments**: already collected into `{run_dir}/signal/pr-comments.json` by the script above — each entry has a stable `C-n` id, `kind` (inline / conversation / review-summary), `author`, `association`, `path:line`, and `resolved` / `outdated` flags. Bot/CI noise is pre-excluded. Do NOT re-fetch or re-parse comments here; pass the file path to the learner.
+- **Review comments**: already collected into `{learn_run_dir}/signal/pr-comments.json` by the script above — each entry has a stable `C-n` id, `kind` (inline / conversation / review-summary), `author`, `association`, `path:line`, and `resolved` / `outdated` flags. Bot/CI noise is pre-excluded. Do NOT re-fetch or re-parse comments here; pass the file path to the learner.
 
 Bundle the commit material + the canonical comment file path into the signal for the learner. Include `--note` verbatim if provided.
 
 #### 2b. Run mode (`--run`)
 
 ```bash
-run_dir={workspace_root}/{slug}/runs/feature/{run_id}
+source_run_dir={workspace_root}/{slug}/runs/deliver/{run_id}
 ```
 
+If `runs/deliver/{run_id}` is missing, try legacy `runs/feature/{run_id}` (note `legacy path` in the log entry). If neither exists, list the 5 newest `runs/deliver/*` ids and halt. `{source_run_dir}` is read-only input.
+
 Read:
-- `{run_dir}/scratchpad.md` — overview of what ran, which phases, what task files were created.
-- `{run_dir}/corrections.md` — the captured user pushbacks during gates (if the run used a version of `/deliver` that wrote this file).
-- `{run_dir}/run-notes.md` — durable observations the product-owner / solution-architect flagged during the run (their `## Notes for /learn` sections, appended by `/deliver`'s capture rule). **Strong signal** — these are the agents pointing at gaps in the workspace docs; treat each bullet as a candidate finding to tier-classify.
-- `{run_dir}/outputs/phase-1-requirements.md`, `phase-2-architecture.md`, `phase-3-diffs.md`, `phase-5-5-code-review.md` — the intermediate run outputs.
-- `{run_dir}/assessment.md` — Phase 6 output, if present.
-- `{run_dir}/report.md` — Phase 7 summary, if present.
-- `{run_dir}/checkpoints.jsonl` — event timeline; useful to cross-reference against any PRs that landed after the run.
+- `{source_run_dir}/scratchpad.md` — overview of what ran, which phases, what task files were created.
+- `{source_run_dir}/corrections.md` — the captured user pushbacks during gates (if the run used a version of `/deliver` that wrote this file).
+- `{source_run_dir}/run-notes.md` — durable observations the product-owner / solution-architect flagged during the run (their `## Notes for /learn` sections, appended by `/deliver`'s capture rule). **Strong signal** — these are the agents pointing at gaps in the workspace docs; treat each bullet as a candidate finding to tier-classify.
+- `{source_run_dir}/outputs/phase-1-requirements.md`, `phase-2-architecture.md`, `phase-3-diffs.md`, `phase-5-5-code-review.md` — the intermediate run outputs.
+- `{source_run_dir}/assessment.md` — Phase 6 output, if present.
+- `{source_run_dir}/report.md` — Phase 7 summary, if present.
+- `{source_run_dir}/checkpoints.jsonl` — event timeline; useful to cross-reference against any PRs that landed after the run.
 
 Bundle for the learner. If the run also has an associated merged PR (which you can often find by the feature's branch name), offer to also include the PR as a secondary signal source — more data usually helps.
 
@@ -199,12 +219,12 @@ Learn from a Claude Code conversation. Two sub-cases:
 **`--session=<path>` or `--session=<id>`** (a past transcript) — use the canonical collector; do NOT hand-walk the JSONL. The transcript is mostly noise (assistant turns, tool results, local-command stdout, system reminders, sub-agent sidechains) and a real user turn can be missed before the coverage guard sees it. The script keeps only genuine human turns, drops the rest into an audit list, and assigns **stable `C-n` ids** the learner adopts verbatim:
 
 ```bash
-node {plugin_dir}/scripts/collect-session-feedback.js --session={path-or-id} --out={run_dir}/signal/session.json
+node {plugin_dir}/scripts/collect-session-feedback.js --session={path-or-id} --out={learn_run_dir}/signal/session.json
 ```
 
-Exit codes: `0` ok · `1` usage / transcript-or-id not found / ambiguous id · `3` unparseable transcript. The script prints only a one-line count to stdout — the turn bodies stay in the file, out of your context. Pass `{run_dir}/signal/session.json` to the learner (Step 3); it Reads the file and builds its `C-n` inventory from the ids already assigned. (A bare id resolves under `~/.claude/projects/*/{id}.jsonl`; pass an absolute `.jsonl` path if the id is ambiguous.)
+Exit codes: `0` ok · `1` usage / transcript-or-id not found / ambiguous id · `3` unparseable transcript. The script prints only a one-line count to stdout — the turn bodies stay in the file, out of your context. Pass `{learn_run_dir}/signal/session.json` to the learner (Step 3); it Reads the file and builds its `C-n` inventory from the ids already assigned. (A bare id resolves under `~/.claude/projects/*/{id}.jsonl`; pass an absolute `.jsonl` path if the id is ambiguous.)
 
-**`--session=current`** (the live conversation) — you are *in* the session, so do NOT try to self-read the whole transcript (it would blow the context budget). Instead, distill the salient feedback turns from the conversation you are currently in — the corrections, the "no, do it this way", the things the user repeated or insisted on — and write them yourself into `{run_dir}/signal/session.json` in the **same shape the collector emits**:
+**`--session=current`** (the live conversation) — you are *in* the session, so do NOT try to self-read the whole transcript (it would blow the context budget). Instead, distill the salient feedback turns from the conversation you are currently in — the corrections, the "no, do it this way", the things the user repeated or insisted on — and write them yourself into `{learn_run_dir}/signal/session.json` in the **same shape the collector emits**:
 
 ```json
 { "session": { "id": "current", "path": null, "turns": N },
@@ -230,9 +250,10 @@ Either way, the resulting `session.json` is the signal bundle handed to the lear
 ```
 You are analyzing feedback about the {workspace.name} workspace and proposing
 scoped updates to its durable context docs.
+{Workspace-less: "You are analyzing feedback about the PipeCrew plugin itself; there is no workspace (workspace: none)."}
 
 ## Signal source
-Mode: {pr | run | branch | text}
+Mode: {pr | run | branch | session | text}
 Identifier: {PR URL | run_id | branch name | <first 60 chars of text>}
 
 ## The signal
@@ -240,7 +261,7 @@ Identifier: {PR URL | run_id | branch name | <first 60 chars of text>}
 {For PR mode:}
 ### Review comments — canonical list (read this file)
 The PR's comments are pre-collected, de-noised, and numbered at:
-  {run_dir}/signal/pr-comments.json
+  {learn_run_dir}/signal/pr-comments.json
 Read that file. Each entry already has a stable `C-n` id plus kind / author /
 association / path:line / resolved / outdated. **Adopt those `C-n` ids verbatim
 as your inventory spine** (Step 3.5) — do not renumber, drop, or merge them.
@@ -275,7 +296,7 @@ sub-ids C-n-a / C-n-b for the split.)
 {For session mode:}
 ### Session feedback — canonical list (read this file)
 The session's human turns are pre-collected, de-noised, and numbered at:
-  {run_dir}/signal/session.json
+  {learn_run_dir}/signal/session.json
 Read that file. Each entry has a stable `C-n` id, `kind: user-turn`, and the turn
 body (assistant turns, tool results, local-command echoes, system reminders and
 sub-agent sidechains are already excluded). **Adopt those `C-n` ids verbatim as
@@ -291,6 +312,8 @@ one conversation (e.g. "we ALWAYS use a modal", "NEVER split publisher modules")
 When in genuine doubt, do NOT propose an update — recommend no change and say why.
 
 ## Current workspace durable docs (read and compare)
+
+{Workspace-less: replace this whole section with: "No workspace — only `plugin-level`, `run-local`, `out-of-scope` dispositions are allowed."}
 
 Read each of these before proposing any update:
 - {workspace_root}/{slug}/context/platform.md (especially the `Established Patterns` section)
@@ -421,9 +444,11 @@ findings follow.}
    `no-update`.
 5. **No file edits.** You propose, the orchestrator applies after user
    approval. Do NOT use Write or Edit tools.
-6. **No plugin-level edits.** Even if a finding is clearly plugin-level,
-   describe what the plugin change would be, but do not produce a file path
-   under {plugin_dir}.
+6. **No plugin-level edits.** For a plugin-level finding, describe the change and
+   emit the ISSUE_DRAFT block (see your agent definition). Plugin-relative
+   component paths (`agents/x.md`) are allowed inside ISSUE_DRAFT only; `Target`
+   stays `(plugin maintainer review — no workspace file)`; never an absolute
+   {plugin_dir} path.
 7. **Cover every comment.** Every inventoried C-n must appear exactly once in
    the Comment coverage table with a disposition. Dropping a comment because it
    wasn't a "pattern" is the exact failure this guard exists to prevent — route
@@ -432,7 +457,7 @@ findings follow.}
    ids.
 ```
 
-The learner is read-only (tools: Read, Glob, Grep, Bash). It does not write anything.
+The learner is read-only (tools: Read, Glob, Grep, Bash). It does not write anything. Write its raw output to `{learn_run_dir}/learner-output.md` immediately (re-write after any `SendMessage` re-dispatch). Pass `workspace_slug` / `workspace_config_path` as `none` in workspace-less mode.
 
 ---
 
@@ -484,23 +509,38 @@ For each finding:
 - **e** → let the user supply revised content; queue revised version for apply.
 - **v** → show the full finding block and re-prompt.
 
-For `plugin-level` findings, skip the apply prompt — they auto-route to the log with `action: flagged`. Tell the user:
+For `plugin-level` findings, skip the apply prompt and run the **plugin-issue flow** below (never a doc edit).
+
+**Plugin-issue flow (per plugin-level finding N):**
+
+1. **Save the draft.** `node {plugin_dir}/scripts/extract-block.js {learn_run_dir}/learner-output.md "ISSUE_DRAFT finding-N" --raw` → write to `{learn_run_dir}/plugin-issues/finding-N.md` (omit under `--dry-run`; show inline instead). Draft missing → ask the learner once via `SendMessage`; still missing → log `Issue: no draft` and skip the rest of this flow.
+2. **Leak gate.** `node {plugin_dir}/scripts/check-plugin-issue.js --draft={learn_run_dir}/plugin-issues/finding-N.md --config={config-path}` (omit `--config` workspace-less). Exit `1`: `SendMessage` the learner the hit list — "rewrite finding-N's ISSUE_DRAFT without these terms" — re-extract, re-check once. Still dirty → show the hits and offer only `[e]` / `[s]` / `[n]`. User edit + confirm overrides a hit (record `leak-override: <term>` in the log); an edit re-runs the check.
+3. **Duplicate search.** If `gh auth status` succeeds: `gh issue list --repo {plugin_repo} --state open --search "<3–5 title keywords>" --limit 5 --json number,title,url`; show matches above the prompt. Any failure → skip silently.
+4. **Prompt** (full rendered draft, then):
 
 ```
-[4/N] Finding #4 — plugin-level — (no workspace file edit)
+[4/N] Finding #4 — plugin-level — proposed issue for {plugin_repo}
+{rendered draft}
+{open duplicates, if any}
 
-Observation: {...}
-Suggested plugin change: {...}
-
-This would affect the plugin's own prompts / templates, which are shared across all
-workspaces. Not auto-applied. Logging for maintainer review.
+[f] file now  [s] save draft only  [e] edit  [v] view finding evidence  [n] skip
 ```
+
+   - `[f]` → `gh issue create --repo {plugin_repo} --title "<title>" --body-file <draft body file> --label <label>`; if the label does not exist, retry once without `--label`. Not authenticated / offline / `{plugin_repo}` unresolved → behave as `[s]` and print a prefilled `https://github.com/{owner}/{repo}/issues/new?title=…&body=…` URL (URL-encoded; if over 7,500 chars, print a title-only URL plus the draft path).
+   - `[s]` → keep `{learn_run_dir}/plugin-issues/finding-N.md`; no filing.
+   - `[e]` → user supplies revised text; re-run step 2.
+   - `[n]` → skip; record `skipped`.
+5. Print one outcome line per issue (`filed #123 <url>` | `saved <path>` | `skipped` | `blocked: leak`).
+
+`--apply-all` / `--auto-fix` never file: plugin-level drafts are saved and listed in the summary as "saved, not filed". If the user cancels mid-gate, issues already filed stay filed; remaining drafts are saved and the log records the run as partial.
 
 For `run-local` findings, do not prompt at all — just list them in the summary as informational context and include them in the log.
 
-Batch mode (`--apply-all`): skip per-finding prompts, show a combined summary + one confirmation. Reject-per-finding is not available in this mode.
+Batch mode (`--apply-all`): skip per-finding prompts, show a combined summary + one confirmation. Reject-per-finding is not available in this mode. Plugin-level drafts are saved (leak-checked) and shown as "saved, not filed".
 
-Dry-run mode (`--dry-run`): show findings + proposed changes, emit a single "would apply N findings" summary, skip both apply AND log write. Nothing persists.
+Dry-run mode (`--dry-run`): show findings + proposed changes (plugin-level drafts inline), emit a single "would apply N findings" summary, skip apply, log write, and draft files. Nothing persists; nothing is filed.
+
+**Workspace-less downgrade.** When `{workspace_mode}` = `none`, any `repo-durable` / `workspace-durable` / `code-fix` finding the learner still returns is downgraded to `out-of-scope` (reason "no workspace") and never applied.
 
 **No actionable findings (common for `session` / `text`):** if the learner's `## Recommendation` is `no-update` and there are zero repo/workspace/plugin findings, skip the per-finding prompts entirely. Still write the learn-log entry (Step 6) — the reasoning is worth keeping — and go straight to the Step 7 summary, rendering it as the positive "no change recommended" outcome, not a warning. There is nothing to apply and (unless `--fix-branch` was given) no fix round.
 
@@ -508,7 +548,7 @@ Dry-run mode (`--dry-run`): show findings + proposed changes, emit a single "wou
 
 ### Step 5: Apply approved updates
 
-For each approved finding:
+Skipped in workspace-less mode. For each approved finding:
 
 1. Read the target file.
 2. Apply the before/after diff. If the target section exists, edit in place. If it's a new section, append at the appropriate position (section number order).
@@ -525,7 +565,7 @@ After all applies complete, run a quick sanity check:
 
 ### Step 6: Write the learn-log entry
 
-Append to `{workspace_root}/{slug}/history/learn-log.md` (create if missing). Format:
+Append to `{learn_log_path}` (create if missing). Format:
 
 ```markdown
 ## {ISO-date} — {source-mode} {identifier}
@@ -567,9 +607,11 @@ Append to `{workspace_root}/{slug}/history/learn-log.md` (create if missing). Fo
 | 4 | workspace-durable | platform.md | User rejected: "this is a one-off" |
 
 ### Findings flagged (plugin-level)
-| # | Summary |
-|---|---|
-| 5 | Plugin-level: spring-boot implementer should prefer declarative security on greenfield code |
+| # | Summary | Issue |
+|---|---|---|
+| 5 | Plugin-level: spring-boot implementer should prefer declarative security on greenfield code | #123 <url> |
+
+`Issue` = `#123 <url>` | `draft: <path>` | `skipped` | `blocked: leak` | `no draft`. Add `leak-override: <term>` and `legacy path` notes where they apply.
 
 ### Fix-round dispatches
 *(this subsection appears only if Step 6.5 ran and at least one bundle was dispatched)*
@@ -590,18 +632,14 @@ For each row that has a `Notes for the user` line in the agent output, also incl
 
 The log is the durable record of how the workspace learned over time. Future `/pipecrew:learn` invocations can cross-reference this log to spot recurring patterns.
 
-If you added a new entry for a finding that's marked **plugin-level**, don't only write it to the feedback log — also print a brief chat message pointing at it:
-
-```
-⚠️ Plugin-level finding flagged. See learn-log.md entry for {date}.
-   To propose this upstream, open an issue / PR against the pipecrew plugin.
-```
+Each plugin-level finding's outcome line is printed during the Step 4 plugin-issue flow; the log table above carries the same outcome.
 
 ### Step 6.5: Optional fix round — apply findings to existing code
 
 Doc updates from Step 5 only steer **future** runs. The branch the feedback came from still contains the violations the user flagged. This step optionally dispatches the per-repo implementer agents to fix them in place.
 
 **Skip this step entirely** when ANY of the following holds:
+- Workspace-less mode.
 - `--no-fix` was passed.
 - `--dry-run` was passed (no docs were applied either, so there's nothing to "match" the branch to).
 - Zero findings were applied at Step 5 **AND** the learner produced zero `code-fix` (CF-n) items (nothing to fix in code).
@@ -757,6 +795,7 @@ Emit the standard one-line phase-done status. Include a fix-round suffix when St
 [feedback ✔] {N} applied, {N} rejected, {N} plugin-flagged — {source} ({mm:ss}, {Xk} tokens)
             ↳ coverage: {covered}/{total} comments dispositioned ({C} code-fix items)
             ↳ fix-round: {R} repos, {A} findings + {CF} code-fixes applied to code, {S} skipped
+            ↳ plugin issues: {F} filed, {S} saved, {K} skipped
 ```
 
 Always print the coverage line — it is the at-a-glance proof that no reviewer comment was silently dropped. If coverage is < 100%, use ⚠ and name the unmapped ids.
@@ -787,7 +826,7 @@ If the doc applies succeeded but the fix-round prompt was declined / `--no-fix` 
 
 ---
 
-### Step 7.4: Sync workspace memory to GitHub (only if `config.workspace.memory.enabled` AND ≥1 finding applied)
+### Step 7.4: Sync workspace memory to GitHub (skipped workspace-less; only if `config.workspace.memory.enabled` AND ≥1 finding applied)
 
 If the workspace opted into GitHub-backed memory and this run **changed** any durable doc (≥1 finding applied to `platform.md` / repo `CLAUDE.md` / `agent-context` / `DESIGN_SYSTEM.md` / `audit-findings.md`), persist it:
 
@@ -799,7 +838,7 @@ Skip when `memory.enabled` is absent/false, or when 0 findings were applied (not
 
 ### Step 7.5: Finalize — update parent /deliver dispatch log (only when `--run` was supplied)
 
-If `/learn` was invoked with `--run=<deliver-run-id>` (i.e. /learn was dispatched from /deliver Phase 8 Step 8.6), the parent /deliver run's `scratchpad.md` already has a feedback-learner row in its `## Agent Dispatch Log` table with outcome `in_progress` (written by Phase 8 just before the Skill invocation). Update it now so the site-view's `loop` character flips working → done and the pyramid closes.
+This is the only /deliver-specific step. If `/learn` was invoked with `--run=<deliver-run-id>` (for example dispatched from /deliver Phase 8 Step 8.6), the parent /deliver run's `scratchpad.md` already has a feedback-learner row in its `## Agent Dispatch Log` table with outcome `in_progress` (written by Phase 8 just before the Skill invocation). Update it now so the site-view's `loop` character flips working → done and the pyramid closes.
 
 **Locate the row**: `{workspace_root}/{slug}/runs/deliver/{deliver-run-id}/scratchpad.md`. Find the row whose Agent column is `feedback-learner` and Outcome is `in_progress`.
 
@@ -844,11 +883,11 @@ If `--run` was not supplied (PR / branch / free-form modes), this entire step is
 
 Every `/pipecrew:learn` run emits the same event schema as `/deliver` / `/discover` runs (see `{plugin_dir}/rules/observability.md`):
 
-- `run_start` — with `skill: "learn"`, source mode, identifier.
+- `run_start` — with `skill: "learn"`, source mode, identifier. Workspace-less runs use `workspace_slug: "_plugin-feedback"`.
 - `agent_end` — after the learner returns, with token usage. Also emitted after each fix-round implementer returns (one per dispatched bundle), with `agent_type` set to the resolved implementer (e.g., `react-implementer`) and `phase: "6.5"`.
 - `phase_end` — one per pipeline step above. Step 6.5 emits its own `phase_end` only when at least one bundle was dispatched; otherwise a skip-reason is recorded as `phase_end` with `status: "skipped"` and `reason` set to one of `no-fix-flag` / `dry-run` / `no-applied-findings` / `all-plugin-level` / `user-declined`.
-- `run_end` — with applied/rejected/flagged counts AND fix-round counts (`fix_repos`, `fix_findings_applied`, `fix_findings_skipped`).
+- `run_end` — with applied/rejected/flagged counts AND fix-round counts (`fix_repos`, `fix_findings_applied`, `fix_findings_skipped`) AND `plugin_issues_filed`, `plugin_issues_saved`.
 
-Run directory: `{workspace_root}/{slug}/runs/learn/{run_id}/` where `{run_id}` = `{YYYY-MM-DD-HHMMSS}-{source-slug}`. `source-slug` = `pr-31`, `run-2026-04-16-xxx`, `branch-fix-foo`, `session-current` or `session-{id-prefix}` (first 8 chars of the session id), or `text` (truncated first 24 chars of text).
+Run directory: `{learn_run_dir}` (defined in Step 1.6).
 
-Keep the learner's raw output under `{run_dir}/learner-output.md` for post-hoc debugging. The log entry is the human-facing summary; the raw output is the full reasoning trail.
+Keep the learner's raw output under `{learn_run_dir}/learner-output.md` for post-hoc debugging. The log entry is the human-facing summary; the raw output is the full reasoning trail.

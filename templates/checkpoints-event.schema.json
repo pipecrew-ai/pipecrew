@@ -39,7 +39,7 @@
       "then": {
         "required": ["workspace_slug"],
         "properties": {
-          "workspace_slug": { "type": "string" },
+          "workspace_slug": { "type": "string", "description": "Workspace slug; `_plugin-feedback` for a workspace-less /learn run." },
           "args": { "type": "string" },
           "claude_code_version": { "type": "string" }
         }
@@ -51,7 +51,9 @@
         "required": ["status", "duration_ms"],
         "properties": {
           "status": { "enum": ["completed", "failed", "aborted", "resumed_later"] },
-          "duration_ms": { "type": "integer", "minimum": 0 }
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "plugin_issues_filed": { "type": "integer", "minimum": 0 },
+          "plugin_issues_saved": { "type": "integer", "minimum": 0 }
         }
       }
     },

@@ -162,7 +162,7 @@ Behind the skills, a crew of **36 specialized agents**. The ones you'll meet mos
 | `ux-consultant` | Produces an implementation-ready UX spec before the frontend is built |
 | `architecture-mapper` | Infers cross-repo topology and draws the Mermaid diagrams |
 | `context-manager` | Generates and refreshes `AGENTS.md` and agent-context docs |
-| `feedback-learner` | Proposes tier-classified durable-context updates from a merged PR or run |
+| `feedback-learner` | Proposes tier-classified durable-context updates from a merged PR, run, diff, session or free text — standalone; plugin-level findings become a leak-checked maintainer issue draft |
 | `reporter` | Run report — waterfall timeline, per-agent tokens, real dollar cost |
 
 Plus a **paired implementer + reviewer for every supported stack** (Spring Boot, React, Next.js,

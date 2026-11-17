@@ -47,7 +47,7 @@ The full pipeline is one command — but **every capability is also a standalone
 | `/design-tests` | Author feature-level acceptance cases into a durable regression suite |
 | `/run-regression` | Execute the suite against an environment — regression, UAT sign-off, or prod smoke |
 | `/troubleshoot` | Read-only cross-repo incident triage → root cause at `file:line` |
-| `/learn` | Feed a merged PR / run / diff back — proposes tier-classified durable-context updates |
+| `/learn` | Feed a merged PR / run / diff / session / free text back — runs standalone; proposes tier-classified durable-context updates; plugin-level findings → a platform-agnostic issue for PipeCrew maintainers (`--no-workspace` for pure plugin feedback) |
 
 **Context & memory**
 
@@ -189,7 +189,7 @@ stack-specific implementers and reviewers run in parallel, while cross-cutting a
 | `repo-discoverer` | Profiles one repo (framework, entities, endpoints) during `/discover` |
 | `architecture-mapper` | Infers cross-repo topology from the code → Mermaid diagrams |
 | `context-manager` | Creates / refreshes agent-facing context (AGENTS.md, `agent-context/`) |
-| `feedback-learner` | Turns a merged PR / run / diff into durable-context updates |
+| `feedback-learner` | Turns a merged PR / run / diff / session / text into durable-context updates + maintainer issue drafts |
 | `explainer` | Read-only, cited answers from the curated context for `/explain` — product or technical perspective |
 
 ### Contracts & specs

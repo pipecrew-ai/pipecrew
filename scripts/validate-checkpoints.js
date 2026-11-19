@@ -26,6 +26,7 @@ const ALLOWED_GATE_KINDS = new Set(['approval', 'clarify', 'fix-round']);
 
 const ALLOWED_SKILLS = new Set([
   'discover', 'deliver', 'learn', 'review', 'assess', 'context-refresh',
+  'patch', 'test-and-fix',
   'onboard', 'feature', // 'onboard' and 'feature' kept for pre-rename checkpoints
 ]);
 

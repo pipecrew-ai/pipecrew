@@ -1,0 +1,62 @@
+---
+id: fix-{feature}-{NN}
+status: pending
+repo: {repo_key}
+branch: fix/{feature}-{env}-{YYYY-MM-DD}
+source_run: {regression run_dir}
+case_ids: [{TC-…}]
+---
+
+<!--
+Task file for ONE failing acceptance case, or ONE group of failures that share a root cause.
+Filled by /test-and-fix (ADR-004) or by hand from a /run-regression report:
+  node {plugin_dir}/scripts/extract-block.js {source_run}/report.md REGRESSION_FAILURES
+Copy only the failing case(s)' entries from that block. Never paste or link the test suite
+(testcases/) — the suite stays out of implementer context.
+Consumed by the repo's stack implementer as `task_file`; `## Fix list` is its `fix_list`.
+-->
+
+# Fix {feature}: {one-line statement of the broken behaviour}
+
+## Failing case(s)
+
+### {case_id}
+- **Covers**: {covers}
+- **When**: {when}
+- **Then (expected)**: {then}
+- **Observed**: {observed}
+- **Evidence**: {file_line | http | screenshot | command — whichever are non-null}
+- **Mode**: {live | code-grounded}
+
+<!-- one ### block per case_id in a group -->
+
+## Diagnosis
+
+{EITHER `direct — runner evidence` (the failure was localized: the runner's file:line shows the
+contradiction) OR the troubleshooter's root cause verbatim + its "Fix:" line + report path}
+
+## Fix list
+
+- `{repo-relative path}:{line}` — {the change}
+
+## Constraints
+
+- Fix the product behaviour the **Then** describes. Do not fix the test.
+- Never special-case test data, ids, fixtures, or environment names to make a case pass.
+- Never loosen a validation, check, or assertion to make a case pass.
+- Never edit anything under `testcases/`.
+- If the **Then** itself looks wrong (the case is out of date versus the requirements), STOP and
+  say so instead of changing code — that goes to `/design-tests`, not to a fix.
+- If the fix needs an OpenAPI / schema / contract change, or touches more than two repos, STOP and
+  say `bounce to /deliver`.
+- Stay inside the Fix list. Anything else you notice goes in the Work log as a note, not a change.
+
+## Verification
+
+1. The repo's own tests pass (run the suite or the affected tests; paste the command + result).
+2. Add or adjust a repo test that reproduces the failing case where the stack allows it.
+3. The orchestrator re-runs the case: `/run-regression --env={env} --only={case_ids}`.
+
+## Work log
+
+<!-- implementer fills: files touched (path:line), tests run + results, deviations, notes -->

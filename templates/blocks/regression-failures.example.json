@@ -1,0 +1,42 @@
+{
+  "env": "staging",
+  "run_date": "2026-11-19",
+  "failures": [
+    {
+      "case_id": "TC-book-upload-03",
+      "feature": "book-upload",
+      "surface": "api",
+      "covers": ["FR-4", "EC-2"],
+      "repos_touched": ["publisher-service"],
+      "when": "POST /books with an ISBN that already exists",
+      "then": "409 with error code DUPLICATE_ISBN; no second row is created",
+      "observed": "Code path returns 201 and inserts a second row — no uniqueness check before save",
+      "evidence": {
+        "file_line": "publisher-service/src/main/java/com/example/books/BookService.java:88",
+        "http": null,
+        "screenshot": null,
+        "command": null
+      },
+      "mode": "code-grounded",
+      "localized": true
+    },
+    {
+      "case_id": "TC-book-upload-05",
+      "feature": "book-upload",
+      "surface": "api",
+      "covers": ["FR-6"],
+      "repos_touched": ["publisher-service", "conversion-worker"],
+      "when": "Upload a 40 MB IDML file",
+      "then": "202 Accepted and the book appears with status CONVERTING",
+      "observed": "HTTP 500 after ~30 s; book never appears in GET /books",
+      "evidence": {
+        "file_line": null,
+        "http": "500 {\"error\":\"Internal Server Error\"}",
+        "screenshot": null,
+        "command": null
+      },
+      "mode": "live",
+      "localized": false
+    }
+  ]
+}

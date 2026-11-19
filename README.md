@@ -79,7 +79,7 @@ Or in one command (Claude Code v2.1.275+): `claude plugin install pipecrew --mar
 cursor-agent --plugin-dir /path/to/pipecrew
 ```
 
-Same repo, dual-target — all 20 skills and the 35-agent crew ship to both; a few lifecycle hooks
+Same repo, dual-target — all 23 skills and the 36-agent crew ship to both; a few lifecycle hooks
 are Claude-Code-only for now ([details](docs/CHEATSHEET.md#cursor-notes)).
 
 Updates ship as [GitHub Releases](https://github.com/pipecrew-ai/pipecrew/releases) — enable
@@ -138,6 +138,7 @@ exist for.
 | A feature branch verified across repos | `/assess` |
 | Acceptance tests authored into a durable suite | `/design-tests` |
 | The suite run — regression, UAT sign-off, prod smoke | `/run-regression` |
+| One feature's failing cases fixed on one env, in a loop | `/test-and-fix --feature=<slug>` |
 | A bug investigated from a symptom (read-only) | `/troubleshoot "<symptom>"` |
 | Any concept, flow, or code explained — product or technical, with sources | `/explain "<question>"` |
 | Feedback captured into durable conventions | `/learn` |

@@ -46,6 +46,7 @@ The full pipeline is one command — but **every capability is also a standalone
 |-------|---------|
 | `/design-tests` | Author feature-level acceptance cases into a durable regression suite |
 | `/run-regression` | Execute the suite against an environment — regression, UAT sign-off, or prod smoke |
+| `/test-and-fix` | Fix one feature's failing cases on one env in a loop — verify → (diagnose) → fix → re-verify, max 3 rounds; production is verify-only |
 | `/troubleshoot` | Read-only cross-repo incident triage → root cause at `file:line` |
 | `/learn` | Feed a merged PR / run / diff / session / free text back — runs standalone; proposes tier-classified durable-context updates; plugin-level findings → a platform-agnostic issue for PipeCrew maintainers (`--no-workspace` for pure plugin feedback) |
 
@@ -242,6 +243,9 @@ unit-granular:
 /design-tests --run=<run_id>           # cases for a feature a /deliver run just shipped
 /run-regression --env=staging          # full regression against an environment
 /run-regression --scope=feature:<slug> # UAT first-pass — the report doubles as the sign-off sheet
+/run-regression --env=staging --only=TC-<feature>-03   # re-run just the failed cases (ids from the report)
+/test-and-fix --feature=<slug> --env=staging           # run → fix → re-run loop; deploy gate each round
+/troubleshoot --from-regression=<run_dir> --env=staging  # diagnose a regression run's failures on their own
 ```
 
 The runner gives an **honest per-case verdict** — `pass` / `fail` / `consistent` / `unverifiable` —
@@ -378,7 +382,7 @@ auto-discovers the shared `skills/` and `agents/`.
 cursor-agent --plugin-dir /path/to/pipecrew
 ```
 
-**What ships to Cursor today:** all 20 skills and the full 35-agent crew, dispatched via Cursor's
+**What ships to Cursor today:** all 23 skills and the full 36-agent crew, dispatched via Cursor's
 Task-tool subagents. The lifecycle **hooks** (update nudge, `/troubleshoot` read-only guard,
 `/deliver --auto-approve`, and the site-view "needs approval" banner) are Claude-Code-only for
 now — a Cursor `hooks.json` port is tracked as a follow-up. Nothing else differs.

@@ -49,7 +49,7 @@ claude config set plugins.pipecrew.hooks.enabled false
 
 ### Required
 
-A free-form symptom description (one line is fine):
+A free-form symptom description (one line is fine) — or `--from-regression=<run_dir>` instead:
 
 ```
 /troubleshoot bulk upload returns 500 for files larger than 10MB
@@ -67,6 +67,8 @@ A free-form symptom description (one line is fine):
 | `--env` | no | `prod` | Env to investigate (`prod` / `staging` / `dev` / `local` — or whatever the workspace defines). |
 | `--auto` | no | off | Skip the hypothesis-approval gate; agent picks the top candidate and investigates. Use for routine triage; leave off when prod is on fire. |
 | `--workspace` | no | auto-detect | Workspace slug (reads config for repo list and which troubleshooter agent to dispatch). |
+| `--from-regression` | no | — | A `/run-regression` (or `/test-and-fix` round) run dir. Builds the symptom + evidence file from its `REGRESSION_FAILURES` block — no symptom argument needed. Makes `--env` required. |
+| `--case` | no | all failures | With `--from-regression`: the one case id to investigate. Default: all of the run's failures as one investigation. |
 | `--learn` | no | off | At end of run, propose a runbook / platform.md update from what was learned. User approves before write. |
 
 ### Examples
@@ -75,10 +77,21 @@ A free-form symptom description (one line is fine):
 /troubleshoot bulk upload 500s on files >10MB --since=2h --env=prod
 /troubleshoot login redirect loop --user-id=a8f2 --evidence=./session.har
 /troubleshoot worker DLQ growing --auto --since=30m
+/troubleshoot --from-regression=runs/run-regression/2026-11-19-101500 --case=TC-book-upload-05 --env=staging
 /troubleshoot 502 from gateway --trace-id=abc123 --learn
 ```
 
 ## Instructions
+
+### Step 0.5: `--from-regression` — build the symptom from a regression run
+
+Only when `--from-regression=<run_dir>` is passed:
+
+1. `--env` missing → ask for it; never fall back to the `prod` default.
+2. `node {plugin_dir}/scripts/extract-block.js <run_dir>/report.md REGRESSION_FAILURES`. Exit 2 → `That run has no REGRESSION_FAILURES block — re-run it with /run-regression.` and stop. Empty `failures` → `No failures in that run.` and stop.
+3. Select: `--case=<id>` → that entry (missing → list the run's failed ids and ask); else all entries.
+4. If the block's `env` is not `none` and differs from `--env` → warn once and ask to continue.
+5. Symptom = `"{case_id}: expected {then}, got {observed}"` of the first selected entry. After Step 3 creates the run dir, write `evidence.md` there: per selected entry — case id, When, Then, observed, every non-null evidence field. Set `--evidence` to that file. Use only the block's entries — never open `testcases/`.
 
 ### Step 1: Read workspace config
 

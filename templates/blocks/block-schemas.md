@@ -459,6 +459,36 @@ The JSON is the addressable hand-off index. The brainstormer's prose above/below
 
 ---
 
+### `REGRESSION_FAILURES`
+
+**Producer**: `regression-runner` (always emitted, under `## Failures` in its report; `"failures": []` when none)
+**Consumers**: `/test-and-fix` (ADR-004, slice 2), `/troubleshoot --from-regression` (slice 2), and users scripting re-runs (`/run-regression --only=<failed ids>`)
+**File**: `{run_dir}/report.md` of a `/run-regression` run
+**Canonical example**: [`templates/blocks/regression-failures.example.json`](./regression-failures.example.json)
+
+**Field reference:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `env` | string | Env name, or `none` for code-grounded runs. |
+| `run_date` | string | `YYYY-MM-DD`. |
+| `failures[].case_id` | string | `TC-{feature}-NN`. Lists `fail` verdicts only — never `unverifiable` or `consistent`. |
+| `failures[].feature` | string | Feature slug (= the case file name). |
+| `failures[].surface` | string | `ui` \| `api` \| `event` \| `cli` \| `batch`. |
+| `failures[].covers` | string[] | FR/EC ids (deliver-sourced cases) or the capability name (baseline cases). |
+| `failures[].repos_touched` | string[] | From the case's "Repos/services touched". |
+| `failures[].when` / `then` | string | Short excerpts of the case — enough to fix against, never the whole suite. |
+| `failures[].observed` | string | What actually happened. |
+| `failures[].evidence` | object | `file_line`, `http` (status + short body excerpt), `screenshot` (path), `command` (command + exit) — each string or `null`. |
+| `failures[].mode` | string | `live` \| `code-grounded`. |
+| `failures[].localized` | boolean | `true` iff `evidence.file_line` is set AND the observed-vs-Then contradiction is visible at that line. |
+
+`localized` is the direct-path signal: `/test-and-fix` sends `localized: true` failures straight to an implementer (using `templates/test-and-fix-task.md.template`) and `false` ones through the troubleshooter first; the user can override per item. The runner sets it honestly — no file:line → `false`.
+
+Reports written before v1.26.0 have no block — `extract-block.js` exits 2. Consumers must treat that as "re-run needed", never as zero failures.
+
+---
+
 ## Adding a new structured block
 
 1. Define the schema here under "Defined block schemas".

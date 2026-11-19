@@ -300,5 +300,14 @@ test('run_end plugin_issues_filed must be a non-negative integer', () => {
   assert(hasErr(r, 'plugin_issues_filed'));
 });
 
+test('test-and-fix skill is accepted', () => {
+  const id = '2026-11-19-120000-book-upload';
+  const r = validate(toLines([
+    { ts: '2026-11-19T12:00:00Z', event: 'run_start', skill: 'test-and-fix', run_id: id, workspace_slug: 'acme' },
+    { ts: '2026-11-19T12:05:00Z', event: 'run_end', skill: 'test-and-fix', run_id: id, status: 'completed', duration_ms: 1 },
+  ]));
+  assert(!r.errors.some(e => /unknown skill/.test(e)), r.errors.join('; '));
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

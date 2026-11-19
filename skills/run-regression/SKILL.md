@@ -5,7 +5,7 @@ description: "Run a workspace's durable acceptance test suite ({workspace_root}/
 
 ## Usage
 ```
-/run-regression [--env=<name>] [--scope=all|feature:<slug>] [--workspace=<slug>]
+/run-regression [--env=<name>] [--scope=all|feature:<slug>] [--only=<case-ids>] [--workspace=<slug>]
 ```
 
 ### Flags
@@ -13,6 +13,7 @@ description: "Run a workspace's durable acceptance test suite ({workspace_root}/
 |------|----------|---------|-------------|
 | `--env` | no | none → code-grounded mode | A key of `config.workspace.environments` (e.g. `uat`, `staging`, `production`). An env with `"production": true` restricts the run to `prod_safe` cases |
 | `--scope` | no | `all` | `all` = the whole suite (regression); `feature:<slug>` = one feature's cases (UAT first-pass — report includes the human sign-off sheet) |
+| `--only` | no | all cases in scope | Comma-separated case ids (`TC-{feature}-NN`). Runs ONLY these cases — for re-running just what failed. Without `--scope`, the case files are derived from the ids; with `--scope`, the ids must fall inside it |
 | `--workspace` | no | auto-detect | Workspace slug — resolved via the registry |
 
 ### Environments config (optional, in `config.json`)
@@ -34,6 +35,7 @@ No `environments` block (or no `--env`) is fine — the runner verifies cases ag
 /run-regression --env=uat --scope=feature:book-upload   # UAT first-pass + sign-off sheet
 /run-regression --env=production                    # post-deploy smoke (prod_safe only)
 /run-regression                                     # code-grounded verification, whole suite
+/run-regression --env=staging --only=TC-book-upload-03,TC-book-upload-05   # re-run just the failed cases
 ```
 
 ## Instructions
@@ -50,7 +52,8 @@ No `environments` block (or no `--env`) is fine — the runner verifies cases ag
 1. Registry: `node {plugin_dir}/scripts/workspace-registry.js --resolve --json` (add `--workspace=<slug>` if passed) → `{slug}`, `{workspace_root}`.
 2. Read `{workspace_root}/{slug}/testcases/INDEX.md`. Missing/empty → `No test suite yet — run /design-tests first.` and stop.
 3. Scope → case files: `all` = every `testcases/*.md` except INDEX.md; `feature:<slug>` = that one file (missing → list INDEX's features, ask). Collect absolute paths — do not open them.
-4. Environment: no `--env` → code-grounded mode (`env: none`). With `--env`: read `config.workspace.environments[{name}]` from `{workspace_root}/{slug}/config.json`; unknown name → list the configured ones and ask (none configured → show the config block from Usage above and offer code-grounded mode instead). If `production: true`: filter to `prod_safe: true` cases via a grep over the selected files (`prod_safe.*true`) — zero prod-safe cases → say so and stop.
+   **`--only=<ids>`**: each id must match `TC-{feature-slug}-NN` (else reject with that pattern and stop — no dispatch). No `--scope` → case files = the union of `testcases/{feature-slug}.md` for each id's feature part — the text between `TC-` and the final `-NN` (ids from several features → several files). With `--scope` → every id's feature must be inside it; list mismatches and ask. Pass the ids as `case_ids`. Ids that don't exist in their file are left for the runner, which reports them `unverifiable (case id not found in scope)`.
+4. Environment: no `--env` → code-grounded mode (`env: none`). With `--env`: read `config.workspace.environments[{name}]` from `{workspace_root}/{slug}/config.json`; unknown name → list the configured ones and ask (none configured → show the config block from Usage above and offer code-grounded mode instead). If `production: true`: filter to `prod_safe: true` cases via a grep over the selected files (`prod_safe.*true`) — zero prod-safe cases → say so and stop. With `--only`, an id whose case is not `prod_safe` is excluded here and listed in the run plan as `excluded (not prod_safe)` — never dispatched.
 5. `purpose`: `smoke` if production env, `uat` if `--scope=feature:*`, else `regression`. Create `{run_dir}` = `{workspace_root}/{slug}/runs/run-regression/{YYYY-MM-DD-HHMMSS}/`.
 
 ### Step 2: Browser check (only if a live env + any UI-surface case)
@@ -71,6 +74,7 @@ Run regression — {slug}
   Env:     {name + base_url | code-grounded (no live environment)}
   Purpose: {regression | uat | smoke}
   Scope:   {N} case files ({M} cases{, K prod-safe-only} ) — {feature list or "full suite"}
+  {if --only: Cases:   only {ids}{; excluded (not prod_safe): {ids}}}
   Browser: {available | unavailable → ui cases downgraded | n/a}
   {if env needs auth: Credentials: provide a token/test-account for this run, or say "unauthenticated" — auth-needing cases will come back unverifiable}
 
@@ -85,6 +89,7 @@ Proceed? (yes / no)
 workspace_root: {workspace_root}
 slug: {slug}
 case_files: {absolute paths}
+{if --only: case_ids: [{ids}]}
 env: {none | {name, production, base_url, services, notes}}
 browser_available: {true|false}
 repo_roster: {key → {path, type, role} from config.json}
@@ -95,7 +100,7 @@ purpose: {purpose}
 
 ### Step 5: Relay + sync offer
 
-Relay the runner's gate verdict verbatim (`GO | NO-GO`), the per-verdict counts, failures with their evidence, the report path, and any mistagged-prod_safe flags (those should go back through `/design-tests` to fix the tag). For `purpose: uat`, point at the report's human sign-off sheet — the agent verified behavior; a human accepts intent.
+Relay the runner's gate verdict verbatim (`GO | NO-GO`), the per-verdict counts, failures with their evidence, the report path, and any mistagged-prod_safe flags (those should go back through `/design-tests` to fix the tag). Failures are also machine-readable: `node {plugin_dir}/scripts/extract-block.js {run_dir}/report.md REGRESSION_FAILURES` (schema in `templates/blocks/block-schemas.md`); after a fix, re-run just those with `--only={failed ids}`. For `purpose: uat`, point at the report's human sign-off sheet — the agent verified behavior; a human accepts intent.
 
 The run updated `last_verified` in the attempted case files + INDEX. If `config.workspace.memory.enabled`, offer (don't auto-run):
 ```

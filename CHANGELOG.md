@@ -16,6 +16,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Or enable hands-off updates once: `/plugin` → **Marketplaces** → `pipecrew` → **Enable auto-update**.
 Watch the [repo Releases](https://github.com/pipecrew-ai/pipecrew/releases) (Watch → Custom → Releases) to be notified of new versions.
 
+## [1.26.0] - 2026-11-19
+
+### Added
+- **`/test-and-fix --feature=<slug> [--env=<name>]`** tests one feature on one environment
+  and fixes what fails, in a closed loop over the existing agents (ADR-004):
+  - runs the feature's acceptance cases, then re-runs failures once on live environments
+    and sets aside the flaky ones;
+  - groups the remaining failures and routes each group: straight to the stack
+    implementer when the runner's evidence points at a `file:line` (or there's no live
+    environment), or through the read-only troubleshooter first otherwise. The fix-plan
+    gate shows the path per group and lets you override it;
+  - fixes on one branch, gets the fix onto the environment (directly against the code,
+    after you restart a local server, or after you confirm a deploy), and re-runs only the
+    failed cases. 2 rounds by default, 3 at most;
+  - ends with a run of every case in the feature, one review of the total diff with an
+    explicit check for fixes written just to pass the test, and a per-case report.
+
+  Production is verify plus read-only diagnosis only. Contract or requirements changes go
+  to `/deliver`, and outdated cases go to `/design-tests`. It never pushes, and commits
+  only with `--commit`. Environment entries can carry optional `local` / `serves_from`.
+- **`/run-regression --only=<case-ids>`** re-runs just the cases you name.
+- **Machine-readable regression failures.** The runner now always writes a
+  `REGRESSION_FAILURES` JSON block into its report (schema in `block-schemas.md`), with a
+  `localized` flag. Read it with `extract-block.js`.
+- **`/troubleshoot --from-regression=<run_dir> [--case=<id>]`** builds the symptom and
+  evidence from a regression run. `--env` is required here, so it never falls back to `prod`.
+- `scripts/plan-fix-groups.js` (deterministic failure grouping and routing) and
+  `templates/test-and-fix-task.md.template`.
+
+### Fixed
+- `/patch` checkpoint events no longer fail validation: `patch` (and `test-and-fix`) are
+  now in the checkpoint validator, the schema and `rules/observability.md`.
+- README and CHEATSHEET counts corrected to 23 skills and 36 agents.
+
 ## [1.25.0] - 2026-11-18
 
 ### Added
